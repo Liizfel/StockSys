@@ -1,0 +1,6 @@
+{
+  "name": "Estoque",
+  "description": "Sistema de gestão de estoque.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["StockManagement", "UserManagement", "Reporting"]
+}
