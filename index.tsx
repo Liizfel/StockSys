@@ -1,7 +1,13 @@
-if (process.env.URL_DO_BANCO_DE_DADOS && !process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = process.env.URL_DO_BANCO_DE_DADOS;
-}
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
+import App from './src/App';
+import './index.css';
 
-import app from '../prisma-server';
-
-export default app;
+createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  </React.StrictMode>
+);
