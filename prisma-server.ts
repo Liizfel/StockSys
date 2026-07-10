@@ -5,13 +5,20 @@ import path from 'path';
 import { PrismaClient } from '@prisma/client';
 import { execSync } from 'child_process';
 
-// Executa migração automática do banco de dados na inicialização do servidor
-try {
-  console.log("Iniciando migração automática do banco de dados (prisma db push)...");
-  execSync('npx prisma db push --accept-data-loss', { stdio: 'inherit' });
-  console.log("Migração do banco de dados concluída com sucesso!");
-} catch (error) {
-  console.error("Falha na migração automática do banco de dados:", error);
+// Mapeia a variável configurada no Vercel (URL_DO_BANCO_DE_DADOS) para o DATABASE_URL exigido pelo Prisma
+if (process.env.URL_DO_BANCO_DE_DADOS && !process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = process.env.URL_DO_BANCO_DE_DADOS;
+}
+
+// Executa migração automática do banco de dados na inicialização do servidor (apenas fora do Vercel)
+if (!process.env.VERCEL) {
+  try {
+    console.log("Iniciando migração automática do banco de dados (prisma db push)...");
+    execSync('npx prisma db push --accept-data-loss', { stdio: 'inherit' });
+    console.log("Migração do banco de dados concluída com sucesso!");
+  } catch (error) {
+    console.error("Falha na migração automática do banco de dados:", error);
+  }
 }
 
 const prisma = new PrismaClient();
@@ -160,14 +167,28 @@ app.get('/api/materials', authMiddleware, async (req: AuthenticatedRequest, res:
 
   const dbMaterials = await prisma.material.findMany({
     where: whereClause,
-    include: { sector: true, supplier: true }
+    include: { 
+      sector: true, 
+      supplier: true,
+      counts: {
+        include: { user: true },
+        orderBy: { timestamp: 'desc' },
+        take: 1
+      }
+    }
   });
 
-  const enriched = dbMaterials.map(m => ({
-    ...m,
-    sector: m.sector?.name,
-    supplierName: m.supplier?.name
-  }));
+  const enriched = dbMaterials.map(m => {
+    const lastCount = m.counts && m.counts[0];
+    return {
+      ...m,
+      sector: m.sector?.name,
+      supplierName: m.supplier?.name,
+      lastCountedAt: lastCount ? lastCount.timestamp.toISOString() : undefined,
+      lastCountedBy: lastCount ? lastCount.user?.name : undefined,
+      counts: undefined
+    };
+  });
 
   res.json(enriched);
 });
@@ -201,11 +222,18 @@ app.post('/api/materials', authMiddleware, managerMiddleware, async (req: Reques
 
 app.patch('/api/materials/:id/status', authMiddleware, async (req: Request, res: Response) => {
   const { id } = req.params;
+  const { status } = req.body;
   
   try {
+    const updateData: any = { status };
+    if (status === 'COMPLETED') {
+      updateData.repostedAt = new Date();
+    } else {
+      updateData.repostedAt = null;
+    }
     const updated = await prisma.material.update({
       where: { id: String(id) },
-      data: { status: req.body.status }
+      data: updateData
     });
     res.json(updated);
   } catch (error) {
@@ -217,6 +245,27 @@ app.put('/api/materials/:id', authMiddleware, managerMiddleware, async (req: Req
   const { id } = req.params;
   const { name, code, codigoBarras, quantity, estoqueMinimo, unit, sectorId, supplierId, supplierDeliveryDays, origin, imageUrl } = req.body;
   try {
+    const material = await prisma.material.findUnique({ where: { id: String(id) } });
+    if (!material) return res.status(404).json({ error: 'Material não encontrado' });
+
+    let finalStatus = material.status as any;
+    let finalRepostedAt = material.repostedAt;
+
+    const newQty = quantity !== undefined ? Number(quantity) : material.quantity;
+    const minEstoque = estoqueMinimo !== undefined ? Number(estoqueMinimo) : material.estoqueMinimo;
+
+    if (newQty <= minEstoque) {
+      if (material.status !== 'PURCHASE_REQUESTED' && material.status !== 'AWAITING_CONFIRMATION') {
+        finalStatus = 'PURCHASE_REQUESTED';
+        finalRepostedAt = null;
+      }
+    } else {
+      if (material.status === 'PURCHASE_REQUESTED') {
+        finalStatus = 'COMPLETED';
+        finalRepostedAt = new Date();
+      }
+    }
+
     const updated = await prisma.material.update({
       where: { id: String(id) },
       data: {
@@ -227,6 +276,8 @@ app.put('/api/materials/:id', authMiddleware, managerMiddleware, async (req: Req
         estoqueMinimo: estoqueMinimo !== undefined ? Number(estoqueMinimo) : undefined,
         unit,
         sectorId,
+        status: finalStatus,
+        repostedAt: finalRepostedAt,
         supplierId: supplierId !== undefined ? supplierId : undefined,
         supplierDeliveryDays: supplierDeliveryDays !== undefined ? (supplierDeliveryDays !== null ? Number(supplierDeliveryDays) : null) : undefined,
         origin: origin !== undefined ? origin : undefined,
@@ -267,6 +318,17 @@ app.post('/api/materials/:id/count', authMiddleware, async (req: AuthenticatedRe
     finalStatus = 'PURCHASE_REQUESTED';
   }
   
+  let resolvedRepostedAt = material.repostedAt;
+  if (repostedAt !== undefined) {
+    resolvedRepostedAt = repostedAt ? new Date(repostedAt) : null;
+  } else {
+    if (finalStatus === 'COMPLETED') {
+      resolvedRepostedAt = new Date();
+    } else if (finalStatus !== material.status) {
+      resolvedRepostedAt = null;
+    }
+  }
+
   const updatedMaterial = await prisma.material.update({
     where: { id: String(id) },
     data: {
@@ -276,7 +338,7 @@ app.post('/api/materials/:id/count', authMiddleware, async (req: AuthenticatedRe
       requestedQuantity: req.body.requestedQuantity !== undefined 
         ? (req.body.requestedQuantity === null ? null : Number(req.body.requestedQuantity)) 
         : material.requestedQuantity,
-      repostedAt: repostedAt !== undefined ? (repostedAt ? new Date(repostedAt) : null) : material.repostedAt
+      repostedAt: resolvedRepostedAt
     }
   });
 
