@@ -40,8 +40,16 @@ export default function Login() {
         body: JSON.stringify({ email, password })
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      let data: any = {};
+      const contentType = res.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(text.substring(0, 100) || `Erro do servidor (${res.status})`);
+      }
+
+      if (!res.ok) throw new Error(data.error || 'Erro de autenticação');
 
       login(data.token, data.user);
       navigate('/');
@@ -71,8 +79,16 @@ export default function Login() {
         body: JSON.stringify({ email: resetEmail, newPassword })
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      let data: any = {};
+      const contentType = res.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(text.substring(0, 100) || `Erro do servidor (${res.status})`);
+      }
+
+      if (!res.ok) throw new Error(data.error || 'Erro ao redefinir a senha');
 
       setSuccessMessage('Senha redefinida com sucesso! Você já pode fazer o login.');
       setIsForgotPassword(false);
@@ -90,7 +106,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden text-foreground">
-      {/* Gradientes de Fundo Animados */}
+      {/* Animated Background Gradients */}
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-500/20 rounded-full blur-[120px] animate-[pulse_8s_ease-in-out_infinite]"></div>
       <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-emerald-500/15 rounded-full blur-[120px] animate-[pulse_10s_ease-in-out_infinite_reverse]"></div>
 
