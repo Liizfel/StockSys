@@ -108,7 +108,7 @@ export default function TimeLogs() {
       </div>
 
       <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm overflow-hidden">
-         {/* Visualização da área de trabalho: tabela */}
+         {/* Desktop view: table */}
          <div className="overflow-x-auto hidden md:block">
             <table className="w-full text-left border-collapse">
                <thead>
@@ -208,7 +208,7 @@ export default function TimeLogs() {
             </table>
          </div>
 
-         {/* Visualização móvel: lista de cartões */}
+         {/* Mobile view: Cards list */}
          <div className="md:hidden block divide-y divide-border/60">
             {sessions.map((session, index) => {
                const hasLogin = !!session.loginLog;
@@ -232,7 +232,7 @@ export default function TimeLogs() {
                      key={session.id} 
                      className="p-4 hover:bg-secondary/10 transition-colors flex flex-col gap-3"
                   >
-                     {/* Cabeçalho de usuário e data */}
+                     {/* User & Date Header */}
                      <div className="flex justify-between items-start gap-2">
                         <div className="flex items-center gap-2.5 min-w-0">
                            <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0 font-bold text-xs">

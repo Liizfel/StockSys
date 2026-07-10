@@ -407,7 +407,7 @@ export default function Materials() {
       </div>
 
       <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm overflow-hidden relative z-10">
-        {/* Visualização da área de trabalho: tabela */}
+        {/* Desktop view: table */}
         <div className="overflow-x-auto hidden md:block">
           <table className="min-w-full divide-y divide-border">
             <thead className="bg-secondary/50">
@@ -455,7 +455,7 @@ export default function Materials() {
                       <td className="px-6 py-4 whitespace-nowrap relative">
                         <div className="flex items-center gap-2">
                            <span className="text-sm font-bold text-foreground">{mat.quantity} {formatUnit(mat.unit)}</span>
-                           {/* Gráfico flutuante de mesa inteligente */}
+                           {/* Smart Table Hover Chart */}
                            {hoveredRow === mat.id && (
                               <motion.div 
                                  initial={{ opacity: 0, scale: 0.8, x: -10 }}
@@ -528,7 +528,7 @@ export default function Materials() {
           )}
         </div>
 
-        {/* Visualização móvel: lista de cartões */}
+        {/* Mobile view: Cards list */}
         <div className="md:hidden block divide-y divide-border/60">
           <AnimatePresence>
             {filteredMaterials.map(mat => (
@@ -545,7 +545,7 @@ export default function Materials() {
                 }}
                 className="p-4 hover:bg-secondary/10 cursor-pointer transition-colors flex flex-col gap-3.5 relative"
               >
-                {/*Cabeçalho (SKU / Code & Title / Badge) */}
+                {/* Header (SKU / Code & Title / Badge) */}
                 <div className="flex justify-between items-start gap-2">
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-semibold text-foreground flex items-center gap-1.5 flex-wrap">
@@ -566,7 +566,7 @@ export default function Materials() {
                   </div>
                 </div>
 
-                {/* Caixas de meta detalhes */}
+                {/* Meta Detail Boxes */}
                 <div className="grid grid-cols-2 gap-3 bg-secondary/30 p-3 rounded-xl border border-border/40 text-xs">
                   <div>
                     <span className="text-muted-foreground block font-medium mb-0.5">Setor</span>
@@ -580,14 +580,14 @@ export default function Materials() {
                   </div>
                 </div>
 
-                {/* Notas se houver */}
+                {/* Notes if any */}
                 {mat.notes && (
                   <p className="text-xs text-muted-foreground line-clamp-2 bg-secondary/10 px-2.5 py-2 rounded-lg border border-border/20 italic">
                     {mat.notes}
                   </p>
                 )}
 
-                {/* Linha Ações */}
+                {/* Actions Row */}
                 <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-border/40 flex-wrap">
                   <button 
                     onClick={() => handleOpenHistory(mat)}
@@ -968,7 +968,7 @@ export default function Materials() {
          )}
       </AnimatePresence>
 
-      {/* Historico Modal */}
+      {/* History Modal */}
       <AnimatePresence>
          {historyMaterial && (
             <motion.div 

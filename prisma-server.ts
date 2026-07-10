@@ -21,7 +21,13 @@ if (!process.env.VERCEL) {
   }
 }
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL || process.env.URL_DO_BANCO_DE_DADOS || ""
+    }
+  }
+});
 
 interface AuthenticatedRequest extends Request {
   user?: {
