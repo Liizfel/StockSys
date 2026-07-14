@@ -7,6 +7,6 @@ if (resolvedDatabaseUrl && !process.env.DATABASE_URL) {
   process.env.DATABASE_URL = resolvedDatabaseUrl;
 }
 
-import app from '../prisma-server';
+import app from './server';
 
 export default app;
