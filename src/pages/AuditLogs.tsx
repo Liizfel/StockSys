@@ -29,10 +29,10 @@ import { format, isSameDay, parseISO, set } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn, formatUnit } from '../lib/utils';
+import { cn, formatUnit, getWhatsAppShareUrl, getTelegramShareUrl } from '../lib/utils';
 import { jsPDF } from 'jspdf';
 
-// Modal para visualização e compartilhamento de relatórios
+// Modal para Pré-visualização e Compartilhamento de Relatórios
 interface ReportPreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -127,7 +127,7 @@ export const ReportPreviewModal = ({ isOpen, onClose, reportText, title, onExpor
               
               <div className="grid grid-cols-2 gap-3">
                  <a 
-                    href={`https://wa.me/?text=${encodeURIComponent(reportText)}`}
+                    href={getWhatsAppShareUrl(reportText)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-center gap-2 px-4 py-3 bg-[#25D366] hover:bg-[#1DA851] text-white rounded-xl text-sm font-medium transition-colors shadow-sm"
@@ -136,7 +136,7 @@ export const ReportPreviewModal = ({ isOpen, onClose, reportText, title, onExpor
                     WhatsApp
                  </a>
                  <a 
-                    href={`https://t.me/share/url?url=&text=${encodeURIComponent(reportText)}`}
+                    href={getTelegramShareUrl(reportText)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-center gap-2 px-4 py-3 bg-[#0088cc] hover:bg-[#0077b3] text-white rounded-xl text-sm font-medium transition-colors shadow-sm"
@@ -159,7 +159,7 @@ export default function AuditLogs() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Filtros de Status 
+  // Estado dos Filtros
   const [userFilter, setUserFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
   const [timeStart, setTimeStart] = useState('');
@@ -167,14 +167,14 @@ export default function AuditLogs() {
   const [sectorFilter, setSectorFilter] = useState('');
   const [productFilter, setProductFilter] = useState('');
 
-  // Paginação
+  // Otimização de Performance: Paginação
   const [visibleCount, setVisibleCount] = useState(30);
 
-  // Modal de visualização do relatório
+  // Estado do Modal de Relatório
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [reportText, setReportText] = useState('');
 
-  // Obter dados de auditoria na montagem
+  // Buscar dados de auditoria ao montar
   useEffect(() => {
     if (!token) return;
     
@@ -198,26 +198,26 @@ export default function AuditLogs() {
     fetchAll();
   }, [token, isManager]);
 
-  // Filtros aplicados aos logs de auditoria
+  // Processamento dinâmico de filtros com useMemo
   const filteredLogs = useMemo(() => {
-    // Reset da paginação ao aplicar novos filtros
+    // Reseta contador de paginação nas mudanças de filtro para evitar renderização inicial pesada
     setVisibleCount(30);
 
     return logs.filter(log => {
       const logDate = parseISO(log.timestamp);
       
-      // 1. Filtro de Usuário (atendente)
+      // 1. User Filter (attendant)
       if (userFilter && log.userId !== userFilter && log.userName !== userFilter) {
          return false;
       }
       
-      // 2. Filtro de Data
+      // 2. Date Filter
       if (dateFilter) {
          const filterDate = parseISO(dateFilter);
          if (!isSameDay(logDate, filterDate)) return false;
       }
       
-      // 3. Filtro de Hora/Tempo
+      // 3. Hour/Time Filters
       if (timeStart) {
          const [hours, minutes] = timeStart.split(':').map(Number);
          const start = set(logDate, { hours, minutes, seconds: 0, milliseconds: 0 });
@@ -230,12 +230,12 @@ export default function AuditLogs() {
          if (logDate > end) return false;
       }
 
-      // 4. Filtro de Setor
+      // 4. Sector Filter
       if (sectorFilter && log.materialSector !== sectorFilter) {
          return false;
       }
 
-      // 5. Filtro de Produto/Material
+      // 5. Specific Product Filter
       if (productFilter && log.materialId !== productFilter) {
          return false;
       }
@@ -244,18 +244,18 @@ export default function AuditLogs() {
     }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [logs, userFilter, dateFilter, timeStart, timeEnd, sectorFilter, productFilter]);
 
-  // Logs paginados
+  // Fila de logs paginados
   const visibleLogs = useMemo(() => {
     return filteredLogs.slice(0, visibleCount);
   }, [filteredLogs, visibleCount]);
 
-  // Extrair setores únicos presentes no banco de dados de logs.
+  // Extrair setores únicos presentes no banco de dados de logs
   const uniqueSectors = useMemo(() => {
     const list = logs.map(l => l.materialSector).filter(Boolean) as string[];
     return Array.from(new Set(list)).sort();
   }, [logs]);
 
-  // Extrair produtos únicos presentes no banco de dados de logs.
+  // Extrair produtos únicos presentes no banco de dados de logs
   const uniqueProducts = useMemo(() => {
     const map: Record<string, { id: string, name: string, code: string }> = {};
     logs.forEach(l => {
@@ -270,7 +270,7 @@ export default function AuditLogs() {
     return Object.values(map).sort((a, b) => a.name.localeCompare(b.name));
   }, [logs]);
 
-  //Cálculo de estatísticas em registros filtrados
+  // Cálculo de estatísticas sobre os logs filtrados
   const stats = useMemo(() => {
     let positive = 0;
     let negative = 0;
@@ -291,7 +291,7 @@ export default function AuditLogs() {
     };
   }, [filteredLogs]);
 
-  // Dados do Gráfico: Linha de Atividade (agrega volume de contagens por dia em ordem cronológica)
+  // Dados do Gráfico: Cronologia de atividades (soma o volume de contagem por dia em ordem cronológica)
   const activityTimelineData = useMemo(() => {
      const countsByDate: Record<string, number> = {};
      filteredLogs.forEach(log => {
@@ -301,10 +301,10 @@ export default function AuditLogs() {
      
      return Object.entries(countsByDate)
         .map(([date, count]) => ({ date, contagens: count }))
-        .reverse(); // sequencia cronológica do mais antigo para o mais recente
+        .reverse(); // colocar em sequência cronológica
   }, [filteredLogs]);
 
-  // Top criticos materiais precisa ser reposto 
+  // Principais materiais críticos precisando de reposição
   const criticalReplacements = useMemo(() => {
      return materials
         .map(m => {
@@ -330,7 +330,7 @@ export default function AuditLogs() {
         .slice(0, 5);
   }, [materials]);
 
-  // Gerador de Relatório em Texto 
+  // Gerador de Relatório de Texto (Mesmo estilo do Dashboard mas adaptado para os filtros atuais)
   const handleGenerateTextReport = () => {
     const separator = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
     const now = new Date();
@@ -341,7 +341,7 @@ export default function AuditLogs() {
     report += `${separator}\n`;
     report += `*Gerado em:* ${dateStr} às ${timeStr}\n`;
     
-    // Lista de filtros aplicados
+    // Listar filtros aplicados
     const activeFilters = [
       userFilter ? `Colaborador: ${userFilter}` : '',
       dateFilter ? `Data: ${format(parseISO(dateFilter), 'dd/MM/yyyy')}` : '',
@@ -397,7 +397,7 @@ export default function AuditLogs() {
     setIsReportOpen(true);
   };
 
-  // Gera PDF com base no relatório de auditoria e contagens
+  // Exportador PDF Profissional com quebra de página, layouts e estatísticas
   const handleExportPDF = () => {
     const doc = new jsPDF('p', 'mm', 'a4');
     
@@ -408,11 +408,11 @@ export default function AuditLogs() {
       creator: 'Estoque Manager'
     });
 
-    // Configurações de fonte padrão
+    // Configurações de fonte
     doc.setFont("helvetica", "normal");
     
-    // Cabeçalho slate-900 (igual ao da Auditoria)
-    doc.setFillColor(15, 23, 42); // slate-900 (azul escuro)
+    // Cabeçalho elegante escuro
+    doc.setFillColor(15, 23, 42); // slate-900 (combina com o lindo tema escuro)
     doc.rect(0, 0, 210, 42, 'F');
     
     // Título e detalhes do cabeçalho
@@ -437,7 +437,7 @@ export default function AuditLogs() {
     doc.text(`Filtros: ${filterDesc}`, 15, 30);
     doc.text(`Total de registros: ${filteredLogs.length} contagem(ns)`, 15, 35);
     
-    // Quadros de resumo de estatísticas
+    // Caixas de Resumo de Estatísticas
     doc.setTextColor(30, 41, 59); // slate-800
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
@@ -487,12 +487,12 @@ export default function AuditLogs() {
     doc.setTextColor(30, 41, 59);
     
     filteredLogs.forEach((log) => {
-      // Auto-paginação: se ultrapassar 270mm, adiciona nova página e repinta cabeçalho
+      // Auto-paginação
       if (currentY > 270) {
         doc.addPage();
         currentY = 20;
         
-        // Repintar o cabeçalho
+        // Repintar Cabeçalho
         doc.setFillColor(15, 23, 42);
         doc.rect(15, currentY, 180, 8, 'F');
         doc.setTextColor(255, 255, 255);
@@ -525,9 +525,9 @@ export default function AuditLogs() {
       const qtyChangeToDisplay = qtyChangeText.length > 20 ? qtyChangeText.substring(0, 18) + '..' : qtyChangeText;
       const diffText = diff > 0 ? `+${diff} ${unit}` : diff === 0 ? '0' : `${diff} ${unit}`;
       
-      // Zebra/alert colors
+      // Cores de alerta/zebra
       if (diff !== 0) {
-        doc.setFillColor(254, 242, 242); // very light red for divergence
+        doc.setFillColor(254, 242, 242); // vermelho bem claro para divergência
       } else {
         doc.setFillColor(255, 255, 255);
       }
@@ -547,13 +547,13 @@ export default function AuditLogs() {
       doc.text(qtyChangeToDisplay, 151, currentY + 4.2);
       
       if (diff > 0) {
-        doc.setTextColor(16, 185, 129); // emerald green
+        doc.setTextColor(16, 185, 129); // verde esmeralda
         doc.setFont("helvetica", "bold");
       } else if (diff < 0) {
-        doc.setTextColor(239, 68, 68); // soft red
+        doc.setTextColor(239, 68, 68); // vermelho suave
         doc.setFont("helvetica", "bold");
       } else {
-        doc.setTextColor(100, 116, 139); // slate gray
+        doc.setTextColor(100, 116, 139); // cinza ardósia
       }
       doc.text(diffText, 195, currentY + 4.2, { align: 'right' });
       doc.setTextColor(30, 41, 59);
@@ -561,7 +561,7 @@ export default function AuditLogs() {
       
       currentY += 6;
       
-      // Auto-wrapping de observações/comentários
+      // Auto-embrulho de observações/comentários
       if (log.notes && log.notes.trim()) {
         const notesLines = doc.splitTextToSize(`Obs: ${log.notes.trim()}`, 170);
         notesLines.forEach((line: string) => {
@@ -570,10 +570,10 @@ export default function AuditLogs() {
             currentY = 20;
           }
           
-          doc.setFillColor(248, 250, 252); // slate-50 background for note
+          doc.setFillColor(248, 250, 252); // fundo slate-50 para nota
           doc.rect(15, currentY, 180, 5, 'F');
           
-          // Slate-200 left vertical indicator
+          // Indicador vertical esquerdo Slate-200
           doc.setFillColor(226, 232, 240);
           doc.rect(15, currentY, 1.5, 5, 'F');
           
@@ -589,7 +589,7 @@ export default function AuditLogs() {
       }
     });
     
-    // Bloco de assinatura inferior
+    // Bloco de Assinatura inferior
     if (currentY > 240) {
       doc.addPage();
       currentY = 30;
@@ -618,7 +618,7 @@ export default function AuditLogs() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto px-1 sm:px-4 pb-12 animate-in fade-in duration-500">
-      {/* Cabeçalho da Página */}
+      {/* Page Header */}
       <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between bg-card border border-border p-6 rounded-2xl shadow-sm">
          <div>
             <h2 className="text-2xl font-bold text-foreground flex items-center gap-3">
@@ -648,7 +648,7 @@ export default function AuditLogs() {
          </div>
       </div>
 
-      {/* Cartões de Destaque de Estatísticas */}
+      {/* Bento Stats Highlight Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-card border border-border p-4 rounded-xl flex items-center gap-3.5">
            <div className="p-3 bg-blue-500/10 text-blue-500 rounded-xl">
@@ -691,9 +691,9 @@ export default function AuditLogs() {
         </div>
       </div>
 
-      {/* Grade: Gráficos e Classificação */}
+      {/* Grid: Charts and Ranking */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-         {/* Gráfico: Linha do tempo de atividades */}
+         {/* Chart: Activity timeline */}
          <div className="lg:col-span-2 bg-card border border-border p-6 rounded-2xl shadow-sm flex flex-col">
             <h3 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
                <TrendingUp className="w-4 h-4 text-blue-500" /> Histórico Volumétrico de Contagens
@@ -766,7 +766,7 @@ export default function AuditLogs() {
          </div>
       </div>
 
-      {/* Painel de Pesquisa e Filtros Avançados */}
+      {/* Research and Advanced Filter Console Panel */}
       <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
         <div className="p-4 border-b border-border bg-secondary/30 flex items-center gap-2">
           <SlidersHorizontal className="w-4 h-4 text-blue-500" />
@@ -788,9 +788,9 @@ export default function AuditLogs() {
           )}
         </div>
         
-        {/* Grade de Controles Dinâmicos */}
+        {/* Dynamic Controls Grid */}
         <div className="p-5 grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4 bg-card">
-           {/* Filtro de atendente */}
+           {/* Attendant filter */}
            <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
                  <User className="w-3.5 h-3.5 text-blue-500" /> Atendente/Contador
@@ -810,7 +810,7 @@ export default function AuditLogs() {
               </select>
            </div>
 
-           {/* Filtro setorial */}
+           {/* Sector filter */}
            <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
                  <MapPin className="w-3.5 h-3.5 text-blue-500" /> Setor do Produto
@@ -827,7 +827,7 @@ export default function AuditLogs() {
               </select>
            </div>
 
-           {/* Filtro de produto específico */}
+           {/* Specific product filter */}
            <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
                  <Package className="w-3.5 h-3.5 text-blue-500" /> Produto Específico
@@ -844,7 +844,7 @@ export default function AuditLogs() {
               </select>
            </div>
 
-           {/* Filtro de dia / data */}
+           {/* Day / Date filter */}
            <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
                  <Calendar className="w-3.5 h-3.5 text-blue-500" /> Dia Específico
@@ -857,7 +857,7 @@ export default function AuditLogs() {
               />
            </div>
 
-           {/* Filtro de hora */}
+           {/* Hour filter */}
            <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
                  <Clock className="w-3.5 h-3.5 text-blue-500" /> Intervalo Horário (Filtro)
@@ -883,7 +883,7 @@ export default function AuditLogs() {
         </div>
       </div>
 
-      {/* Tabela principal de registros / Lista de registros */}
+      {/* Main Logs Table / Records List */}
       <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-border bg-card flex justify-between items-center flex-wrap gap-2">
            <h3 className="font-bold text-foreground text-base flex items-center gap-2">
@@ -905,7 +905,7 @@ export default function AuditLogs() {
                  key={log.id} 
                  className="p-4 sm:p-5 hover:bg-secondary/20 transition-all duration-150 flex flex-col gap-3"
               >
-                 {/* Fileira superior */}
+                 {/* Top row */}
                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-start sm:items-center gap-3">
                        <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-xs shrink-0 self-center">
@@ -934,7 +934,7 @@ export default function AuditLogs() {
                        </div>
                     </div>
 
-                    {/* Bloco de Divergência Numérica */}
+                    {/* Numeric Divergence Block */}
                     <div className="flex items-center gap-4 sm:justify-end self-end sm:self-auto bg-secondary/30 sm:bg-transparent p-2 rounded-xl sm:p-0">
                        <div className="text-right">
                           <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">Alteração</p>
@@ -964,7 +964,7 @@ export default function AuditLogs() {
                     </div>
                  </div>
 
-                 {/* Linha de Comentários/Notas */}
+                 {/* Comments/Notes Row */}
                  {log.notes && log.notes.trim() && (
                     <div className="flex items-start gap-2 bg-secondary/30 border border-border/60 p-3 rounded-xl">
                        <MessageSquare className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
@@ -988,7 +988,7 @@ export default function AuditLogs() {
           )}
         </div>
 
-        {/* Carregar mais botão de ativação de paginação */}
+        {/* Load More Pagination Trigger Button */}
         {filteredLogs.length > visibleCount && (
           <div className="p-4 text-center border-t border-border bg-secondary/10">
              <button 
@@ -1001,7 +1001,7 @@ export default function AuditLogs() {
         )}
       </div>
 
-      {/* Modal de pré-visualização para relatórios */}
+      {/* Preview Modal for reports */}
       <ReportPreviewModal 
         isOpen={isReportOpen} 
         onClose={() => setIsReportOpen(false)} 
