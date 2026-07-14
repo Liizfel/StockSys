@@ -6,23 +6,26 @@ import { PrismaClient } from '@prisma/client';
 import { execSync } from 'child_process';
 
 // Mapeia a melhor URL de conexão de banco de dados disponível para o DATABASE_URL exigido pelo Prisma
-const resolvedDatabaseUrl = process.env.POSTGRES_PRISMA_URL || 
+let resolvedDatabaseUrl = process.env.POSTGRES_PRISMA_URL || 
                             process.env.POSTGRES_URL || 
                             process.env.DATABASE_URL || 
                             process.env.URL_DO_BANCO_DE_DADOS || "";
 
-if (resolvedDatabaseUrl && !process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = resolvedDatabaseUrl;
+if (!resolvedDatabaseUrl || resolvedDatabaseUrl.includes('127.0.0.1') || resolvedDatabaseUrl.includes('localhost')) {
+  console.log("⚠️ Banco de dados Postgres local ou indisponível detectado. Redirecionando para SQLite local (file:./dev.db).");
+  resolvedDatabaseUrl = "file:./dev.db";
 }
+
+process.env.DATABASE_URL = resolvedDatabaseUrl;
 
 // Executa migração automática do banco de dados na inicialização do servidor (apenas fora do Vercel)
 if (!process.env.VERCEL) {
   try {
-    console.log("Iniciando migração automática do banco de dados (prisma db push)...");
+    console.log(`Iniciando migração automática do banco de dados (${resolvedDatabaseUrl.startsWith('file:') ? 'SQLite' : 'PostgreSQL'})...`);
     execSync('npx prisma db push --accept-data-loss', { stdio: 'inherit' });
     console.log("Migração do banco de dados concluída com sucesso!");
-  } catch (error) {
-    console.error("Falha na migração automática do banco de dados:", error);
+  } catch (error: any) {
+    console.error("Falha na migração automática do banco de dados:", error.message || error);
   }
 }
 
