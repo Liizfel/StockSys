@@ -26,7 +26,7 @@ export default function Layout() {
       const backdrops = document.querySelectorAll('.backdrop-blur-sm');
       let hasModal = false;
       backdrops.forEach(el => {
-        // Excluir fundo do menu backdrop
+        // Exclude mobile menu backdrop
         if (el.classList.contains('lg:hidden')) return;
         
         if (el.classList.contains('fixed') || el.classList.contains('absolute')) {
@@ -36,10 +36,10 @@ export default function Layout() {
       setIsModalOpen(hasModal);
     };
 
-    // Execute uma vez inicialmente
+    // Run once initially
     checkModal();
 
-    // Configure o MutationObserver para detectar alterações no DOM (modais adicionados/removidos).
+    // Set up MutationObserver to detect DOM changes (modals added/removed)
     const observer = new MutationObserver(() => {
       checkModal();
     });
@@ -145,12 +145,12 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-background flex text-foreground selection:bg-blue-500/30 overflow-hidden relative">
-      {/* Desktop Barra lateral */}
+      {/* Desktop Sidebar */}
       <aside className="hidden lg:flex w-64 bg-card border-r border-border flex-col shrink-0 relative z-20">
         <SidebarContent />
       </aside>
 
-      {/* Mobile/Tablet Barra lateral Drawer */}
+      {/* Mobile/Tablet Sidebar Drawer */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <>
@@ -176,18 +176,18 @@ export default function Layout() {
         )}
       </AnimatePresence>
 
-      {/* Contêiner de conteúdo principal */}
+      {/* Main Content Container */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-        {/* Glow de fundo sutil */}
+        {/* Subtle background glow */}
         <div className="absolute top-0 left-0 right-0 h-96 bg-blue-500/5 blur-[100px] pointer-events-none z-0"></div>
 
-        {/* Barra de cabeçalho */}
+        {/* Header bar */}
         <header className={cn(
           "h-16 bg-card/50 border-b border-border flex items-center justify-between px-4 sm:px-6 lg:px-8 sticky top-0 z-30 transition-all duration-300",
           isModalOpen ? "backdrop-blur-sm filter blur-[2px] opacity-50 pointer-events-none" : "backdrop-blur-md"
         )}>
           <div className="flex items-center gap-3">
-            {/* Gatilho de hambúrguer para celular/tablet */}
+            {/* Hamburger trigger for mobile/tablet */}
             <button
               onClick={() => setIsMobileMenuOpen(true)}
               className="lg:hidden p-2 -ml-1 text-muted-foreground hover:text-foreground rounded-lg hover:bg-secondary/50 transition-colors"
@@ -205,7 +205,7 @@ export default function Layout() {
           </div>
         </header>
         
-        {/* Conteúdo do corpo da página */}
+        {/* Page body content wrapper */}
         <div className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8 relative">
           <AnimatePresence mode="wait">
              <motion.div

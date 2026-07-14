@@ -19,7 +19,8 @@ export default function UsersPage() {
     email: '',
     password: '',
     role: 'ATTENDANT',
-    sectorId: ''
+    sectorId: '',
+    additionalSectors: ''
   });
 
   const fetchData = async () => {
@@ -65,7 +66,7 @@ export default function UsersPage() {
       if (res.ok) {
         setShowModal(false);
         setEditingUser(null);
-        setFormData({ name: '', email: '', password: '', role: 'ATTENDANT', sectorId: '' });
+        setFormData({ name: '', email: '', password: '', role: 'ATTENDANT', sectorId: '', additionalSectors: '' });
         fetchData();
       } else {
         const errorData = await res.json();
@@ -105,14 +106,15 @@ export default function UsersPage() {
       email: user.email || '',
       password: '',
       role: user.role,
-      sectorId: user.sectorId || ''
+      sectorId: user.sectorId || '',
+      additionalSectors: user.additionalSectors || ''
     });
     setShowModal(true);
   };
   
   const openNewModal = () => {
     setEditingUser(null);
-    setFormData({ name: '', email: '', password: '', role: 'ATTENDANT', sectorId: '' });
+    setFormData({ name: '', email: '', password: '', role: 'ATTENDANT', sectorId: '', additionalSectors: '' });
     setShowModal(true);
   };
 
@@ -136,7 +138,7 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-500">
-      {/* Cabeçalho */}
+      {/* Header */}
       <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
          <div>
             <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
@@ -153,7 +155,7 @@ export default function UsersPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-         {/* Seção do gráfico */}
+         {/* Chart Section */}
          <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-sm flex flex-col">
              <h3 className="text-lg font-semibold text-foreground flex items-center gap-2 mb-6">
                 <BarChart3 className="w-5 h-5 text-emerald-500" /> Distribuição de Equipe
@@ -190,7 +192,7 @@ export default function UsersPage() {
              </div>
          </div>
 
-         {/* Seção de lista */}
+         {/* List Section */}
          <div className="lg:col-span-2 bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm overflow-hidden flex flex-col">
              <div className="p-6 border-b border-border">
                 <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
@@ -242,7 +244,17 @@ export default function UsersPage() {
                              <span className="text-xs text-muted-foreground italic">Acesso Global</span>
                            ) : (
                              <span className="text-sm font-medium text-foreground">
-                               {user.sectorName || <span className="text-muted-foreground italic">Não atribuído</span>}
+                               <>
+                                  <span>{user.sectorName || <span className="text-muted-foreground italic">Não atribuído</span>}</span>
+                                  {user.additionalSectors && (
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {user.additionalSectors.split(',').map(id => {
+                                        const sec = sectors.find(s => s.id === id);
+                                        return sec ? <span key={id} className="text-[10px] bg-secondary text-secondary-foreground border border-border px-1.5 py-0.5 rounded font-semibold">{sec.name}</span> : null;
+                                      })}
+                                    </div>
+                                  )}
+                                </>
                              </span>
                            )}
                          </td>
@@ -362,6 +374,45 @@ export default function UsersPage() {
                        </select>
                     </div>
                  </div>
+
+                 {formData.role === 'ATTENDANT' && (
+                    <div className="space-y-2 col-span-2 mt-1">
+                       <label className="block text-sm font-medium text-muted-foreground mb-1">Setores Adicionais sob Responsabilidade</label>
+                       <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 bg-secondary/20 rounded-xl border border-border/50">
+                          {sectors
+                             .filter(s => s.id !== formData.sectorId)
+                             .map(s => {
+                                const isChecked = (formData.additionalSectors || '')
+                                  .split(',')
+                                  .filter(Boolean)
+                                  .includes(s.id);
+                                return (
+                                  <label key={s.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-secondary/50 rounded-lg cursor-pointer text-xs text-foreground">
+                                     <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={e => {
+                                           const current = (formData.additionalSectors || '').split(',').filter(Boolean);
+                                           let updated;
+                                           if (e.target.checked) {
+                                              updated = [...current, s.id];
+                                           } else {
+                                              updated = current.filter(id => id !== s.id);
+                                           }
+                                           setFormData({ ...formData, additionalSectors: updated.join(',') });
+                                        }}
+                                        className="rounded text-blue-500 bg-secondary/50 border-border focus:ring-blue-500 w-3.5 h-3.5"
+                                     />
+                                     <span className="truncate">{s.name}</span>
+                                  </label>
+                                );
+                             })}
+                          {sectors.filter(s => s.id !== formData.sectorId).length === 0 && (
+                             <p className="text-xs text-muted-foreground italic p-2 col-span-2">Nenhum outro setor disponível</p>
+                          )}
+                       </div>
+                    </div>
+                 )}
 
                  <div className="flex gap-3 pt-4">
                     <button 

@@ -402,7 +402,7 @@ export default function Sectors() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-         {/* Setores (2 colunas) */}
+         {/* Setores (takes 2 columns) */}
          <div className="lg:col-span-2 space-y-6">
             <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm overflow-hidden p-6">
         {isManager && (
@@ -636,7 +636,7 @@ export default function Sectors() {
       </div>
          </div>
 
-         {/* Painel de Fornecedores (1 coluna) */}
+         {/* Painel de Fornecedores (takes 1 column) */}
          <div className="space-y-6">
             <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm p-6">
                <div className="flex items-center justify-between mb-4">

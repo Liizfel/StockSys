@@ -7,30 +7,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  MANAGER
-  ATTENDANT
-}
-
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
+  id        String       @id @default(uuid())
   name      String
-  role      Role     @default(ATTENDANT)
-  createdAt DateTime @default(now()) @map("created_at")
-
-  // Relacionamento com Setor (Setor Principal)
+  email     String       @unique
+  password  String // Em produção, use sempre hash (bcrypt/argon2)
+  role      String // 'MANAGER' ou 'ATTENDANT'
+  createdAt DateTime     @default(now()) @map("created_at")
+  
+  // Relacionamento com Setor (Chave Estrangeira)
   sectorId  String?      @map("sector_id")
   sector    Sector?      @relation(fields: [sectorId], references: [id], onDelete: SetNull)
 
-  // Setores adicionais separados por vírgula (permite múltiplos setores)
+  // Setores adicionais separados por vírgula
   additionalSectors String? @default("") @map("additional_sectors")
 
   // Históricos e Logs vinculados ao usuário
   timeLogs  TimeLog[]
   counts    StockCount[]
-  audits    AuditLog[]
 
   @@map("users")
 }
@@ -38,83 +32,95 @@ model User {
 model Sector {
   id        String     @id @default(uuid())
   name      String     @unique
-  createdAt DateTime   @default(now()) @map("created_at")
+  
+  // Relações inversas do Prisma
   materials Material[]
   users     User[]
 
   @@map("sectors")
 }
 
-model Supplier {
-  id        String     @id @default(uuid())
-  name      String     @unique
-  phone     String?
-  email     String?
-  createdAt DateTime   @default(now()) @map("created_at")
-  materials Material[]
-
-  @@map("suppliers")
-}
-
 model Material {
-  id                   String       @id @default(uuid())
-  code                 String       @unique
-  codigoBarras         String?      @unique @map("codigo_barras")
-  name                 String
-  quantity             Float        @default(0)
-  estoqueMinimo        Float        @default(0) @map("estoque_minimo")
-  unit                 String       @default("UN")
-  imageUrl             String?      @map("image_url")
-  supplierDeliveryDays Int          @default(0) @map("supplier_delivery_days")
-  origin               String       @default("Nacional")
-  status               String       @default("Pendente") // "Pendente", "Contado", "Divergente"
-  createdAt            DateTime     @default(now()) @map("created_at")
-  updatedAt            DateTime     @updatedAt @map("updated_at")
+  id            String       @id @default(uuid())
+  code          String       @unique
+  codigoBarras  String?      @map("codigo_barras")
+  name          String
+  quantity      Int          @default(0)
+  estoqueMinimo Int          @default(5) @map("estoque_minimo")
+  status        String       @default("PENDING") // 'PENDING', 'COUNTED_RECENTLY', 'AWAITING_CONFIRMATION', 'PURCHASE_REQUESTED', 'COMPLETED'
+  notes         String?
+  unit          String?      @default("un")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
 
-  sectorId   String?  @map("sector_id")
-  sector     Sector?  @relation(fields: [sectorId], references: [id], onDelete: SetNull)
-  supplierId String?  @map("supplier_id")
-  supplier   Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  // Relacionamento com Setor (Chave Estrangeira)
+  sectorId      String       @map("sector_id")
+  sector        Sector       @relation(fields: [sectorId], references: [id], onDelete: Cascade)
 
-  counts StockCount[]
-  audits AuditLog[]
+  // Relacionamento com Fornecedor (Chave Estrangeira)
+  supplierId    String?      @map("supplier_id")
+  supplier      Supplier?    @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+
+  supplierDeliveryDays Int?  @map("supplier_delivery_days")
+  dailyUsage           Int?  @map("daily_usage")
+  origin               String?
+  requestedQuantity    Int?      @default(0) @map("requested_quantity")
+  repostedAt           DateTime? @map("reposted_at")
+  imageUrl             String?   @map("image_url")
+
+  // Histórico de contagens deste material
+  counts        StockCount[]
 
   @@map("materials")
 }
 
 model StockCount {
-  id          String   @id @default(uuid())
-  materialId  String   @map("material_id")
-  material    Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
-  userId      String   @map("user_id")
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  oldQuantity Float    @map("old_quantity")
-  newQuantity Float    @map("new_quantity")
-  notes       String?
-  createdAt   DateTime @default(now()) @map("created_at")
+  id               String   @id @default(uuid())
+  previousQuantity Int      @map("previous_quantity")
+  newQuantity      Int      @map("new_quantity")
+  timestamp        DateTime @default(now())
+  notes            String?
+
+  // Relacionamento com Material
+  materialId       String   @map("material_id")
+  material         Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  // Relacionamento com Usuário (Quem contou)
+  userId           String   @map("user_id")
+  user             User     @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@map("stock_counts")
 }
 
 model TimeLog {
   id        String   @id @default(uuid())
+  type      String   // 'LOGIN' ou 'LOGOUT'
+  timestamp DateTime @default(now())
+  ipAddress String   @map("ip_address")
+
+  // Relacionamento com Usuário
   userId    String   @map("user_id")
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  loginAt   DateTime @default(now()) @map("login_at")
-  logoutAt  DateTime? @map("logout_at")
 
   @@map("time_logs")
 }
 
-model AuditLog {
-  id          String   @id @default(uuid())
-  userId      String   @map("user_id")
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  materialId  String   @map("material_id")
-  material    Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
-  action      String   // "CREATE", "UPDATE", "DELETE", "COUNT", "STATUS_CHANGE"
-  details     String
-  createdAt   DateTime @default(now()) @map("created_at")
+model Supplier {
+  id           String     @id @default(uuid())
+  name         String     @unique
+  deliveryDays Int        @default(0) @map("delivery_days")
+  materials    Material[]
 
-  @@map("audit_logs")
+  @@map("suppliers")
+}
+
+model Notification {
+  id         String   @id @default(uuid())
+  materialId String   @map("material_id")
+  type       String   // 'CRITICAL_STOCK' or 'PURCHASE_ALERT'
+  title      String
+  message    String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("notifications")
 }
