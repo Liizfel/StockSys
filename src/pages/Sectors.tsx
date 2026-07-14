@@ -30,7 +30,24 @@ export default function Sectors() {
 
   const [showProductModal, setShowProductModal] = useState(false);
   const [targetSectorForProduct, setTargetSectorForProduct] = useState<Sector | null>(null);
-  const [newProduct, setNewProduct] = useState({ code: '', codigoBarras: '', name: '', quantity: '' as string | number, unit: 'unidade', estoqueMinimo: 5 as string | number, supplierId: '', supplierDeliveryDays: '' as string | number, origin: '', imageUrl: '' });
+  const [newProduct, setNewProduct] = useState({ 
+    code: '', 
+    codigoBarras: '', 
+    name: '', 
+    quantity: '' as string | number, 
+    unit: 'unidade', 
+    estoqueMinimo: 5 as string | number, 
+    supplierId: '', 
+    supplierDeliveryDays: '' as string | number, 
+    origin: '', 
+    imageUrl: '',
+    area: '',
+    estante: '',
+    prateleira: '',
+    palete: '',
+    paleteQty: '' as string | number,
+    additionalSectors: ''
+  });
 
   // Estados para Edição de Produto
   const [showEditProductModal, setShowEditProductModal] = useState(false);
@@ -47,7 +64,13 @@ export default function Sectors() {
     supplierId: '',
     supplierDeliveryDays: '' as string | number,
     origin: '',
-    imageUrl: ''
+    imageUrl: '',
+    area: '',
+    estante: '',
+    prateleira: '',
+    palete: '',
+    paleteQty: '' as string | number,
+    additionalSectors: ''
   });
 
   const [showUserModal, setShowUserModal] = useState(false);
@@ -59,6 +82,15 @@ export default function Sectors() {
     isOpen: boolean;
     code: string;
     existingProduct: Material | null;
+  } | null>(null);
+
+  const [sectorWarningModal, setSectorWarningModal] = useState<{
+    isOpen: boolean;
+    productName: string;
+    currentSectorName: string;
+    newSectorId: string;
+    newSectorName: string;
+    isEdit: boolean;
   } | null>(null);
 
   const [imageModalProduct, setImageModalProduct] = useState<Material | null>(null);
@@ -198,16 +230,77 @@ export default function Sectors() {
           supplierDeliveryDays: newProduct.supplierDeliveryDays !== '' ? Number(newProduct.supplierDeliveryDays) : null,
           origin: newProduct.origin || null,
           codigoBarras: newProduct.codigoBarras || null,
-          imageUrl: newProduct.imageUrl || null
+          imageUrl: newProduct.imageUrl || null,
+          area: newProduct.area || null,
+          estante: newProduct.estante || null,
+          prateleira: newProduct.prateleira || null,
+          palete: newProduct.palete || null,
+          paleteQty: newProduct.palete ? (newProduct.paleteQty !== '' ? Number(newProduct.paleteQty) : null) : null,
+          additionalSectors: newProduct.additionalSectors || null
         })
       }, token);
       setShowProductModal(false);
-      setNewProduct({ code: '', codigoBarras: '', name: '', quantity: 0, unit: 'unidade', estoqueMinimo: 5, supplierId: '', supplierDeliveryDays: '', origin: '', imageUrl: '' });
+      setNewProduct({ 
+        code: '', 
+        codigoBarras: '', 
+        name: '', 
+        quantity: '', 
+        unit: 'unidade', 
+        estoqueMinimo: 5, 
+        supplierId: '', 
+        supplierDeliveryDays: '', 
+        origin: '', 
+        imageUrl: '',
+        area: '',
+        estante: '',
+        prateleira: '',
+        palete: '',
+        paleteQty: '',
+        additionalSectors: ''
+      });
       fetchData();
       window.dispatchEvent(new CustomEvent('products-changed'));
     } catch (err) {
       alert('Erro ao criar produto');
     }
+  };
+
+  const handleSectorCheckboxChange = (checked: boolean, targetSector: Sector, isEdit: boolean) => {
+    const form = isEdit ? editProductForm : newProduct;
+    const currentPrimaryId = isEdit ? editProductForm.sectorId : (targetSectorForProduct?.id || '');
+    
+    if (checked) {
+      const primarySector = sectors.find(s => s.id === currentPrimaryId);
+      const primaryName = primarySector ? primarySector.name : 'Nenhum';
+      
+      setSectorWarningModal({
+        isOpen: true,
+        productName: form.name || 'Este produto',
+        currentSectorName: primaryName,
+        newSectorId: targetSector.id,
+        newSectorName: targetSector.name,
+        isEdit
+      });
+    } else {
+      const setForm = isEdit ? setEditProductForm : setNewProduct;
+      const current = (form.additionalSectors || '').split(',').filter(Boolean);
+      const updated = current.filter(id => id !== targetSector.id);
+      setForm((prev: any) => ({ ...prev, additionalSectors: updated.join(',') }));
+    }
+  };
+
+  const confirmSectorAddition = () => {
+    if (!sectorWarningModal) return;
+    const { newSectorId, isEdit } = sectorWarningModal;
+    const form = isEdit ? editProductForm : newProduct;
+    const setForm = isEdit ? setEditProductForm : setNewProduct;
+    
+    const current = (form.additionalSectors || '').split(',').filter(Boolean);
+    if (!current.includes(newSectorId)) {
+      const updated = [...current, newSectorId];
+      setForm((prev: any) => ({ ...prev, additionalSectors: updated.join(',') }));
+    }
+    setSectorWarningModal(null);
   };
 
   const handleOpenEditProduct = (mat: Material) => {
@@ -224,7 +317,13 @@ export default function Sectors() {
       supplierId: mat.supplierId || '',
       supplierDeliveryDays: mat.supplierDeliveryDays !== null && mat.supplierDeliveryDays !== undefined ? mat.supplierDeliveryDays : '',
       origin: mat.origin || '',
-      imageUrl: mat.imageUrl || ''
+      imageUrl: mat.imageUrl || '',
+      area: mat.area || '',
+      estante: mat.estante || '',
+      prateleira: mat.prateleira || '',
+      palete: mat.palete || '',
+      paleteQty: mat.paleteQty !== null && mat.paleteQty !== undefined ? mat.paleteQty : '',
+      additionalSectors: mat.additionalSectors || ''
     });
     setShowEditProductModal(true);
   };
@@ -257,7 +356,13 @@ export default function Sectors() {
           supplierId: editProductForm.supplierId || null,
           supplierDeliveryDays: editProductForm.supplierDeliveryDays !== '' ? Number(editProductForm.supplierDeliveryDays) : null,
           origin: editProductForm.origin || null,
-          imageUrl: editProductForm.imageUrl || null
+          imageUrl: editProductForm.imageUrl || null,
+          area: editProductForm.area || null,
+          estante: editProductForm.estante || null,
+          prateleira: editProductForm.prateleira || null,
+          palete: editProductForm.palete || null,
+          paleteQty: editProductForm.palete ? (editProductForm.paleteQty !== '' ? Number(editProductForm.paleteQty) : null) : null,
+          additionalSectors: editProductForm.additionalSectors || null
         })
       }, token);
       setShowEditProductModal(false);
@@ -897,6 +1002,103 @@ export default function Sectors() {
                      </div>
                   </div>
 
+                  {/* Localização Física (Opcional) */}
+                  <div className="border-t border-border/50 pt-4 space-y-4">
+                     <h4 className="text-sm font-semibold text-foreground">Localização Física (Opcional)</h4>
+                     <div className="grid grid-cols-2 gap-4">
+                        <div>
+                           <label className="block text-xs font-medium text-muted-foreground mb-1">Área</label>
+                           <input 
+                              type="text" 
+                              value={newProduct.area}
+                              onChange={e => setNewProduct({...newProduct, area: e.target.value})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm"
+                              placeholder="Ex: Área A"
+                           />
+                        </div>
+                        <div>
+                           <label className="block text-xs font-medium text-muted-foreground mb-1">Estante</label>
+                           <input 
+                              type="text" 
+                              value={newProduct.estante}
+                              onChange={e => setNewProduct({...newProduct, estante: e.target.value})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm"
+                              placeholder="Ex: Estante 3"
+                           />
+                        </div>
+                        <div>
+                           <label className="block text-xs font-medium text-muted-foreground mb-1">Prateleira</label>
+                           <input 
+                              type="text" 
+                              value={newProduct.prateleira}
+                              onChange={e => setNewProduct({...newProduct, prateleira: e.target.value})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm"
+                              placeholder="Ex: Prateleira B"
+                           />
+                        </div>
+                        <div>
+                           <label className="block text-xs font-medium text-muted-foreground mb-1">Palete</label>
+                           <input 
+                              type="text" 
+                              value={newProduct.palete}
+                              onChange={e => setNewProduct({...newProduct, palete: e.target.value})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm"
+                              placeholder="Ex: Palete 12"
+                           />
+                        </div>
+                     </div>
+                     <AnimatePresence>
+                        {newProduct.palete && (
+                           <motion.div 
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="space-y-1.5"
+                           >
+                              <label className="block text-xs font-medium text-muted-foreground">Quantidade do Palete</label>
+                              <input 
+                                 type="number" 
+                                 min="0"
+                                 value={newProduct.paleteQty}
+                                 onChange={e => setNewProduct({...newProduct, paleteQty: e.target.value ? parseInt(e.target.value) : ''})}
+                                 className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm font-bold"
+                                 placeholder="Ex: 50"
+                              />
+                           </motion.div>
+                        )}
+                     </AnimatePresence>
+                  </div>
+
+                  {/* Vínculo de Setores Adicionais */}
+                  <div className="border-t border-border/50 pt-4 space-y-2">
+                     <label className="block text-sm font-semibold text-foreground">Vincular a Outros Setores (Opcional)</label>
+                     <p className="text-xs text-muted-foreground mb-2">Selecione setores adicionais nos quais este material também estará visível.</p>
+                     <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 bg-secondary/20 rounded-xl border border-border/50">
+                        {sectors
+                           .filter(s => s.id !== targetSectorForProduct?.id)
+                           .map(s => {
+                              const isChecked = (newProduct.additionalSectors || '')
+                                .split(',')
+                                .filter(Boolean)
+                                .includes(s.id);
+                              return (
+                                 <label key={s.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-secondary/50 rounded-lg cursor-pointer text-xs text-foreground">
+                                    <input
+                                       type="checkbox"
+                                       checked={isChecked}
+                                       onChange={e => handleSectorCheckboxChange(e.target.checked, s, false)}
+                                       className="rounded text-emerald-500 bg-secondary/50 border-border focus:ring-emerald-500 w-3.5 h-3.5"
+                                    />
+                                    <span className="truncate">{s.name}</span>
+                                 </label>
+                              );
+                           })}
+                        {sectors.filter(s => s.id !== targetSectorForProduct?.id).length === 0 && (
+                           <p className="text-xs text-muted-foreground italic p-2 col-span-2">Nenhum outro setor disponível</p>
+                        )}
+                     </div>
+                  </div>
+
                   <div className="flex gap-3 pt-4 border-t border-border/50">
                      <button 
                         type="button" 
@@ -1282,6 +1484,103 @@ export default function Sectors() {
                      </div>
                   </div>
 
+                  {/* Localização Física (Opcional) */}
+                  <div className="border-t border-border/50 pt-4 space-y-4">
+                     <h4 className="text-sm font-semibold text-foreground">Localização Física (Opcional)</h4>
+                     <div className="grid grid-cols-2 gap-4">
+                        <div>
+                           <label className="block text-xs font-medium text-muted-foreground mb-1">Área</label>
+                           <input 
+                              type="text" 
+                              value={editProductForm.area}
+                              onChange={e => setEditProductForm({...editProductForm, area: e.target.value})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
+                              placeholder="Ex: Área A"
+                           />
+                        </div>
+                        <div>
+                           <label className="block text-xs font-medium text-muted-foreground mb-1">Estante</label>
+                           <input 
+                              type="text" 
+                              value={editProductForm.estante}
+                              onChange={e => setEditProductForm({...editProductForm, estante: e.target.value})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
+                              placeholder="Ex: Estante 3"
+                           />
+                        </div>
+                        <div>
+                           <label className="block text-xs font-medium text-muted-foreground mb-1">Prateleira</label>
+                           <input 
+                              type="text" 
+                              value={editProductForm.prateleira}
+                              onChange={e => setEditProductForm({...editProductForm, prateleira: e.target.value})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
+                              placeholder="Ex: Prateleira B"
+                           />
+                        </div>
+                        <div>
+                           <label className="block text-xs font-medium text-muted-foreground mb-1">Palete</label>
+                           <input 
+                              type="text" 
+                              value={editProductForm.palete}
+                              onChange={e => setEditProductForm({...editProductForm, palete: e.target.value})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
+                              placeholder="Ex: Palete 12"
+                           />
+                        </div>
+                     </div>
+                     <AnimatePresence>
+                        {editProductForm.palete && (
+                           <motion.div 
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="space-y-1.5"
+                           >
+                              <label className="block text-xs font-medium text-muted-foreground">Quantidade do Palete</label>
+                              <input 
+                                 type="number" 
+                                 min="0"
+                                 value={editProductForm.paleteQty}
+                                 onChange={e => setEditProductForm({...editProductForm, paleteQty: e.target.value ? parseInt(e.target.value) : ''})}
+                                 className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm font-bold"
+                                 placeholder="Ex: 50"
+                              />
+                           </motion.div>
+                        )}
+                     </AnimatePresence>
+                  </div>
+
+                  {/* Vínculo de Setores Adicionais */}
+                  <div className="border-t border-border/50 pt-4 space-y-2">
+                     <label className="block text-sm font-semibold text-foreground">Vincular a Outros Setores (Opcional)</label>
+                     <p className="text-xs text-muted-foreground mb-2">Selecione setores adicionais nos quais este material também estará visível.</p>
+                     <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 bg-secondary/20 rounded-xl border border-border/50">
+                        {sectors
+                           .filter(s => s.id !== editProductForm.sectorId)
+                           .map(s => {
+                              const isChecked = (editProductForm.additionalSectors || '')
+                                .split(',')
+                                .filter(Boolean)
+                                .includes(s.id);
+                              return (
+                                 <label key={s.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-secondary/50 rounded-lg cursor-pointer text-xs text-foreground">
+                                    <input
+                                       type="checkbox"
+                                       checked={isChecked}
+                                       onChange={e => handleSectorCheckboxChange(e.target.checked, s, true)}
+                                       className="rounded text-blue-500 bg-secondary/50 border-border focus:ring-blue-500 w-3.5 h-3.5"
+                                    />
+                                    <span className="truncate">{s.name}</span>
+                                 </label>
+                              );
+                           })}
+                        {sectors.filter(s => s.id !== editProductForm.sectorId).length === 0 && (
+                           <p className="text-xs text-muted-foreground italic p-2 col-span-2">Nenhum outro setor disponível</p>
+                        )}
+                     </div>
+                  </div>
+
                   <div className="flex gap-3 pt-4 border-t border-border/50">
                      <button 
                         type="button" 
@@ -1518,6 +1817,61 @@ export default function Sectors() {
           }}
         />
       )}
+
+      {/* Modal de Alerta: Vínculo em Múltiplos Setores */}
+      <AnimatePresence>
+        {sectorWarningModal && sectorWarningModal.isOpen && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div 
+               initial={{ opacity: 0 }} 
+               animate={{ opacity: 1 }} 
+               exit={{ opacity: 0 }}
+               className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+               onClick={() => setSectorWarningModal(null)}
+            />
+            <motion.div 
+               initial={{ scale: 0.95, y: 20 }}
+               animate={{ scale: 1, y: 0 }}
+               exit={{ scale: 0.95, y: 20 }}
+               className="bg-card border border-amber-500/30 rounded-2xl w-full max-w-md shadow-2xl p-6 relative overflow-hidden z-10 font-sans"
+            >
+               <div className="absolute top-0 left-0 w-full h-1 bg-amber-500"></div>
+               
+               <div className="flex items-start gap-4 mt-2">
+                 <div className="p-3 bg-amber-500/10 rounded-xl text-amber-500 shrink-0">
+                   <AlertTriangle className="w-6 h-6" />
+                 </div>
+                 <div className="flex-1 min-w-0">
+                   <h3 className="text-lg font-bold text-foreground">Produto já vinculado a outro setor</h3>
+                   <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                     O produto <span className="font-semibold text-foreground break-words">"{sectorWarningModal.productName}"</span> já está vinculado ao setor principal <span className="font-semibold text-foreground">"{sectorWarningModal.currentSectorName}"</span>.
+                   </p>
+                   <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                     Tem certeza de que deseja vincular este produto também ao setor <span className="font-semibold text-foreground">"{sectorWarningModal.newSectorName}"</span>? Ele ficará visível em ambos os setores.
+                   </p>
+                 </div>
+               </div>
+
+               <div className="mt-6 flex gap-3">
+                 <button 
+                    type="button" 
+                    onClick={() => setSectorWarningModal(null)}
+                    className="flex-1 px-4 py-2.5 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm"
+                 >
+                    Não, Cancelar
+                 </button>
+                 <button 
+                    type="button" 
+                    onClick={confirmSectorAddition}
+                    className="flex-1 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-xl transition-colors shadow-lg shadow-amber-500/20 text-sm"
+                 >
+                    Sim, Vincular Setor
+                 </button>
+               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

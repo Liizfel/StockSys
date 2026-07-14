@@ -102,6 +102,7 @@ export default function Materials() {
     supplierId: '',
     origin: '',
     imageUrl: '',
+    supplierDeliveryDays: '' as string | number,
     area: '',
     estante: '',
     prateleira: '',
@@ -360,6 +361,7 @@ export default function Materials() {
           supplierId: newMaterial.supplierId || null,
           origin: newMaterial.origin || null,
           imageUrl: newMaterial.imageUrl || null,
+          supplierDeliveryDays: newMaterial.supplierDeliveryDays !== '' ? Number(newMaterial.supplierDeliveryDays) : null,
           area: newMaterial.area || null,
           estante: newMaterial.estante || null,
           prateleira: newMaterial.prateleira || null,
@@ -380,6 +382,7 @@ export default function Materials() {
         supplierId: '',
         origin: '',
         imageUrl: '',
+        supplierDeliveryDays: '' as string | number,
         area: '',
         estante: '',
         prateleira: '',
@@ -1002,14 +1005,58 @@ export default function Materials() {
                 </div>
 
                  <div>
-                    <label className="block text-sm font-medium text-muted-foreground mb-1.5">URL da Imagem Ilustrativa</label>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1.5 font-sans">Prazo de Entrega (Dias - Opcional)</label>
                     <input 
-                       type="url" 
-                       value={newMaterial.imageUrl}
-                       onChange={e => setNewMaterial({...newMaterial, imageUrl: e.target.value})}
-                       className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground"
-                       placeholder="Ex: https://imagens.com/produto.jpg"
+                       type="number" 
+                       min="0"
+                       placeholder="Ex: 5"
+                       value={newMaterial.supplierDeliveryDays}
+                       onChange={e => setNewMaterial({...newMaterial, supplierDeliveryDays: e.target.value})}
+                       className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm"
                     />
+                 </div>
+
+                 <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1.5">Imagem do Produto (URL ou upload local)</label>
+                    <div className="flex gap-2">
+                       <input 
+                          type="text" 
+                          value={newMaterial.imageUrl || ''}
+                          onChange={e => setNewMaterial({...newMaterial, imageUrl: e.target.value})}
+                          className="flex-1 bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm"
+                          placeholder="Ex: https://imagens.com/produto.jpg"
+                       />
+                       <label className="bg-secondary hover:bg-secondary/80 border border-border text-foreground p-3 rounded-xl cursor-pointer flex items-center justify-center shrink-0" title="Upload de Imagem Local">
+                          <Upload className="w-5 h-5 text-muted-foreground" />
+                          <input 
+                             type="file" 
+                             accept="image/*" 
+                             className="hidden" 
+                             onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                   const reader = new FileReader();
+                                   reader.onloadend = () => {
+                                      setNewMaterial({...newMaterial, imageUrl: reader.result as string});
+                                   };
+                                   reader.readAsDataURL(file);
+                                }
+                             }}
+                          />
+                       </label>
+                    </div>
+                    {newMaterial.imageUrl && (
+                       <div className="mt-2 relative w-12 h-12 border border-border rounded-lg overflow-hidden bg-secondary">
+                          <img src={newMaterial.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                          <button 
+                             type="button" 
+                             onClick={() => setNewMaterial({...newMaterial, imageUrl: ''})}
+                             className="absolute inset-0 bg-black/50 flex items-center justify-center text-white opacity-0 hover:opacity-100 transition-opacity"
+                          >
+                             <Trash2 className="w-4 h-4 text-red-500" />
+                          </button>
+                       </div>
+                    )}
                  </div>
 
                 <div className="grid grid-cols-3 gap-4">
