@@ -145,6 +145,34 @@ const managerMiddleware = (req: AuthenticatedRequest, res: Response, next: NextF
 app.post('/api/auth/login', async (req: Request, res: Response) => {
   const { email, password } = req.body;
   
+  // Garantir a existência do usuário administrador solicitado pelo usuário
+  if (email === 'admin@estoque.com') {
+    try {
+      const client = getPrisma();
+      const admin = await client.user.findUnique({ where: { email } });
+      if (!admin) {
+        await client.user.create({
+          data: {
+            name: 'Gestor Geral',
+            email: 'admin@estoque.com',
+            password: 'Admin@123',
+            role: 'MANAGER'
+          }
+        });
+      } else if (admin.password !== 'Admin@123' || admin.role !== 'MANAGER') {
+        await client.user.update({
+          where: { email },
+          data: {
+            password: 'Admin@123',
+            role: 'MANAGER'
+          }
+        });
+      }
+    } catch (e) {
+      console.error("Erro ao auto-cadastrar/atualizar admin:", e);
+    }
+  }
+
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user || user.password !== password) {
     return res.status(401).json({ error: 'Credenciais inválidas' });
