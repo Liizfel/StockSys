@@ -5,9 +5,14 @@ import path from 'path';
 import { PrismaClient } from '@prisma/client';
 import { execSync } from 'child_process';
 
-// Mapeia a variável configurada no Vercel (URL_DO_BANCO_DE_DADOS) para o DATABASE_URL exigido pelo Prisma
-if (process.env.URL_DO_BANCO_DE_DADOS && !process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = process.env.URL_DO_BANCO_DE_DADOS;
+// Mapeia a melhor URL de conexão de banco de dados disponível para o DATABASE_URL exigido pelo Prisma
+const resolvedDatabaseUrl = process.env.POSTGRES_PRISMA_URL || 
+                            process.env.POSTGRES_URL || 
+                            process.env.DATABASE_URL || 
+                            process.env.URL_DO_BANCO_DE_DADOS || "";
+
+if (resolvedDatabaseUrl && !process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = resolvedDatabaseUrl;
 }
 
 // Executa migração automática do banco de dados na inicialização do servidor (apenas fora do Vercel)
@@ -24,7 +29,7 @@ if (!process.env.VERCEL) {
 const prisma = new PrismaClient({
   datasources: {
     db: {
-      url: process.env.DATABASE_URL || process.env.URL_DO_BANCO_DE_DADOS || ""
+      url: resolvedDatabaseUrl
     }
   }
 });
