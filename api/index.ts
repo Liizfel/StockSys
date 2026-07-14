@@ -26,11 +26,32 @@ if (!process.env.VERCEL) {
   }
 }
 
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: resolvedDatabaseUrl
+let prismaInstance: PrismaClient | null = null;
+
+function getPrisma(): PrismaClient {
+  if (!prismaInstance) {
+    if (!resolvedDatabaseUrl) {
+      throw new Error("Nenhuma URL de conexão com o banco de dados configurada!");
     }
+    prismaInstance = new PrismaClient({
+      datasources: {
+        db: {
+          url: resolvedDatabaseUrl
+        }
+      }
+    });
+  }
+  return prismaInstance;
+}
+
+const prisma = new Proxy({} as PrismaClient, {
+  get(target, prop, receiver) {
+    const instance = getPrisma();
+    const value = Reflect.get(instance, prop, receiver);
+    if (typeof value === 'function') {
+      return value.bind(instance);
+    }
+    return value;
   }
 });
 
@@ -50,6 +71,39 @@ const SECRET_KEY = process.env.JWT_SECRET || 'super_secret_key_for_dev_only';
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+// Rota pública de diagnóstico para verificar conexão e status do banco de dados
+app.get('/api/health', async (req: Request, res: Response) => {
+  const envInfo = {
+    NODE_ENV: process.env.NODE_ENV,
+    VERCEL: process.env.VERCEL,
+    has_POSTGRES_PRISMA_URL: !!process.env.POSTGRES_PRISMA_URL,
+    has_POSTGRES_URL: !!process.env.POSTGRES_URL,
+    has_DATABASE_URL: !!process.env.DATABASE_URL,
+    has_URL_DO_BANCO_DE_DADOS: !!process.env.URL_DO_BANCO_DE_DADOS,
+    resolvedDatabaseUrlLength: resolvedDatabaseUrl ? resolvedDatabaseUrl.length : 0,
+    resolvedDatabaseUrlPrefix: resolvedDatabaseUrl ? resolvedDatabaseUrl.substring(0, 15) + '...' : 'none'
+  };
+
+  try {
+    const client = getPrisma();
+    await client.$connect();
+    const userCount = await client.user.count();
+    res.json({
+      status: 'ok',
+      database: 'connected',
+      userCount,
+      env: envInfo
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      status: 'error',
+      message: err.message,
+      stack: err.stack,
+      env: envInfo
+    });
+  }
+});
 
 // ============================================================================
 // AREA: MIDDLEWARES
