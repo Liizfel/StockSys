@@ -67,6 +67,16 @@ model Material {
   repostedAt           DateTime? @map("reposted_at")
   imageUrl             String?   @map("image_url")
 
+  // Localização física do material
+  area                 String?
+  estante              String?
+  prateleira           String?
+  palete               String?
+  paleteQty            Int?      @map("palete_qty")
+
+  // Setores adicionais separados por vírgula
+  additionalSectors    String?   @default("") @map("additional_sectors")
+
   // Histórico de contagens deste material
   counts        StockCount[]
 
@@ -99,7 +109,7 @@ model TimeLog {
 
   // Relacionamento com Usuário
   userId    String   @map("user_id")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("time_logs")
 }

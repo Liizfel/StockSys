@@ -81,6 +81,15 @@ export default function Materials() {
   const [imageModalMaterial, setImageModalMaterial] = useState<Material | null>(null);
   const [detailMaterial, setDetailMaterial] = useState<Material | null>(null);
   
+  const [sectorWarningModal, setSectorWarningModal] = useState<{
+    isOpen: boolean;
+    productName: string;
+    currentSectorName: string;
+    newSectorId: string;
+    newSectorName: string;
+    isEdit: boolean;
+  } | null>(null);
+
   const [showNewModal, setShowNewModal] = useState(false);
   const [newMaterial, setNewMaterial] = useState({ 
     code: '', 
@@ -92,7 +101,13 @@ export default function Materials() {
     estoqueMinimo: 5 as string | number,
     supplierId: '',
     origin: '',
-    imageUrl: ''
+    imageUrl: '',
+    area: '',
+    estante: '',
+    prateleira: '',
+    palete: '',
+    paleteQty: '' as string | number,
+    additionalSectors: ''
   });
   const [showScanner, setShowScanner] = useState(false);
   const [scanTarget, setScanTarget] = useState<'search' | 'editMaterial' | null>(null);
@@ -118,8 +133,51 @@ export default function Materials() {
     supplierId: '',
     origin: '',
     imageUrl: '',
-    supplierDeliveryDays: '' as string | number
+    supplierDeliveryDays: '' as string | number,
+    area: '',
+    estante: '',
+    prateleira: '',
+    palete: '',
+    paleteQty: '' as string | number,
+    additionalSectors: ''
   });
+
+  const handleSectorCheckboxChange = (checked: boolean, targetSector: Sector, isEdit: boolean) => {
+    const form = isEdit ? editMaterialForm : newMaterial;
+    
+    if (checked) {
+      const primarySector = sectors.find(s => s.id === form.sectorId);
+      const primaryName = primarySector ? primarySector.name : 'Nenhum';
+      
+      setSectorWarningModal({
+        isOpen: true,
+        productName: form.name || 'Este produto',
+        currentSectorName: primaryName,
+        newSectorId: targetSector.id,
+        newSectorName: targetSector.name,
+        isEdit
+      });
+    } else {
+      const setForm = isEdit ? setEditMaterialForm : setNewMaterial;
+      const current = (form.additionalSectors || '').split(',').filter(Boolean);
+      const updated = current.filter(id => id !== targetSector.id);
+      setForm((prev: any) => ({ ...prev, additionalSectors: updated.join(',') }));
+    }
+  };
+
+  const confirmSectorAddition = () => {
+    if (!sectorWarningModal) return;
+    const { newSectorId, isEdit } = sectorWarningModal;
+    const form = isEdit ? editMaterialForm : newMaterial;
+    const setForm = isEdit ? setEditMaterialForm : setNewMaterial;
+    
+    const current = (form.additionalSectors || '').split(',').filter(Boolean);
+    if (!current.includes(newSectorId)) {
+      const updated = [...current, newSectorId];
+      setForm((prev: any) => ({ ...prev, additionalSectors: updated.join(',') }));
+    }
+    setSectorWarningModal(null);
+  };
 
   const handleOpenEditMaterial = (material: Material) => {
     setEditingMaterial(material);
@@ -135,7 +193,13 @@ export default function Materials() {
       supplierId: material.supplierId || '',
       origin: material.origin || '',
       imageUrl: material.imageUrl || '',
-      supplierDeliveryDays: material.supplierDeliveryDays !== null && material.supplierDeliveryDays !== undefined ? material.supplierDeliveryDays : ''
+      supplierDeliveryDays: material.supplierDeliveryDays !== null && material.supplierDeliveryDays !== undefined ? material.supplierDeliveryDays : '',
+      area: material.area || '',
+      estante: material.estante || '',
+      prateleira: material.prateleira || '',
+      palete: material.palete || '',
+      paleteQty: material.paleteQty !== null && material.paleteQty !== undefined ? material.paleteQty : '',
+      additionalSectors: material.additionalSectors || ''
     });
     setShowEditMaterialModal(true);
   };
@@ -168,7 +232,13 @@ export default function Materials() {
           supplierId: editMaterialForm.supplierId || null,
           origin: editMaterialForm.origin || null,
           imageUrl: editMaterialForm.imageUrl || null,
-          supplierDeliveryDays: editMaterialForm.supplierDeliveryDays !== '' ? Number(editMaterialForm.supplierDeliveryDays) : null
+          supplierDeliveryDays: editMaterialForm.supplierDeliveryDays !== '' ? Number(editMaterialForm.supplierDeliveryDays) : null,
+          area: editMaterialForm.area || null,
+          estante: editMaterialForm.estante || null,
+          prateleira: editMaterialForm.prateleira || null,
+          palete: editMaterialForm.palete || null,
+          paleteQty: editMaterialForm.palete ? (editMaterialForm.paleteQty !== '' ? Number(editMaterialForm.paleteQty) : null) : null,
+          additionalSectors: editMaterialForm.additionalSectors || null
         })
       }, token);
       setShowEditMaterialModal(false);
@@ -289,7 +359,13 @@ export default function Materials() {
           ...newMaterial,
           supplierId: newMaterial.supplierId || null,
           origin: newMaterial.origin || null,
-          imageUrl: newMaterial.imageUrl || null
+          imageUrl: newMaterial.imageUrl || null,
+          area: newMaterial.area || null,
+          estante: newMaterial.estante || null,
+          prateleira: newMaterial.prateleira || null,
+          palete: newMaterial.palete || null,
+          paleteQty: newMaterial.palete ? (newMaterial.paleteQty !== '' ? Number(newMaterial.paleteQty) : null) : null,
+          additionalSectors: newMaterial.additionalSectors || null
         })
       }, token);
       setShowNewModal(false);
@@ -303,7 +379,13 @@ export default function Materials() {
         estoqueMinimo: 5 as string | number,
         supplierId: '',
         origin: '',
-        imageUrl: ''
+        imageUrl: '',
+        area: '',
+        estante: '',
+        prateleira: '',
+        palete: '',
+        paleteQty: '' as string | number,
+        additionalSectors: ''
       });
       fetchData();
       window.dispatchEvent(new CustomEvent('products-changed'));
@@ -313,11 +395,18 @@ export default function Materials() {
   };
 
   const filteredMaterials = materials.filter(m => {
-    if (!isManager && user?.sectorId && m.sectorId !== user.sectorId) {
-      return false;
+    if (!isManager && user) {
+      const userSectors = [user.sectorId, ...(user.additionalSectors || '').split(',')].filter(Boolean);
+      if (userSectors.length > 0) {
+        const matSectors = [m.sectorId, ...(m.additionalSectors || '').split(',')].filter(Boolean);
+        const hasOverlap = matSectors.some(id => userSectors.includes(id));
+        if (!hasOverlap) {
+          return false;
+        }
+      }
     }
     const matchesSearch = m.name.toLowerCase().includes(search.toLowerCase()) || m.code.toLowerCase().includes(search.toLowerCase()) || (m.codigoBarras && m.codigoBarras.includes(search));
-    const matchesSector = filterSector ? m.sectorId === filterSector : true;
+    const matchesSector = filterSector ? (m.sectorId === filterSector || (m.additionalSectors || '').split(',').includes(filterSector)) : true;
     return matchesSearch && matchesSector;
   }).sort((a, b) => {
     const now = new Date().getTime();
@@ -963,6 +1052,103 @@ export default function Materials() {
                   </div>
                </div>
 
+               {/* Localização Física (Opcional) */}
+               <div className="border-t border-border/50 pt-4 space-y-4">
+                  <h4 className="text-sm font-semibold text-foreground">Localização Física (Opcional)</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                     <div>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">Área</label>
+                        <input 
+                           type="text" 
+                           value={newMaterial.area}
+                           onChange={e => setNewMaterial({...newMaterial, area: e.target.value})}
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm"
+                           placeholder="Ex: Área A"
+                        />
+                     </div>
+                     <div>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">Estante</label>
+                        <input 
+                           type="text" 
+                           value={newMaterial.estante}
+                           onChange={e => setNewMaterial({...newMaterial, estante: e.target.value})}
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm"
+                           placeholder="Ex: Estante 3"
+                        />
+                     </div>
+                     <div>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">Prateleira</label>
+                        <input 
+                           type="text" 
+                           value={newMaterial.prateleira}
+                           onChange={e => setNewMaterial({...newMaterial, prateleira: e.target.value})}
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm"
+                           placeholder="Ex: Prateleira B"
+                        />
+                     </div>
+                     <div>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">Palete</label>
+                        <input 
+                           type="text" 
+                           value={newMaterial.palete}
+                           onChange={e => setNewMaterial({...newMaterial, palete: e.target.value})}
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm"
+                           placeholder="Ex: Palete 12"
+                        />
+                     </div>
+                  </div>
+                  <AnimatePresence>
+                     {newMaterial.palete && (
+                        <motion.div 
+                           initial={{ opacity: 0, height: 0 }}
+                           animate={{ opacity: 1, height: 'auto' }}
+                           exit={{ opacity: 0, height: 0 }}
+                           className="space-y-1.5"
+                        >
+                           <label className="block text-xs font-medium text-muted-foreground">Quantidade do Palete</label>
+                           <input 
+                              type="number" 
+                              min="0"
+                              value={newMaterial.paleteQty}
+                              onChange={e => setNewMaterial({...newMaterial, paleteQty: e.target.value ? parseInt(e.target.value) : ''})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm font-bold"
+                              placeholder="Ex: 50"
+                           />
+                        </motion.div>
+                     )}
+                  </AnimatePresence>
+               </div>
+
+               {/* Vínculo de Setores Adicionais */}
+               <div className="border-t border-border/50 pt-4 space-y-2">
+                  <label className="block text-sm font-semibold text-foreground">Vincular a Outros Setores (Opcional)</label>
+                  <p className="text-xs text-muted-foreground mb-2">Selecione setores adicionais nos quais este material também estará visível.</p>
+                  <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 bg-secondary/20 rounded-xl border border-border/50">
+                     {sectors
+                        .filter(s => s.id !== newMaterial.sectorId)
+                        .map(s => {
+                           const isChecked = (newMaterial.additionalSectors || '')
+                             .split(',')
+                             .filter(Boolean)
+                             .includes(s.id);
+                           return (
+                             <label key={s.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-secondary/50 rounded-lg cursor-pointer text-xs text-foreground">
+                                <input
+                                   type="checkbox"
+                                   checked={isChecked}
+                                   onChange={e => handleSectorCheckboxChange(e.target.checked, s, false)}
+                                   className="rounded text-emerald-500 bg-secondary/50 border-border focus:ring-emerald-500 w-3.5 h-3.5"
+                                />
+                                <span className="truncate">{s.name}</span>
+                             </label>
+                           );
+                        })}
+                     {sectors.filter(s => s.id !== newMaterial.sectorId).length === 0 && (
+                        <p className="text-xs text-muted-foreground italic p-2 col-span-2">Nenhum outro setor disponível</p>
+                     )}
+                  </div>
+               </div>
+
                <div className="flex gap-3 pt-4">
                   <button 
                      type="button" 
@@ -1310,6 +1496,103 @@ export default function Materials() {
                      </div>
                   </div>
 
+                  {/* Localização Física (Opcional) */}
+                  <div className="border-t border-border/50 pt-4 space-y-4">
+                     <h4 className="text-sm font-semibold text-foreground">Localização Física (Opcional)</h4>
+                     <div className="grid grid-cols-2 gap-4">
+                        <div>
+                           <label className="block text-xs font-medium text-muted-foreground mb-1">Área</label>
+                           <input 
+                              type="text" 
+                              value={editMaterialForm.area}
+                              onChange={e => setEditMaterialForm({...editMaterialForm, area: e.target.value})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
+                              placeholder="Ex: Área A"
+                           />
+                        </div>
+                        <div>
+                           <label className="block text-xs font-medium text-muted-foreground mb-1">Estante</label>
+                           <input 
+                              type="text" 
+                              value={editMaterialForm.estante}
+                              onChange={e => setEditMaterialForm({...editMaterialForm, estante: e.target.value})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
+                              placeholder="Ex: Estante 3"
+                           />
+                        </div>
+                        <div>
+                           <label className="block text-xs font-medium text-muted-foreground mb-1">Prateleira</label>
+                           <input 
+                              type="text" 
+                              value={editMaterialForm.prateleira}
+                              onChange={e => setEditMaterialForm({...editMaterialForm, prateleira: e.target.value})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
+                              placeholder="Ex: Prateleira B"
+                           />
+                        </div>
+                        <div>
+                           <label className="block text-xs font-medium text-muted-foreground mb-1">Palete</label>
+                           <input 
+                              type="text" 
+                              value={editMaterialForm.palete}
+                              onChange={e => setEditMaterialForm({...editMaterialForm, palete: e.target.value})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
+                              placeholder="Ex: Palete 12"
+                           />
+                        </div>
+                     </div>
+                     <AnimatePresence>
+                        {editMaterialForm.palete && (
+                           <motion.div 
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="space-y-1.5"
+                           >
+                              <label className="block text-xs font-medium text-muted-foreground">Quantidade do Palete</label>
+                              <input 
+                                 type="number" 
+                                 min="0"
+                                 value={editMaterialForm.paleteQty}
+                                 onChange={e => setEditMaterialForm({...editMaterialForm, paleteQty: e.target.value ? parseInt(e.target.value) : ''})}
+                                 className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm font-bold"
+                                 placeholder="Ex: 50"
+                              />
+                           </motion.div>
+                        )}
+                     </AnimatePresence>
+                  </div>
+
+                  {/* Vínculo de Setores Adicionais */}
+                  <div className="border-t border-border/50 pt-4 space-y-2">
+                     <label className="block text-sm font-semibold text-foreground">Vincular a Outros Setores (Opcional)</label>
+                     <p className="text-xs text-muted-foreground mb-2">Selecione setores adicionais nos quais este material também estará visível.</p>
+                     <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 bg-secondary/20 rounded-xl border border-border/50">
+                        {sectors
+                           .filter(s => s.id !== editMaterialForm.sectorId)
+                           .map(s => {
+                              const isChecked = (editMaterialForm.additionalSectors || '')
+                                .split(',')
+                                .filter(Boolean)
+                                .includes(s.id);
+                              return (
+                                <label key={s.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-secondary/50 rounded-lg cursor-pointer text-xs text-foreground">
+                                   <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={e => handleSectorCheckboxChange(e.target.checked, s, true)}
+                                      className="rounded text-blue-500 bg-secondary/50 border-border focus:ring-blue-500 w-3.5 h-3.5"
+                                   />
+                                   <span className="truncate">{s.name}</span>
+                                </label>
+                              );
+                           })}
+                        {sectors.filter(s => s.id !== editMaterialForm.sectorId).length === 0 && (
+                           <p className="text-xs text-muted-foreground italic p-2 col-span-2">Nenhum outro setor disponível</p>
+                        )}
+                     </div>
+                  </div>
+
                   <div className="flex gap-3 pt-4 border-t border-border/50">
                      <button 
                         type="button" 
@@ -1445,6 +1728,61 @@ export default function Materials() {
           onClose={() => setShowScanner(false)}
         />
       )}
+
+      {/* Modal de Alerta: Vínculo em Múltiplos Setores */}
+      <AnimatePresence>
+        {sectorWarningModal && sectorWarningModal.isOpen && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div 
+               initial={{ opacity: 0 }} 
+               animate={{ opacity: 1 }} 
+               exit={{ opacity: 0 }}
+               className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+               onClick={() => setSectorWarningModal(null)}
+            />
+            <motion.div 
+               initial={{ scale: 0.95, y: 20 }}
+               animate={{ scale: 1, y: 0 }}
+               exit={{ scale: 0.95, y: 20 }}
+               className="bg-card border border-amber-500/30 rounded-2xl w-full max-w-md shadow-2xl p-6 relative overflow-hidden z-10 font-sans"
+            >
+               <div className="absolute top-0 left-0 w-full h-1 bg-amber-500"></div>
+               
+               <div className="flex items-start gap-4 mt-2">
+                 <div className="p-3 bg-amber-500/10 rounded-xl text-amber-500 shrink-0">
+                   <AlertTriangle className="w-6 h-6" />
+                 </div>
+                 <div className="flex-1 min-w-0">
+                   <h3 className="text-lg font-bold text-foreground">Produto já vinculado a outro setor</h3>
+                   <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                     O produto <span className="font-semibold text-foreground break-words">"{sectorWarningModal.productName}"</span> já está vinculado ao setor principal <span className="font-semibold text-foreground">"{sectorWarningModal.currentSectorName}"</span>.
+                   </p>
+                   <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                     Tem certeza de que deseja vincular este produto também ao setor <span className="font-semibold text-foreground">"{sectorWarningModal.newSectorName}"</span>? Ele ficará visível em ambos os setores.
+                   </p>
+                 </div>
+               </div>
+
+               <div className="mt-6 flex gap-3">
+                 <button 
+                    type="button" 
+                    onClick={() => setSectorWarningModal(null)}
+                    className="flex-1 px-4 py-2.5 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm"
+                 >
+                    Não, Cancelar
+                 </button>
+                 <button 
+                    type="button" 
+                    onClick={confirmSectorAddition}
+                    className="flex-1 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-xl transition-colors shadow-lg shadow-amber-500/20 text-sm"
+                 >
+                    Sim, Vincular Setor
+                 </button>
+               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Modal de Alerta: Código Duplicado */}
       <AnimatePresence>
@@ -1688,7 +2026,68 @@ export default function Materials() {
                      </div>
 
                      {/* Observações */}
-                     {detailMaterial.notes && (
+                     {/* Localização Física */}
+                      {(detailMaterial.area || detailMaterial.estante || detailMaterial.prateleira || detailMaterial.palete) && (
+                         <div className="bg-secondary/15 border border-border/50 rounded-xl p-4 space-y-2.5">
+                            <span className="text-[10px] text-muted-foreground block uppercase tracking-wider font-bold">Localização Física</span>
+                            <div className="grid grid-cols-2 gap-2.5 text-xs font-sans">
+                               {detailMaterial.area && (
+                                  <div>
+                                     <span className="text-muted-foreground block text-[10px] uppercase">Área:</span>
+                                     <span className="font-semibold text-foreground text-sm">{detailMaterial.area}</span>
+                                  </div>
+                               )}
+                               {detailMaterial.estante && (
+                                  <div>
+                                     <span className="text-muted-foreground block text-[10px] uppercase">Estante:</span>
+                                     <span className="font-semibold text-foreground text-sm">{detailMaterial.estante}</span>
+                                  </div>
+                               )}
+                               {detailMaterial.prateleira && (
+                                  <div>
+                                     <span className="text-muted-foreground block text-[10px] uppercase">Prateleira:</span>
+                                     <span className="font-semibold text-foreground text-sm">{detailMaterial.prateleira}</span>
+                                  </div>
+                               )}
+                               {detailMaterial.palete && (
+                                  <div>
+                                     <span className="text-muted-foreground block text-[10px] uppercase">Palete:</span>
+                                     <span className="font-semibold text-foreground text-sm">
+                                        {detailMaterial.palete} 
+                                        {detailMaterial.paleteQty !== null && detailMaterial.paleteQty !== undefined && detailMaterial.paleteQty !== '' && (
+                                           <span className="text-muted-foreground font-normal ml-1">({detailMaterial.paleteQty} itens)</span>
+                                        )}
+                                     </span>
+                                  </div>
+                                )}
+                            </div>
+                         </div>
+                      )}
+
+                      {/* Setores Adicionais */}
+                      {(() => {
+                         const additionalIds = (detailMaterial.additionalSectors || '').split(',').filter(Boolean);
+                         if (additionalIds.length === 0) return null;
+                         const mappedNames = additionalIds
+                            .map(id => sectors.find(s => s.id === id)?.name)
+                            .filter(Boolean);
+                         if (mappedNames.length === 0) return null;
+
+                         return (
+                            <div className="bg-secondary/15 border border-border/50 rounded-xl p-4 space-y-2.5">
+                               <span className="text-[10px] text-muted-foreground block uppercase tracking-wider font-bold font-sans">Outros Setores Vinculados</span>
+                               <div className="flex flex-wrap gap-1.5 mt-1">
+                                  {mappedNames.map((name, idx) => (
+                                     <span key={idx} className="bg-blue-500/10 border border-blue-500/20 text-blue-500 text-[11px] font-semibold px-2.5 py-1 rounded-full font-sans">
+                                        {name}
+                                     </span>
+                                  ))}
+                               </div>
+                            </div>
+                         );
+                      })()}
+
+                      {detailMaterial.notes && (
                         <div className="bg-blue-500/5 border border-blue-500/10 rounded-xl p-3">
                            <span className="text-[10px] text-blue-500 block uppercase tracking-wider font-bold mb-1">Observações</span>
                            <p className="text-xs text-foreground italic break-words">"{detailMaterial.notes}"</p>

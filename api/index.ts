@@ -261,7 +261,12 @@ app.get('/api/materials', authMiddleware, async (req: AuthenticatedRequest, res:
       const additional = req.user.additionalSectors.split(',').filter(Boolean);
       allowedSectors.push(...additional);
     }
-    whereClause.sectorId = { in: allowedSectors };
+    whereClause.OR = [
+      { sectorId: { in: allowedSectors } },
+      ...allowedSectors.map(secId => ({
+        additionalSectors: { contains: secId }
+      }))
+    ];
   }
 
   const dbMaterials = await prisma.material.findMany({
@@ -294,7 +299,32 @@ app.get('/api/materials', authMiddleware, async (req: AuthenticatedRequest, res:
 
 app.post('/api/materials', authMiddleware, managerMiddleware, async (req: Request, res: Response) => {
   try {
-    const { code, codigoBarras, name, sectorId, quantity, estoqueMinimo, unit, supplierId, supplierDeliveryDays, origin, imageUrl } = req.body;
+    const { 
+      code, 
+      codigoBarras, 
+      name, 
+      sectorId, 
+      quantity, 
+      estoqueMinimo, 
+      unit, 
+      supplierId, 
+      supplierDeliveryDays, 
+      origin, 
+      imageUrl,
+      area,
+      estante,
+      prateleira,
+      palete,
+      paleteQty,
+      additionalSectors
+    } = req.body;
+
+    let additionalSectorsStr = "";
+    if (additionalSectors !== undefined && additionalSectors !== null) {
+      additionalSectorsStr = Array.isArray(additionalSectors)
+        ? additionalSectors.filter(Boolean).join(',')
+        : String(additionalSectors);
+    }
 
     const newMaterial = await prisma.material.create({
       data: {
@@ -309,7 +339,13 @@ app.post('/api/materials', authMiddleware, managerMiddleware, async (req: Reques
         supplierId: supplierId || null,
         supplierDeliveryDays: supplierDeliveryDays !== undefined && supplierDeliveryDays !== null ? Number(supplierDeliveryDays) : null,
         origin: origin || null,
-        imageUrl: imageUrl || null
+        imageUrl: imageUrl || null,
+        area: area || null,
+        estante: estante || null,
+        prateleira: prateleira || null,
+        palete: palete || null,
+        paleteQty: paleteQty !== undefined && paleteQty !== null ? Number(paleteQty) : null,
+        additionalSectors: additionalSectorsStr
       }
     });
 
@@ -342,7 +378,25 @@ app.patch('/api/materials/:id/status', authMiddleware, async (req: Request, res:
 
 app.put('/api/materials/:id', authMiddleware, managerMiddleware, async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { name, code, codigoBarras, quantity, estoqueMinimo, unit, sectorId, supplierId, supplierDeliveryDays, origin, imageUrl } = req.body;
+  const { 
+    name, 
+    code, 
+    codigoBarras, 
+    quantity, 
+    estoqueMinimo, 
+    unit, 
+    sectorId, 
+    supplierId, 
+    supplierDeliveryDays, 
+    origin, 
+    imageUrl,
+    area,
+    estante,
+    prateleira,
+    palete,
+    paleteQty,
+    additionalSectors
+  } = req.body;
   try {
     const material = await prisma.material.findUnique({ where: { id: String(id) } });
     if (!material) return res.status(404).json({ error: 'Material não encontrado' });
@@ -380,7 +434,15 @@ app.put('/api/materials/:id', authMiddleware, managerMiddleware, async (req: Req
         supplierId: supplierId !== undefined ? supplierId : undefined,
         supplierDeliveryDays: supplierDeliveryDays !== undefined ? (supplierDeliveryDays !== null ? Number(supplierDeliveryDays) : null) : undefined,
         origin: origin !== undefined ? origin : undefined,
-        imageUrl: imageUrl !== undefined ? imageUrl : undefined
+        imageUrl: imageUrl !== undefined ? imageUrl : undefined,
+        area: area !== undefined ? area : undefined,
+        estante: estante !== undefined ? estante : undefined,
+        prateleira: prateleira !== undefined ? prateleira : undefined,
+        palete: palete !== undefined ? palete : undefined,
+        paleteQty: paleteQty !== undefined ? (paleteQty !== null ? Number(paleteQty) : null) : undefined,
+        additionalSectors: additionalSectors !== undefined 
+          ? (Array.isArray(additionalSectors) ? additionalSectors.filter(Boolean).join(',') : String(additionalSectors)) 
+          : undefined
       }
     });
     res.json(updated);

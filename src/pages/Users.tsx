@@ -352,7 +352,7 @@ export default function UsersPage() {
                        <label className="block text-sm font-medium text-muted-foreground mb-1.5">Cargo (Nível de Acesso)</label>
                        <select 
                           value={formData.role}
-                          onChange={e => setFormData({...formData, role: e.target.value, sectorId: e.target.value === 'MANAGER' ? '' : formData.sectorId})}
+                          onChange={e => setFormData({...formData, role: e.target.value})}
                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
                        >
                           <option value="ATTENDANT">Atendente</option>
@@ -364,7 +364,7 @@ export default function UsersPage() {
                        <select 
                           value={formData.sectorId}
                           onChange={e => setFormData({...formData, sectorId: e.target.value})}
-                          disabled={formData.role === 'MANAGER'}
+                          
                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground disabled:opacity-50"
                        >
                           <option value="">Nenhum</option>
@@ -375,7 +375,7 @@ export default function UsersPage() {
                     </div>
                  </div>
 
-                 {formData.role === 'ATTENDANT' && (
+                 {true && (
                     <div className="space-y-2 col-span-2 mt-1">
                        <label className="block text-sm font-medium text-muted-foreground mb-1">Setores Adicionais sob Responsabilidade</label>
                        <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 bg-secondary/20 rounded-xl border border-border/50">

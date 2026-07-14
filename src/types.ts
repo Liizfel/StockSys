@@ -7,6 +7,7 @@ export interface User {
   role: Role;
   sectorId?: string;
   sectorName?: string;
+  additionalSectors?: string;
 }
 
 export interface Sector {
@@ -25,7 +26,7 @@ export interface Material {
   unit?: string;
   estoqueMinimo: number;
   highDiscrepancy?: boolean;
-  status: 'PENDING' | 'COUNTED_RECENTLY' | 'AWAITING_CONFIRMATION' | 'PURCHASE_REQUESTED' | 'COMPLETED' | 'DIVERGENCIA_AVARIA';
+  status: 'PENDING' | 'COUNTED_RECENTLY' | 'AWAITING_CONFIRMATION' | 'PURCHASE_REQUESTED' | 'COMPLETED';
   notes?: string;
   updatedAt?: string;
   lastCountedBy?: string;
@@ -38,6 +39,12 @@ export interface Material {
   requestedQuantity?: number;
   repostedAt?: string;
   imageUrl?: string;
+  area?: string;
+  estante?: string;
+  prateleira?: string;
+  palete?: string;
+  paleteQty?: number;
+  additionalSectors?: string;
 }
 
 export interface Supplier {
