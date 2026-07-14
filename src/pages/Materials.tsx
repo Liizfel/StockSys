@@ -74,6 +74,10 @@ export default function Materials() {
     code: string;
     existingProduct: Material | null;
   } | null>(null);
+  const [unregisteredProductModal, setUnregisteredProductModal] = useState<{
+    isOpen: boolean;
+    code: string;
+  } | null>(null);
   const [imageModalMaterial, setImageModalMaterial] = useState<Material | null>(null);
   const [detailMaterial, setDetailMaterial] = useState<Material | null>(null);
   
@@ -345,7 +349,19 @@ export default function Materials() {
       setCountNotes('');
       setCountStatus(found.status);
     } else {
-      alert(`Produto com código ${decodedText} não encontrado.`);
+      // Abre o modal informando que o produto não está cadastrado
+      setUnregisteredProductModal({
+        isOpen: true,
+        code: decodedText
+      });
+      // Preenche os dados no formulário de novo produto
+      setNewMaterial(prev => ({
+        ...prev,
+        code: decodedText,
+        codigoBarras: decodedText
+      }));
+      // Abre o modal padrão de criação de produto
+      setShowNewModal(true);
     }
     setScanTarget(null);
   };
@@ -1488,6 +1504,54 @@ export default function Materials() {
                     className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-medium rounded-xl transition-colors shadow-lg shadow-rose-500/20 font-sans w-full"
                  >
                     Entendido, vou alterar
+                 </button>
+               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal de Alerta: Produto não Cadastrado */}
+      <AnimatePresence>
+        {unregisteredProductModal && unregisteredProductModal.isOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+               initial={{ opacity: 0 }} 
+               animate={{ opacity: 1 }} 
+               exit={{ opacity: 0 }}
+               className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+               onClick={() => setUnregisteredProductModal(null)}
+            />
+            <motion.div 
+               initial={{ scale: 0.95, y: 20 }}
+               animate={{ scale: 1, y: 0 }}
+               exit={{ scale: 0.95, y: 20 }}
+               className="bg-card border border-amber-500/30 rounded-2xl w-full max-w-md shadow-2xl p-6 relative overflow-hidden z-10"
+            >
+               <div className="absolute top-0 left-0 w-full h-1 bg-amber-500"></div>
+               
+               <div className="flex items-start gap-4 mt-2">
+                 <div className="p-3 bg-amber-500/10 rounded-xl text-amber-500">
+                   <AlertTriangle className="w-6 h-6" />
+                 </div>
+                 <div className="flex-1">
+                   <h3 className="text-lg font-bold text-foreground font-sans">Produto não Cadastrado</h3>
+                   <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
+                     O código <span className="font-mono bg-amber-500/10 px-1.5 py-0.5 rounded text-amber-600 font-semibold">{unregisteredProductModal.code}</span> não foi encontrado no estoque.
+                   </p>
+                   <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                     O formulário de cadastro já foi aberto em segundo plano com o código de barras preenchido automaticamente!
+                   </p>
+                 </div>
+               </div>
+
+               <div className="mt-6 flex gap-3">
+                 <button 
+                    type="button" 
+                    onClick={() => setUnregisteredProductModal(null)}
+                    className="flex-1 px-5 py-3 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl transition-colors shadow-lg shadow-amber-500/20 font-sans"
+                 >
+                    Continuar para o Cadastro
                  </button>
                </div>
             </motion.div>
