@@ -3,13 +3,16 @@ import { execSync } from 'child_process';
 console.log("--------------------------------------------------");
 console.log("Iniciando verificação do banco de dados...");
 
-let databaseUrl = process.env.POSTGRES_PRISMA_URL || 
+let databaseUrl = process.env.POSTGRES_URL_NON_POOLING || 
+                    process.env.POSTGRES_PRISMA_URL || 
                     process.env.POSTGRES_URL || 
                     process.env.DATABASE_URL || 
                     process.env.URL_DO_BANCO_DE_DADOS;
 
 if (!databaseUrl) {
   console.log("⚠️ Nenhuma URL de banco de dados detectada!");
+} else {
+  process.env.DATABASE_URL = databaseUrl;
 }
 
 try {
