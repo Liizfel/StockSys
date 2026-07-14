@@ -43,6 +43,7 @@ interface ReportPreviewModalProps {
 
 export const ReportPreviewModal = ({ isOpen, onClose, reportText, title, onExportPDF }: ReportPreviewModalProps) => {
   const [copied, setCopied] = useState(false);
+  const isMobile = typeof window !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
   const handleCopy = async () => {
     try {
@@ -128,7 +129,7 @@ export const ReportPreviewModal = ({ isOpen, onClose, reportText, title, onExpor
               <div className="grid grid-cols-2 gap-3">
                  <a 
                     href={getWhatsAppShareUrl(reportText)}
-                    target="_blank"
+                    target={isMobile ? undefined : "_blank"}
                     rel="noopener noreferrer"
                     className="flex items-center justify-center gap-2 px-4 py-3 bg-[#25D366] hover:bg-[#1DA851] text-white rounded-xl text-sm font-medium transition-colors shadow-sm"
                  >
@@ -137,7 +138,7 @@ export const ReportPreviewModal = ({ isOpen, onClose, reportText, title, onExpor
                  </a>
                  <a 
                     href={getTelegramShareUrl(reportText)}
-                    target="_blank"
+                    target={isMobile ? undefined : "_blank"}
                     rel="noopener noreferrer"
                     className="flex items-center justify-center gap-2 px-4 py-3 bg-[#0088cc] hover:bg-[#0077b3] text-white rounded-xl text-sm font-medium transition-colors shadow-sm"
                  >

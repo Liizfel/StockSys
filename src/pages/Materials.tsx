@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Material, Sector, Supplier } from '../types';
-import { StatusBadge } from './Dashboard';
+import { StatusBadge } from '../components/StatusBadge';
 import { Search, Edit3, Plus, TrendingDown, TrendingUp, X, History, Camera, Settings2, ClipboardCheck, AlertTriangle, Eye, Image as ImageIcon, Upload, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -908,309 +908,335 @@ export default function Materials() {
                initial={{ scale: 0.95, y: 20 }}
                animate={{ scale: 1, y: 0 }}
                exit={{ scale: 0.95, y: 20 }}
-               className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 relative overflow-hidden"
+               className="bg-card border border-border rounded-2xl w-full max-w-2xl shadow-2xl p-6 relative z-10 max-h-[calc(100vh-4rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent"
             >
                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-blue-500"></div>
                
                <div className="flex justify-between items-start mb-6 mt-2">
-                  <h3 className="text-xl font-bold text-foreground">Cadastrar Novo Material</h3>
+                  <div>
+                     <h3 className="text-xl font-bold text-foreground">Cadastrar Novo Material</h3>
+                     <p className="text-sm text-muted-foreground mt-1 font-sans">Preencha os dados do novo produto para adicioná-lo ao estoque.</p>
+                  </div>
                   <button onClick={() => setShowNewModal(false)} className="p-1.5 text-muted-foreground hover:bg-secondary rounded-lg transition-colors">
                      <X className="w-5 h-5" />
                   </button>
                </div>
                
-               <form onSubmit={handleCreateMaterial} className="space-y-4">
-               <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1.5">Código</label>
-                  <input 
-                     type="text" 
-                     value={newMaterial.code}
-                     onChange={e => setNewMaterial({...newMaterial, code: e.target.value})}
-                     className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground font-mono"
-                     placeholder="Ex: MAT-001"
-                     required
-                  />
-               </div>
-               
-               <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1.5">Código de Barras</label>
-                  <input 
-                     type="text" 
-                     value={newMaterial.codigoBarras}
-                     onChange={e => setNewMaterial({...newMaterial, codigoBarras: e.target.value})}
-                     className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground font-mono"
-                     placeholder="Ex: 7891000..."
-                  />
-               </div>
+               <form onSubmit={handleCreateMaterial} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                     {/* Coluna Esquerda */}
+                     <div className="space-y-4">
+                        <div>
+                           <label className="block text-sm font-medium text-muted-foreground mb-1.5 font-sans">Código Único (SKU)</label>
+                           <input 
+                              type="text" 
+                              value={newMaterial.code}
+                              onChange={e => setNewMaterial({...newMaterial, code: e.target.value})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-mono text-sm"
+                              placeholder="Ex: MAT-001"
+                              required
+                           />
+                        </div>
+                        
+                        <div>
+                           <label className="block text-sm font-medium text-muted-foreground mb-1.5 font-sans">Nome do Produto</label>
+                           <input 
+                              type="text" 
+                              value={newMaterial.name}
+                              onChange={e => setNewMaterial({...newMaterial, name: e.target.value})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
+                              placeholder="Ex: Parafuso..."
+                              required
+                           />
+                        </div>
 
-               <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1.5">Nome do Material</label>
-                  <input 
-                     type="text" 
-                     value={newMaterial.name}
-                     onChange={e => setNewMaterial({...newMaterial, name: e.target.value})}
-                     className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground"
-                     required
-                  />
-               </div>
+                        <div>
+                           <label className="block text-sm font-medium text-muted-foreground mb-1.5 font-sans">Código de Barras</label>
+                           <div className="relative flex items-center">
+                              <input 
+                                 type="text" 
+                                 value={newMaterial.codigoBarras || ''}
+                                 onChange={e => setNewMaterial({...newMaterial, codigoBarras: e.target.value})}
+                                 className="w-full bg-secondary/50 border border-border rounded-xl pl-4 pr-12 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm font-mono"
+                                 placeholder="Ex: 7891234567890"
+                              />
+                              <button
+                                 type="button"
+                                 onClick={() => {
+                                    setScanTarget('search');
+                                    setShowScanner(true);
+                                 }}
+                                 className="absolute right-3 p-1.5 hover:bg-secondary rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+                                 title="Escanear Código de Barras com a câmera"
+                              >
+                                 <Camera className="w-5 h-5" />
+                              </button>
+                           </div>
+                        </div>
 
-               <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1.5">Setor</label>
-                  <select 
-                     value={newMaterial.sectorId}
-                      onChange={e => setNewMaterial({...newMaterial, sectorId: e.target.value})}
-                      className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground"
-                      required
-                   >
-                      <option value="">Selecione um setor...</option>
-                      {sectors.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                   </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                   <div>
-                      <div className="flex justify-between items-center mb-1.5">
-                         <label className="block text-sm font-medium text-muted-foreground">Fornecedor</label>
-                         <button 
-                            type="button" 
-                            onClick={() => {
-                               setSupplierModalTarget('new');
-                               setShowAddSupplierModal(true);
-                            }}
-                            className="text-xs text-blue-500 hover:underline"
-                         >
-                            + Novo
-                         </button>
-                      </div>
-                      <select 
-                         value={newMaterial.supplierId}
-                         onChange={e => setNewMaterial({...newMaterial, supplierId: e.target.value})}
-                         className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground cursor-pointer"
-                      >
-                         <option value="">Selecione...</option>
-                         {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                      </select>
-                   </div>
-                   
-                   <div>
-                      <label className="block text-sm font-medium text-muted-foreground mb-1.5">Origem</label>
-                      <input 
-                         type="text" 
-                         value={newMaterial.origin}
-                         onChange={e => setNewMaterial({...newMaterial, origin: e.target.value})}
-                         className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground"
-                         placeholder="Ex: Nacional, Importado"
-                      />
-                   </div>
-                </div>
-
-                 <div>
-                    <label className="block text-sm font-medium text-muted-foreground mb-1.5 font-sans">Prazo de Entrega (Dias - Opcional)</label>
-                    <input 
-                       type="number" 
-                       min="0"
-                       placeholder="Ex: 5"
-                       value={newMaterial.supplierDeliveryDays}
-                       onChange={e => setNewMaterial({...newMaterial, supplierDeliveryDays: e.target.value})}
-                       className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm"
-                    />
-                 </div>
-
-                 <div>
-                    <label className="block text-sm font-medium text-muted-foreground mb-1.5">Imagem do Produto (URL ou upload local)</label>
-                    <div className="flex gap-2">
-                       <input 
-                          type="text" 
-                          value={newMaterial.imageUrl || ''}
-                          onChange={e => setNewMaterial({...newMaterial, imageUrl: e.target.value})}
-                          className="flex-1 bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm"
-                          placeholder="Ex: https://imagens.com/produto.jpg"
-                       />
-                       <label className="bg-secondary hover:bg-secondary/80 border border-border text-foreground p-3 rounded-xl cursor-pointer flex items-center justify-center shrink-0" title="Upload de Imagem Local">
-                          <Upload className="w-5 h-5 text-muted-foreground" />
-                          <input 
-                             type="file" 
-                             accept="image/*" 
-                             className="hidden" 
-                             onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                   const reader = new FileReader();
-                                   reader.onloadend = () => {
-                                      setNewMaterial({...newMaterial, imageUrl: reader.result as string});
-                                   };
-                                   reader.readAsDataURL(file);
-                                }
-                             }}
-                          />
-                       </label>
-                    </div>
-                    {newMaterial.imageUrl && (
-                       <div className="mt-2 relative w-12 h-12 border border-border rounded-lg overflow-hidden bg-secondary">
-                          <img src={newMaterial.imageUrl} alt="Preview" className="w-full h-full object-cover" />
-                          <button 
-                             type="button" 
-                             onClick={() => setNewMaterial({...newMaterial, imageUrl: ''})}
-                             className="absolute inset-0 bg-black/50 flex items-center justify-center text-white opacity-0 hover:opacity-100 transition-opacity"
-                          >
-                             <Trash2 className="w-4 h-4 text-red-500" />
-                          </button>
-                       </div>
-                    )}
-                 </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                   <div>
-                      <label className="block text-sm font-medium text-muted-foreground mb-1.5">Unidade</label>
-                     <select 
-                        value={newMaterial.unit}
-                        onChange={e => setNewMaterial({...newMaterial, unit: e.target.value})}
-                        className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground cursor-pointer"
-                     >
-                        <option value="unidade">un</option>
-                        <option value="pacote">pct</option>
-                        <option value="caixa">cx</option>
-                        <option value="palete">plt</option>
-                        <option value="kg">kg</option>
-                        <option value="l">l</option>
-                     </select>
-                  </div>
-                  <div>
-                     <label className="block text-sm font-medium text-muted-foreground mb-1.5">Qtd. Inicial</label>
-                     <input 
-                        type="number" 
-                        min="0"
-                        value={newMaterial.quantity}
-                        onChange={e => setNewMaterial({...newMaterial, quantity: e.target.value ? parseInt(e.target.value) : ''})}
-                        className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground font-bold"
-                        required
-                     />
-                  </div>
-                  <div>
-                     <label className="block text-sm font-medium text-muted-foreground mb-1.5">Mínimo</label>
-                     <input 
-                        type="number" 
-                        min="0"
-                        value={newMaterial.estoqueMinimo}
-                        onChange={e => setNewMaterial({...newMaterial, estoqueMinimo: e.target.value ? parseInt(e.target.value) : ''})}
-                        className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground font-bold"
-                        required
-                     />
-                  </div>
-               </div>
-
-               {/* Localização Física (Opcional) */}
-               <div className="border-t border-border/50 pt-4 space-y-4">
-                  <h4 className="text-sm font-semibold text-foreground">Localização Física (Opcional)</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                     <div>
-                        <label className="block text-xs font-medium text-muted-foreground mb-1">Área</label>
-                        <input 
-                           type="text" 
-                           value={newMaterial.area}
-                           onChange={e => setNewMaterial({...newMaterial, area: e.target.value})}
-                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm"
-                           placeholder="Ex: Área A"
-                        />
+                        <div>
+                           <label className="block text-sm font-medium text-muted-foreground mb-1.5 font-sans">Setor Atribuído</label>
+                           <select 
+                              value={newMaterial.sectorId}
+                              onChange={e => setNewMaterial({...newMaterial, sectorId: e.target.value})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer text-sm"
+                              required
+                           >
+                              <option value="">Selecione um setor...</option>
+                              {sectors.map(s => (
+                                 <option key={s.id} value={s.id}>{s.name}</option>
+                              ))}
+                           </select>
+                        </div>
                      </div>
-                     <div>
-                        <label className="block text-xs font-medium text-muted-foreground mb-1">Estante</label>
-                        <input 
-                           type="text" 
-                           value={newMaterial.estante}
-                           onChange={e => setNewMaterial({...newMaterial, estante: e.target.value})}
-                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm"
-                           placeholder="Ex: Estante 3"
-                        />
-                     </div>
-                     <div>
-                        <label className="block text-xs font-medium text-muted-foreground mb-1">Prateleira</label>
-                        <input 
-                           type="text" 
-                           value={newMaterial.prateleira}
-                           onChange={e => setNewMaterial({...newMaterial, prateleira: e.target.value})}
-                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm"
-                           placeholder="Ex: Prateleira B"
-                        />
-                     </div>
-                     <div>
-                        <label className="block text-xs font-medium text-muted-foreground mb-1">Palete</label>
-                        <input 
-                           type="text" 
-                           value={newMaterial.palete}
-                           onChange={e => setNewMaterial({...newMaterial, palete: e.target.value})}
-                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm"
-                           placeholder="Ex: Palete 12"
-                        />
-                     </div>
-                  </div>
-                  <AnimatePresence>
-                     {newMaterial.palete && (
-                        <motion.div 
-                           initial={{ opacity: 0, height: 0 }}
-                           animate={{ opacity: 1, height: 'auto' }}
-                           exit={{ opacity: 0, height: 0 }}
-                           className="space-y-1.5"
-                        >
-                           <label className="block text-xs font-medium text-muted-foreground">Quantidade do Palete</label>
+
+                     {/* Coluna Direita */}
+                     <div className="space-y-4">
+                        <div>
+                           <label className="block text-sm font-medium text-muted-foreground mb-1.5 font-sans">Origem</label>
+                           <input 
+                              type="text" 
+                              value={newMaterial.origin || ''}
+                              onChange={e => setNewMaterial({...newMaterial, origin: e.target.value})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
+                              placeholder="Ex: Nacional / Importado"
+                           />
+                        </div>
+
+                        <div>
+                           <div className="flex justify-between items-center mb-1.5">
+                              <label className="block text-sm font-medium text-muted-foreground font-sans">Fornecedor (Opcional)</label>
+                              <button 
+                                 type="button" 
+                                 onClick={() => {
+                                    setSupplierModalTarget('new');
+                                    setShowAddSupplierModal(true);
+                                 }}
+                                 className="text-xs text-blue-500 hover:underline"
+                              >
+                                 + Novo
+                              </button>
+                           </div>
+                           <select 
+                              value={newMaterial.supplierId || ''}
+                              onChange={e => setNewMaterial({...newMaterial, supplierId: e.target.value})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer text-sm"
+                           >
+                              <option value="">Nenhum fornecedor</option>
+                              {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                           </select>
+                        </div>
+
+                        <div>
+                           <label className="block text-sm font-medium text-muted-foreground mb-1.5 font-sans">Prazo de Entrega (Dias - Opcional)</label>
                            <input 
                               type="number" 
                               min="0"
-                              value={newMaterial.paleteQty}
-                              onChange={e => setNewMaterial({...newMaterial, paleteQty: e.target.value ? parseInt(e.target.value) : ''})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm font-bold"
-                              placeholder="Ex: 50"
+                              placeholder="Ex: 5"
+                              value={newMaterial.supplierDeliveryDays}
+                              onChange={e => setNewMaterial({...newMaterial, supplierDeliveryDays: e.target.value})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
                            />
-                        </motion.div>
-                     )}
-                  </AnimatePresence>
-               </div>
+                        </div>
 
-               {/* Vínculo de Setores Adicionais */}
-               <div className="border-t border-border/50 pt-4 space-y-2">
-                  <label className="block text-sm font-semibold text-foreground">Vincular a Outros Setores (Opcional)</label>
-                  <p className="text-xs text-muted-foreground mb-2">Selecione setores adicionais nos quais este material também estará visível.</p>
-                  <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 bg-secondary/20 rounded-xl border border-border/50">
-                     {sectors
-                        .filter(s => s.id !== newMaterial.sectorId)
-                        .map(s => {
-                           const isChecked = (newMaterial.additionalSectors || '')
-                             .split(',')
-                             .filter(Boolean)
-                             .includes(s.id);
-                           return (
-                             <label key={s.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-secondary/50 rounded-lg cursor-pointer text-xs text-foreground">
-                                <input
-                                   type="checkbox"
-                                   checked={isChecked}
-                                   onChange={e => handleSectorCheckboxChange(e.target.checked, s, false)}
-                                   className="rounded text-emerald-500 bg-secondary/50 border-border focus:ring-emerald-500 w-3.5 h-3.5"
-                                />
-                                <span className="truncate">{s.name}</span>
-                             </label>
-                           );
-                        })}
-                     {sectors.filter(s => s.id !== newMaterial.sectorId).length === 0 && (
-                        <p className="text-xs text-muted-foreground italic p-2 col-span-2">Nenhum outro setor disponível</p>
-                     )}
+                        <div>
+                           <label className="block text-sm font-medium text-muted-foreground mb-1.5 font-sans">Imagem do Produto (URL ou upload local)</label>
+                           <div className="flex gap-2">
+                              <input 
+                                 type="text" 
+                                 value={newMaterial.imageUrl || ''}
+                                 onChange={e => setNewMaterial({...newMaterial, imageUrl: e.target.value})}
+                                 className="flex-1 bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
+                                 placeholder="Ex: https://imagens.com/produto.jpg"
+                              />
+                              <label className="bg-secondary hover:bg-secondary/80 border border-border text-foreground p-2.5 rounded-xl cursor-pointer flex items-center justify-center shrink-0" title="Upload de Imagem Local">
+                                 <Upload className="w-5 h-5 text-muted-foreground" />
+                                 <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    className="hidden" 
+                                    onChange={(e) => {
+                                       const file = e.target.files?.[0];
+                                       if (file) {
+                                          const reader = new FileReader();
+                                          reader.onloadend = () => {
+                                             setNewMaterial({...newMaterial, imageUrl: reader.result as string});
+                                          };
+                                          reader.readAsDataURL(file);
+                                       }
+                                    }}
+                                 />
+                              </label>
+                           </div>
+                           {newMaterial.imageUrl && (
+                              <div className="mt-2 relative w-12 h-12 border border-border rounded-lg overflow-hidden bg-secondary">
+                                 <img src={newMaterial.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                                 <button 
+                                    type="button" 
+                                    onClick={() => setNewMaterial({...newMaterial, imageUrl: ''})}
+                                    className="absolute inset-0 bg-black/50 flex items-center justify-center text-white opacity-0 hover:opacity-100 transition-opacity"
+                                 >
+                                    <Trash2 className="w-4 h-4 text-red-500" />
+                                 </button>
+                              </div>
+                           )}
+                        </div>
+                     </div>
                   </div>
-               </div>
 
-               <div className="flex gap-3 pt-4">
-                  <button 
-                     type="button" 
-                     onClick={() => setShowNewModal(false)}
-                     className="flex-1 px-4 py-3 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors"
-                  >
-                     Cancelar
-                  </button>
-                  <button 
-                     type="submit" 
-                     className="flex-1 px-4 py-3 bg-emerald-600 text-white font-medium rounded-xl hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-500/25"
-                  >
-                     Cadastrar
-                  </button>
-               </div>
+                  {/* Detalhes de Quantidade na base */}
+                  <div className="grid grid-cols-3 gap-4 border-t border-border/50 pt-4">
+                     <div>
+                        <label className="block text-sm font-medium text-muted-foreground mb-1.5 font-sans">Unidade</label>
+                        <select 
+                           value={newMaterial.unit}
+                           onChange={e => setNewMaterial({...newMaterial, unit: e.target.value})}
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer text-sm"
+                        >
+                           <option value="unidade">un</option>
+                           <option value="pacote">pct</option>
+                           <option value="caixa">cx</option>
+                           <option value="palete">plt</option>
+                           <option value="kg">kg</option>
+                           <option value="l">l</option>
+                        </select>
+                     </div>
+                     <div>
+                        <label className="block text-sm font-medium text-muted-foreground mb-1.5 font-sans">Qtd. Inicial</label>
+                        <input 
+                           type="number" 
+                           min="0"
+                           value={newMaterial.quantity}
+                           onChange={e => setNewMaterial({...newMaterial, quantity: e.target.value ? parseInt(e.target.value) : ''})}
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-bold text-sm"
+                           required
+                        />
+                     </div>
+                     <div>
+                        <label className="block text-sm font-medium text-muted-foreground mb-1.5 font-sans">Mínimo</label>
+                        <input 
+                           type="number" 
+                           min="0"
+                           value={newMaterial.estoqueMinimo}
+                           onChange={e => setNewMaterial({...newMaterial, estoqueMinimo: e.target.value ? parseInt(e.target.value) : ''})}
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-bold text-sm"
+                           required
+                        />
+                     </div>
+                  </div>
+
+                  {/* Localização Física (Opcional) */}
+                  <div className="border-t border-border/50 pt-4 space-y-4">
+                     <h4 className="text-sm font-semibold text-foreground">Localização Física (Opcional)</h4>
+                     <div className="grid grid-cols-2 gap-4">
+                        <div>
+                           <label className="block text-xs font-medium text-muted-foreground mb-1 font-sans">Área</label>
+                           <input 
+                              type="text" 
+                              value={newMaterial.area}
+                              onChange={e => setNewMaterial({...newMaterial, area: e.target.value})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
+                              placeholder="Ex: Área A"
+                           />
+                        </div>
+                        <div>
+                           <label className="block text-xs font-medium text-muted-foreground mb-1 font-sans">Estante</label>
+                           <input 
+                              type="text" 
+                              value={newMaterial.estante}
+                              onChange={e => setNewMaterial({...newMaterial, estante: e.target.value})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
+                              placeholder="Ex: Estante 3"
+                           />
+                        </div>
+                        <div>
+                           <label className="block text-xs font-medium text-muted-foreground mb-1 font-sans">Prateleira</label>
+                           <input 
+                              type="text" 
+                              value={newMaterial.prateleira}
+                              onChange={e => setNewMaterial({...newMaterial, prateleira: e.target.value})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
+                              placeholder="Ex: Prateleira B"
+                           />
+                        </div>
+                        <div>
+                           <label className="block text-xs font-medium text-muted-foreground mb-1 font-sans">Palete</label>
+                           <input 
+                              type="text" 
+                              value={newMaterial.palete}
+                              onChange={e => setNewMaterial({...newMaterial, palete: e.target.value})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
+                              placeholder="Ex: Palete 12"
+                           />
+                        </div>
+                     </div>
+                     <AnimatePresence>
+                        {newMaterial.palete && (
+                           <motion.div 
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="space-y-1.5"
+                           >
+                              <label className="block text-xs font-medium text-muted-foreground font-sans">Quantidade do Palete</label>
+                              <input 
+                                 type="number" 
+                                 min="0"
+                                 value={newMaterial.paleteQty}
+                                 onChange={e => setNewMaterial({...newMaterial, paleteQty: e.target.value ? parseInt(e.target.value) : ''})}
+                                 className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm font-bold"
+                                 placeholder="Ex: 50"
+                              />
+                           </motion.div>
+                        )}
+                     </AnimatePresence>
+                  </div>
+
+                  {/* Vínculo de Setores Adicionais */}
+                  <div className="border-t border-border/50 pt-4 space-y-2">
+                     <label className="block text-sm font-semibold text-foreground">Vincular a Outros Setores (Opcional)</label>
+                     <p className="text-xs text-muted-foreground mb-2">Selecione setores adicionais nos quais este material também estará visível.</p>
+                     <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 bg-secondary/20 rounded-xl border border-border/50">
+                        {sectors
+                           .filter(s => s.id !== newMaterial.sectorId)
+                           .map(s => {
+                              const isChecked = (newMaterial.additionalSectors || '')
+                                .split(',')
+                                .filter(Boolean)
+                                .includes(s.id);
+                              return (
+                                <label key={s.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-secondary/50 rounded-lg cursor-pointer text-xs text-foreground">
+                                   <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={e => handleSectorCheckboxChange(e.target.checked, s, false)}
+                                      className="rounded text-blue-500 bg-secondary/50 border-border focus:ring-blue-500 w-3.5 h-3.5"
+                                   />
+                                   <span className="truncate">{s.name}</span>
+                                </label>
+                              );
+                           })}
+                        {sectors.filter(s => s.id !== newMaterial.sectorId).length === 0 && (
+                           <p className="text-xs text-muted-foreground italic p-2 col-span-2">Nenhum outro setor disponível</p>
+                        )}
+                     </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-4 border-t border-border/50">
+                     <button 
+                        type="button" 
+                        onClick={() => setShowNewModal(false)}
+                        className="flex-1 px-4 py-3 text-muted-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm"
+                     >
+                        Cancelar
+                     </button>
+                     <button 
+                        type="submit" 
+                        className="flex-1 px-4 py-3 bg-emerald-600 text-white font-medium rounded-xl hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-500/25 text-sm"
+                     >
+                        Cadastrar
+                     </button>
+                  </div>
                </form>
             </motion.div>
             </motion.div>
