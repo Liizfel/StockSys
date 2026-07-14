@@ -8,18 +8,16 @@ let databaseUrl = process.env.POSTGRES_PRISMA_URL ||
                     process.env.DATABASE_URL || 
                     process.env.URL_DO_BANCO_DE_DADOS;
 
-if (!databaseUrl || databaseUrl.includes('127.0.0.1') || databaseUrl.includes('localhost')) {
-  console.log("⚠️ Banco de dados Postgres local ou vazio detectado. Redirecionando para SQLite local (file:./dev.db).");
-  databaseUrl = 'file:./dev.db';
-  process.env.DATABASE_URL = 'file:./dev.db';
+if (!databaseUrl) {
+  console.log("⚠️ Nenhuma URL de banco de dados detectada!");
 }
 
 try {
-  console.log(`Conexão detectada (${databaseUrl.startsWith('file:') ? 'SQLite' : 'PostgreSQL'})! Executando: prisma db push...`);
+  console.log(`Conexão detectada! Executando: prisma db push...`);
   execSync('npx prisma db push --accept-data-loss', { stdio: 'inherit' });
   console.log("✅ Tabelas sincronizadas com sucesso no banco de dados!");
 } catch (error) {
-  console.error("⚠️ Erro na sincronização do banco de dados:", error.message);
+  console.error("⚠️ Erro na sincronização do banco de dados:", error.message || error);
   console.error("O build prosseguirá normalmente.");
 }
 console.log("--------------------------------------------------");

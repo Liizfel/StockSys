@@ -11,11 +11,6 @@ let resolvedDatabaseUrl = process.env.POSTGRES_PRISMA_URL ||
                             process.env.DATABASE_URL || 
                             process.env.URL_DO_BANCO_DE_DADOS || "";
 
-if (!resolvedDatabaseUrl || resolvedDatabaseUrl.includes('127.0.0.1') || resolvedDatabaseUrl.includes('localhost')) {
-  console.log("⚠️ Banco de dados Postgres local ou indisponível detectado. Redirecionando para SQLite local (file:./dev.db).");
-  resolvedDatabaseUrl = "file:./dev.db";
-}
-
 process.env.DATABASE_URL = resolvedDatabaseUrl;
 
 // Executa migração automática do banco de dados na inicialização do servidor (apenas fora do Vercel)
@@ -64,6 +59,7 @@ interface AuthenticatedRequest extends Request {
     role: 'MANAGER' | 'ATTENDANT';
     name: string;
     sectorId?: string | null;
+    additionalSectors?: string | null;
   };
 }
 
@@ -128,7 +124,8 @@ const authMiddleware = async (req: AuthenticatedRequest, res: Response, next: Ne
       id: dbUser.id,
       role: dbUser.role as 'MANAGER' | 'ATTENDANT',
       name: dbUser.name,
-      sectorId: dbUser.sectorId
+      sectorId: dbUser.sectorId,
+      additionalSectors: dbUser.additionalSectors
     };
     next();
   } catch (err) {
@@ -192,14 +189,15 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
   });
 
   // ATENÇÃO: Inclui o sectorId no token JWT e no retorno da API
-  const token = jwt.sign({ id: user.id, role: user.role, name: user.name, sectorId: user.sectorId }, SECRET_KEY, { expiresIn: '8h' });
+  const token = jwt.sign({ id: user.id, role: user.role, name: user.name, sectorId: user.sectorId, additionalSectors: user.additionalSectors }, SECRET_KEY, { expiresIn: '8h' });
   res.json({ 
     token, 
     user: { 
       id: user.id, 
       name: user.name, 
       role: user.role,
-      sectorId: user.sectorId 
+      sectorId: user.sectorId,
+      additionalSectors: user.additionalSectors
     } 
   });
 });
@@ -256,9 +254,14 @@ app.get('/api/auth/me', authMiddleware, (req: AuthenticatedRequest, res: Respons
 app.get('/api/materials', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   const whereClause: any = {};
   
-  // REGRA DE NEGÓCIO: Se for Atendente e tiver setor atribuído, filtra apenas materiais daquele setor
+  // REGRA DE NEGÓCIO: Se for Atendente e tiver setor atribuído, filtra apenas materiais daquele setor ou setores adicionais
   if (req.user?.role !== 'MANAGER' && req.user?.sectorId) {
-    whereClause.sectorId = req.user.sectorId;
+    const allowedSectors = [req.user.sectorId];
+    if (req.user.additionalSectors) {
+      const additional = req.user.additionalSectors.split(',').filter(Boolean);
+      allowedSectors.push(...additional);
+    }
+    whereClause.sectorId = { in: allowedSectors };
   }
 
   const dbMaterials = await prisma.material.findMany({
@@ -570,7 +573,8 @@ app.get('/api/users', authMiddleware, managerMiddleware, async (req: Request, re
       role: user.role,
       createdAt: user.createdAt,
       sectorId: user.sectorId,
-      sectorName: user.sector ? user.sector.name : null
+      sectorName: user.sector ? user.sector.name : null,
+      additionalSectors: user.additionalSectors || ""
     }));
 
     res.json(enrichedUsers);
@@ -580,18 +584,26 @@ app.get('/api/users', authMiddleware, managerMiddleware, async (req: Request, re
 });
 
 app.post('/api/users', authMiddleware, managerMiddleware, async (req: Request, res: Response) => {
-  const { name, email, password, role, sectorId } = req.body;
+  const { name, email, password, role, sectorId, additionalSectors } = req.body;
   try {
+    let additionalSectorsStr = "";
+    if (additionalSectors) {
+      additionalSectorsStr = Array.isArray(additionalSectors)
+        ? additionalSectors.filter(Boolean).join(',')
+        : String(additionalSectors);
+    }
+
     const newUser = await prisma.user.create({
       data: { 
         name, 
         email, 
         password: password || '123', 
         role,
-        sectorId: sectorId || null
+        sectorId: sectorId || null,
+        additionalSectors: additionalSectorsStr
       }
     });
-    res.json({ id: newUser.id, name, email, role, sectorId: newUser.sectorId });
+    res.json({ id: newUser.id, name, email, role, sectorId: newUser.sectorId, additionalSectors: newUser.additionalSectors });
   } catch (error) {
     res.status(400).json({ error: 'Email já cadastrado' });
   }
@@ -599,13 +611,21 @@ app.post('/api/users', authMiddleware, managerMiddleware, async (req: Request, r
 
 app.put('/api/users/:id', authMiddleware, managerMiddleware, async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { name, email, role, password, sectorId } = req.body;
+  const { name, email, role, password, sectorId, additionalSectors } = req.body;
   try {
+    let additionalSectorsStr = "";
+    if (additionalSectors !== undefined) {
+      additionalSectorsStr = Array.isArray(additionalSectors)
+        ? additionalSectors.filter(Boolean).join(',')
+        : String(additionalSectors);
+    }
+
     const updateData: any = { 
       name, 
       email, 
       role,
-      sectorId: sectorId || null 
+      sectorId: sectorId || null,
+      additionalSectors: additionalSectorsStr
     };
     if (password) updateData.password = password;
 
@@ -622,7 +642,8 @@ app.put('/api/users/:id', authMiddleware, managerMiddleware, async (req: Request
       role: updatedUser.role,
       createdAt: updatedUser.createdAt,
       sectorId: updatedUser.sectorId,
-      sectorName: updatedUser.sector ? updatedUser.sector.name : null
+      sectorName: updatedUser.sector ? updatedUser.sector.name : null,
+      additionalSectors: updatedUser.additionalSectors || ""
     });
   } catch (error) {
     res.status(404).json({ error: 'Usuário não encontrado ou falha na atualização' });
