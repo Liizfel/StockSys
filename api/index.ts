@@ -793,14 +793,14 @@ app.get('/api/logs/stock', authMiddleware, async (req: AuthenticatedRequest, res
 // AREA: VITE ENVIRONMENT / STATIC BUNDLE FALLBACK
 // ============================================================================
 
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
   import('vite').then(({ createServer }) => {
     createServer({ server: { middlewareMode: true }, appType: 'spa' })
       .then(vite => app.use(vite.middlewares));
   });
 } else {
   app.use(express.static(path.join(process.cwd(), 'dist')));
-  app.get('*', (req: Request, res: Response) => res.sendFile(path.join(process.cwd(), 'dist', 'index.html')));
+  app.get('*all', (req: Request, res: Response) => res.sendFile(path.join(process.cwd(), 'dist', 'index.html')));
 }
 
 if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
