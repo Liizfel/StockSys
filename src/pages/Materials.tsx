@@ -318,7 +318,7 @@ export default function Materials() {
     }
   };
 
-  const [historyMaterial, setHistoryMaterial] = useState<Material | null>(null);
+  const [selectedHistoryMaterial, setSelectedHistoryMaterial] = useState<Material | null>(null);
   const [historyLogs, setHistoryLogs] = useState<StockCountLog[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyDateFilter, setHistoryDateFilter] = useState('');
@@ -337,7 +337,7 @@ export default function Materials() {
   };
 
   const handleOpenHistory = (material: Material) => {
-    setHistoryMaterial(material);
+    setSelectedHistoryMaterial(material);
     setHistoryDateFilter('');
     setHistoryUserFilter('');
     fetchHistory(material.id);
@@ -719,7 +719,6 @@ export default function Materials() {
                         </div>
                       </td>
                     )}
-                    {/* 💡 CORREÇÃO DA EXIBIÇÃO DE STATUS DO KANBAN NA TABELA DESKTOP */}
                     {visibleCols.includes('status') && (
                       <td className="px-6 py-4 whitespace-nowrap">
                         {activeTab === 'giro' ? (
@@ -833,7 +832,6 @@ export default function Materials() {
                       {mat.codigoBarras && <span className="opacity-60 text-[10px] truncate">EAN: {mat.codigoBarras}</span>}
                     </div>
                   </div>
-                  {/* 💡 CORREÇÃO DA EXIBIÇÃO DE STATUS DO KANBAN NO MOBILE */}
                   <div className="shrink-0">
                      {activeTab === 'giro' ? (
                         <StatusBadge status={mat.statusGiro || 'PENDING'} />
@@ -1180,7 +1178,6 @@ export default function Materials() {
                   </p>
 
                   <div className="space-y-4">
-                     {/* Seção Estoque Pulmão */}
                      <div className={cn(
                         "p-3 rounded-xl border transition-all",
                         quantitiesModalData.isPulmao 
@@ -1212,7 +1209,6 @@ export default function Materials() {
                         )}
                      </div>
 
-                     {/* Seção Giro do Dia */}
                      <div className={cn(
                         "p-3 rounded-xl border transition-all",
                         quantitiesModalData.isGiro 
@@ -1720,7 +1716,7 @@ export default function Materials() {
 
       {/* History Modal */}
       <AnimatePresence>
-         {historyMaterial && (
+         {selectedHistoryMaterial && (
             <motion.div 
                initial={{ opacity: 0 }}
                animate={{ opacity: 1 }}
@@ -1738,9 +1734,9 @@ export default function Materials() {
                <div className="flex justify-between items-start mb-6 mt-2 shrink-0">
                   <div>
                      <h3 className="text-xl font-bold text-foreground">Histórico de Contagens</h3>
-                     <p className="text-sm text-muted-foreground mt-1">{historyMaterial.name} ({historyMaterial.code})</p>
+                     <p className="text-sm text-muted-foreground mt-1">{selectedHistoryMaterial.name} ({selectedHistoryMaterial.code})</p>
                   </div>
-                  <button onClick={() => setHistoryMaterial(null)} className="p-1.5 text-muted-foreground hover:bg-secondary rounded-lg transition-colors">
+                  <button onClick={() => setSelectedHistoryMaterial(null)} className="p-1.5 text-muted-foreground hover:bg-secondary rounded-lg transition-colors">
                      <X className="w-5 h-5" />
                   </button>
                </div>
@@ -1797,12 +1793,11 @@ export default function Materials() {
                               </div>
                            </div>
                            
-                           {/* 💡 CORREÇÃO DO RELATÓRIO DO HISTÓRICO INDIVIDUAL POR CANAL DE ESTOQUE */}
                            <div className="flex items-center justify-between text-sm bg-secondary/30 p-2 rounded-lg">
                               <div className="flex items-center gap-2">
-                                 <span className="text-muted-foreground line-through opacity-70">{log.previousQuantity} {formatUnit(historyMaterial.unit)}</span>
+                                 <span className="text-muted-foreground line-through opacity-70">{log.previousQuantity} {formatUnit(selectedHistoryMaterial.unit)}</span>
                                  <span className="text-foreground font-medium">→</span>
-                                 <span className="text-emerald-500 font-bold">{log.newQuantity} {formatUnit(historyMaterial.unit)}</span>
+                                 <span className="text-emerald-500 font-bold">{log.newQuantity} {formatUnit(selectedHistoryMaterial.unit)}</span>
                               </div>
                               <span className={cn(
                                  "text-[10px] font-bold px-2 py-0.5 rounded-md border",
@@ -2367,7 +2362,7 @@ export default function Materials() {
                </motion.div>
             </motion.div>
          )}
-      </AnPresence>
+      </AnimatePresence>
 
       {showScanner && (
         <BarcodeScanner 
@@ -2576,7 +2571,6 @@ export default function Materials() {
                   </div>
 
                   <div className="overflow-y-auto flex-1 pr-1 space-y-5 my-2">
-                     {/* Imagem do Produto */}
                      <div className="relative aspect-[16/9] w-full bg-secondary/10 border border-border rounded-xl overflow-hidden flex items-center justify-center group shrink-0">
                         {detailMaterial.imageUrl ? (
                            <>
@@ -2620,7 +2614,6 @@ export default function Materials() {
                         )}
                      </div>
 
-                     {/* Informações Grid */}
                      <div className="grid grid-cols-2 gap-3.5 bg-secondary/25 p-4 rounded-xl border border-border/60">
                         <div>
                            <span className="text-[10px] text-muted-foreground block uppercase tracking-wider font-semibold">Setor Atribuído</span>
@@ -2629,9 +2622,8 @@ export default function Materials() {
                            </span>
                         </div>
                         <div>
-                           {/* Espaço em branco intencional para manter grid simétrica */}
+                           {/* Mantém a simetria da grid */}
                         </div>
-                        {/* 💡 CORREÇÃO DA EXIBIÇÃO DE AMBOS OS STATUS DE FORMA ISOLADA NA FICHA DO PRODUTO */}
                         <div>
                            <span className="text-[10px] text-muted-foreground block uppercase tracking-wider font-semibold flex items-center gap-1">📦 Status Pulmão</span>
                            <div className="mt-1"><StatusBadge status={detailMaterial.status} /></div>
@@ -2680,7 +2672,6 @@ export default function Materials() {
                         </div>
                      </div>
 
-                     {/* Localização Física */}
                       {(detailMaterial.area || detailMaterial.estante || detailMaterial.prateleira || detailMaterial.palete) && (
                          <div className="bg-secondary/15 border border-border/50 rounded-xl p-4 space-y-2.5">
                             <span className="text-[10px] text-muted-foreground block uppercase tracking-wider font-bold">Localização Física</span>
@@ -2718,7 +2709,6 @@ export default function Materials() {
                          </div>
                       )}
 
-                      {/* Setores Adicionais */}
                       {(() => {
                          const additionalIds = (detailMaterial.additionalSectors || '').split(',').filter(Boolean);
                          if (additionalIds.length === 0) return null;
@@ -2748,7 +2738,6 @@ export default function Materials() {
                         </div>
                       )}
 
-                      {/* Ações Rápidas */}
                       <div className="space-y-2.5 pt-1">
                         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Ações Disponíveis</span>
                         <div className="grid grid-cols-2 gap-2">
