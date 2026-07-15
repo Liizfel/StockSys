@@ -86,6 +86,7 @@ export default function PurchaseRecommendations() {
 
   const recommendations = useMemo(() => {
     return materials
+      .filter(m => m.isPulmao !== false) // Apenas produtos do estoque pulmão
       .map(m => {
         const dailyUsage = m.dailyUsage || 0;
         const daysOfStock = dailyUsage > 0 ? Math.floor(m.quantity / dailyUsage) : undefined;

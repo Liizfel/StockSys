@@ -26,7 +26,7 @@ export interface Material {
   unit?: string;
   estoqueMinimo: number;
   highDiscrepancy?: boolean;
-  status: 'PENDING' | 'COUNTED_RECENTLY' | 'AWAITING_CONFIRMATION' | 'PURCHASE_REQUESTED' | 'COMPLETED';
+  status: 'PENDING' | 'COUNTED_RECENTLY' | 'AWAITING_CONFIRMATION' | 'PURCHASE_REQUESTED' | 'COMPLETED' | 'REALOCATED_TO_GIRO';
   notes?: string;
   updatedAt?: string;
   lastCountedBy?: string;
@@ -46,6 +46,8 @@ export interface Material {
   paleteQty?: number;
   additionalSectors?: string;
   isGiro?: boolean;
+  isPulmao?: boolean;
+  quantityGiro?: number;
 }
 
 export interface Supplier {

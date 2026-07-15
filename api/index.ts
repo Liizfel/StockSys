@@ -317,7 +317,9 @@ app.post('/api/materials', authMiddleware, managerMiddleware, async (req: Reques
       palete,
       paleteQty,
       additionalSectors,
-      isGiro
+      isGiro,
+      isPulmao,
+      quantityGiro
     } = req.body;
 
     let additionalSectorsStr = "";
@@ -342,6 +344,8 @@ app.post('/api/materials', authMiddleware, managerMiddleware, async (req: Reques
         origin: origin || null,
         imageUrl: imageUrl || null,
         isGiro: isGiro !== undefined ? Boolean(isGiro) : false,
+        isPulmao: isPulmao !== undefined ? Boolean(isPulmao) : true,
+        quantityGiro: quantityGiro !== undefined ? Number(quantityGiro) : 0,
         area: area || null,
         estante: estante || null,
         prateleira: prateleira || null,
@@ -398,7 +402,9 @@ app.put('/api/materials/:id', authMiddleware, managerMiddleware, async (req: Req
     palete,
     paleteQty,
     additionalSectors,
-    isGiro
+    isGiro,
+    isPulmao,
+    quantityGiro
   } = req.body;
   try {
     const material = await prisma.material.findUnique({ where: { id: String(id) } });
@@ -439,6 +445,8 @@ app.put('/api/materials/:id', authMiddleware, managerMiddleware, async (req: Req
         origin: origin !== undefined ? origin : undefined,
         imageUrl: imageUrl !== undefined ? imageUrl : undefined,
         isGiro: isGiro !== undefined ? Boolean(isGiro) : undefined,
+        isPulmao: isPulmao !== undefined ? Boolean(isPulmao) : undefined,
+        quantityGiro: quantityGiro !== undefined ? Number(quantityGiro) : undefined,
         area: area !== undefined ? area : undefined,
         estante: estante !== undefined ? estante : undefined,
         prateleira: prateleira !== undefined ? prateleira : undefined,
@@ -469,16 +477,17 @@ app.delete('/api/materials/:id', authMiddleware, managerMiddleware, async (req: 
 
 app.post('/api/materials/:id/count', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
-  const { newQuantity, notes, status, requestedQuantity, repostedAt } = req.body;
+  const { newQuantity, notes, status, requestedQuantity, repostedAt, countType } = req.body;
   
   const material = await prisma.material.findUnique({ where: { id: String(id) } });
   if (!material) return res.status(404).json({ error: 'Material não encontrado' });
 
-  const previousQuantity = material.quantity;
+  const isCountingGiro = countType === 'giro';
+  const previousQuantity = isCountingGiro ? material.quantityGiro : material.quantity;
   const estoqueMinimo = material.estoqueMinimo;
   
   let finalStatus = status !== undefined ? status : 'COMPLETED';
-  const resolvedNewQuantity = newQuantity !== undefined ? Number(newQuantity) : material.quantity;
+  const resolvedNewQuantity = newQuantity !== undefined ? Number(newQuantity) : previousQuantity;
   if (resolvedNewQuantity <= estoqueMinimo && status === undefined) {
     finalStatus = 'PURCHASE_REQUESTED';
   }
@@ -494,17 +503,30 @@ app.post('/api/materials/:id/count', authMiddleware, async (req: AuthenticatedRe
     }
   }
 
+  const updateData: any = {
+    notes: notes !== undefined ? notes : material.notes,
+    status: finalStatus,
+    requestedQuantity: req.body.requestedQuantity !== undefined 
+      ? (req.body.requestedQuantity === null ? null : Number(req.body.requestedQuantity)) 
+      : material.requestedQuantity,
+    repostedAt: resolvedRepostedAt
+  };
+
+  if (isCountingGiro) {
+    updateData.quantityGiro = resolvedNewQuantity;
+  } else {
+    updateData.quantity = resolvedNewQuantity;
+    if (finalStatus === 'REALOCATED_TO_GIRO') {
+      const diff = material.quantity - resolvedNewQuantity;
+      if (diff > 0) {
+        updateData.quantityGiro = (material.quantityGiro || 0) + diff;
+      }
+    }
+  }
+
   const updatedMaterial = await prisma.material.update({
     where: { id: String(id) },
-    data: {
-      quantity: resolvedNewQuantity,
-      notes: notes !== undefined ? notes : material.notes,
-      status: finalStatus,
-      requestedQuantity: req.body.requestedQuantity !== undefined 
-        ? (req.body.requestedQuantity === null ? null : Number(req.body.requestedQuantity)) 
-        : material.requestedQuantity,
-      repostedAt: resolvedRepostedAt
-    }
+    data: updateData
   });
 
   await prisma.stockCount.create({

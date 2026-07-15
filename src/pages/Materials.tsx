@@ -38,7 +38,7 @@ export default function Materials() {
   const [filterSector, setFilterSector] = useState('');
   const [loading, setLoading] = useState(true);
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'geral' | 'giro'>('geral');
+  const [activeTab, setActiveTab] = useState<'visao_geral' | 'pulmao' | 'giro'>('visao_geral');
 
   // Preferências de colunas
   const [showColumnsModal, setShowColumnsModal] = useState(false);
@@ -70,6 +70,7 @@ export default function Materials() {
   const [countQuantity, setCountQuantity] = useState<number | string>('');
   const [countNotes, setCountNotes] = useState('');
   const [countStatus, setCountStatus] = useState<Material['status']>('COMPLETED');
+  const [countTargetStock, setCountTargetStock] = useState<'pulmao' | 'giro'>('pulmao');
   const [duplicateModal, setDuplicateModal] = useState<{
     isOpen: boolean;
     code: string;
@@ -110,10 +111,71 @@ export default function Materials() {
     palete: '',
     paleteQty: '' as string | number,
     additionalSectors: '',
-    isGiro: false
+    isGiro: false,
+    isPulmao: true,
+    quantityGiro: 0 as string | number
   });
   const [showScanner, setShowScanner] = useState(false);
   const [scanTarget, setScanTarget] = useState<'search' | 'editMaterial' | null>(null);
+
+  // Estado do Modal de Confirmação de Quantidades (Pulmão/Giro)
+  const [showConfirmQuantitiesModal, setShowConfirmQuantitiesModal] = useState(false);
+  const [quantitiesModalData, setQuantitiesModalData] = useState({
+    productName: '',
+    isPulmao: true,
+    isGiro: false,
+    quantityPulmao: 0 as string | number,
+    quantityGiro: 0 as string | number,
+    onConfirm: (qPulmao: number, qGiro: number, isP: boolean, isG: boolean) => {}
+  });
+
+  const handleToggleStockNew = (type: 'pulmao' | 'giro', checked: boolean) => {
+    const isP = type === 'pulmao' ? checked : (newMaterial.isPulmao !== undefined ? newMaterial.isPulmao : true);
+    const isG = type === 'giro' ? checked : newMaterial.isGiro;
+    
+    setQuantitiesModalData({
+      productName: newMaterial.name || 'Novo Produto',
+      isPulmao: isP,
+      isGiro: isG,
+      quantityPulmao: newMaterial.quantity || 0,
+      quantityGiro: newMaterial.quantityGiro || 0,
+      onConfirm: (qPulmao, qGiro, finalIsP, finalIsG) => {
+        setNewMaterial(prev => ({
+          ...prev,
+          isPulmao: finalIsP,
+          isGiro: finalIsG,
+          quantity: qPulmao,
+          quantityGiro: qGiro
+        }));
+        setShowConfirmQuantitiesModal(false);
+      }
+    });
+    setShowConfirmQuantitiesModal(true);
+  };
+
+  const handleToggleStockEdit = (type: 'pulmao' | 'giro', checked: boolean) => {
+    const isP = type === 'pulmao' ? checked : (editMaterialForm.isPulmao !== undefined ? editMaterialForm.isPulmao : true);
+    const isG = type === 'giro' ? checked : editMaterialForm.isGiro;
+    
+    setQuantitiesModalData({
+      productName: editMaterialForm.name || 'Editar Produto',
+      isPulmao: isP,
+      isGiro: isG,
+      quantityPulmao: editMaterialForm.quantity || 0,
+      quantityGiro: editMaterialForm.quantityGiro || 0,
+      onConfirm: (qPulmao, qGiro, finalIsP, finalIsG) => {
+        setEditMaterialForm(prev => ({
+          ...prev,
+          isPulmao: finalIsP,
+          isGiro: finalIsG,
+          quantity: qPulmao,
+          quantityGiro: qGiro
+        }));
+        setShowConfirmQuantitiesModal(false);
+      }
+    });
+    setShowConfirmQuantitiesModal(true);
+  };
 
   // Estado do Modal de Cadastro de Fornecedor
   const [showAddSupplierModal, setShowAddSupplierModal] = useState(false);
@@ -143,7 +205,9 @@ export default function Materials() {
     palete: '',
     paleteQty: '' as string | number,
     additionalSectors: '',
-    isGiro: false
+    isGiro: false,
+    isPulmao: true,
+    quantityGiro: 0 as string | number
   });
 
   const handleSectorCheckboxChange = (checked: boolean, targetSector: Sector, isEdit: boolean) => {
@@ -204,7 +268,9 @@ export default function Materials() {
       palete: material.palete || '',
       paleteQty: material.paleteQty !== null && material.paleteQty !== undefined ? material.paleteQty : '',
       additionalSectors: material.additionalSectors || '',
-      isGiro: material.isGiro || false
+      isGiro: material.isGiro || false,
+      isPulmao: material.isPulmao !== undefined ? material.isPulmao : true,
+      quantityGiro: material.quantityGiro !== undefined && material.quantityGiro !== null ? material.quantityGiro : 0
     });
     setShowEditMaterialModal(true);
   };
@@ -238,6 +304,8 @@ export default function Materials() {
           origin: editMaterialForm.origin || null,
           imageUrl: editMaterialForm.imageUrl || null,
           isGiro: editMaterialForm.isGiro,
+          isPulmao: editMaterialForm.isPulmao,
+          quantityGiro: Number(editMaterialForm.quantityGiro) || 0,
           supplierDeliveryDays: editMaterialForm.supplierDeliveryDays !== '' ? Number(editMaterialForm.supplierDeliveryDays) : null,
           area: editMaterialForm.area || null,
           estante: editMaterialForm.estante || null,
@@ -333,7 +401,8 @@ export default function Materials() {
         body: JSON.stringify({
           newQuantity: countQuantity,
           notes: countNotes,
-          status: countStatus
+          status: countStatus,
+          countType: countTargetStock
         })
       }, token);
       
@@ -417,7 +486,12 @@ export default function Materials() {
     }
     const matchesSearch = m.name.toLowerCase().includes(search.toLowerCase()) || m.code.toLowerCase().includes(search.toLowerCase()) || (m.codigoBarras && m.codigoBarras.includes(search));
     const matchesSector = filterSector ? (m.sectorId === filterSector || (m.additionalSectors || '').split(',').includes(filterSector)) : true;
-    const matchesGiro = activeTab === 'giro' ? !!m.isGiro : !m.isGiro;
+    let matchesGiro = true;
+    if (activeTab === 'giro') {
+      matchesGiro = !!m.isGiro;
+    } else if (activeTab === 'pulmao') {
+      matchesGiro = m.isPulmao !== false;
+    }
     return matchesSearch && matchesSector && matchesGiro;
   }).sort((a, b) => {
     const now = new Date().getTime();
@@ -470,19 +544,31 @@ export default function Materials() {
 
   return (
     <div className="space-y-6">
-      {/* Tab Switcher - Setor de Giro */}
+      {/* Tab Switcher - Setor de Estoques */}
       <div className="inline-flex bg-card/60 backdrop-blur-md p-1 rounded-xl border border-border shadow-sm">
         <button
           type="button"
-          onClick={() => setActiveTab('geral')}
+          onClick={() => setActiveTab('visao_geral')}
           className={cn(
             "px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2",
-            activeTab === 'geral'
+            activeTab === 'visao_geral'
               ? "bg-secondary text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
           )}
         >
-          Estoque Geral (Pulmão)
+          👁️ Visão Geral
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('pulmao')}
+          className={cn(
+            "px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2",
+            activeTab === 'pulmao'
+              ? "bg-blue-500/10 text-blue-500 dark:bg-blue-500/20 dark:text-blue-400 shadow-sm border border-blue-500/20"
+              : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
+          )}
+        >
+          📦 Estoque Geral (Pulmão)
         </button>
         <button
           type="button"
@@ -598,7 +684,24 @@ export default function Materials() {
                     {visibleCols.includes('stock') && (
                       <td className="px-6 py-4 whitespace-nowrap relative">
                         <div className="flex items-center gap-2">
-                           <span className="text-sm font-bold text-foreground">{mat.quantity} {formatUnit(mat.unit)}</span>
+                           {activeTab === 'giro' ? (
+                              <span className="text-sm font-bold text-amber-500 flex items-center gap-1">⚡ {mat.quantityGiro || 0} {formatUnit(mat.unit)}</span>
+                           ) : activeTab === 'pulmao' ? (
+                              <span className="text-sm font-bold text-blue-500 flex items-center gap-1">📦 {mat.quantity || 0} {formatUnit(mat.unit)}</span>
+                           ) : (
+                              <div className="flex flex-col gap-0.5">
+                                 {mat.isPulmao !== false && (
+                                    <span className="text-xs font-semibold text-foreground flex items-center gap-1">
+                                       <span className="text-blue-500" title="Estoque Pulmão">📦</span> {mat.quantity || 0} {formatUnit(mat.unit)}
+                                    </span>
+                                 )}
+                                 {mat.isGiro && (
+                                    <span className="text-xs font-semibold text-foreground flex items-center gap-1">
+                                       <span className="text-amber-500" title="Giro do Dia">⚡</span> {mat.quantityGiro || 0} {formatUnit(mat.unit)}
+                                    </span>
+                                 )}
+                              </div>
+                           )}
                            {/* Smart Table Hover Chart */}
                            {hoveredRow === mat.id && (
                               <motion.div 
@@ -607,7 +710,7 @@ export default function Materials() {
                                  className="absolute left-14 top-1/2 -translate-y-1/2 h-8 w-20 bg-background/80 rounded border border-border px-1 pointer-events-none"
                               >
                                  <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={generateMiniChartData(mat.quantity)}>
+                                    <LineChart data={generateMiniChartData(activeTab === 'giro' ? (mat.quantityGiro || 0) : activeTab === 'pulmao' ? mat.quantity : (mat.quantity || 0) + (mat.quantityGiro || 0))}>
                                        <Line type="monotone" dataKey="val" stroke="#6366f1" strokeWidth={2} dot={false} isAnimationActive={false} />
                                     </LineChart>
                                  </ResponsiveContainer>
@@ -638,7 +741,9 @@ export default function Materials() {
                            <button 
                              onClick={() => {
                                setSelectedMaterial(mat);
-                               setCountQuantity(mat.quantity);
+                               const targetStock = activeTab === 'giro' ? 'giro' : activeTab === 'pulmao' ? 'pulmao' : (mat.isPulmao !== false ? 'pulmao' : 'giro');
+                               setCountTargetStock(targetStock);
+                               setCountQuantity(targetStock === 'giro' ? (mat.quantityGiro || 0) : mat.quantity);
                                setCountNotes(mat.notes || '');
                                setCountStatus(mat.status);
                              }}
@@ -718,9 +823,26 @@ export default function Materials() {
                   </div>
                   <div>
                     <span className="text-muted-foreground block font-medium mb-0.5">Estoque Disponível</span>
-                    <span className="text-foreground font-bold text-sm block">
-                      {mat.quantity} {formatUnit(mat.unit)}
-                    </span>
+                    <div className="text-foreground font-bold text-sm block">
+                      {activeTab === 'giro' ? (
+                        <span className="text-amber-500 flex items-center gap-1">⚡ {mat.quantityGiro || 0} {formatUnit(mat.unit)}</span>
+                      ) : activeTab === 'pulmao' ? (
+                        <span className="text-blue-500 flex items-center gap-1">📦 {mat.quantity || 0} {formatUnit(mat.unit)}</span>
+                      ) : (
+                        <div className="flex flex-col gap-1 mt-0.5">
+                          {mat.isPulmao !== false && (
+                            <span className="text-xs font-semibold text-foreground flex items-center gap-1">
+                              <span className="text-blue-500" title="Estoque Pulmão">📦</span> {mat.quantity || 0} {formatUnit(mat.unit)}
+                            </span>
+                          )}
+                          {mat.isGiro && (
+                            <span className="text-xs font-semibold text-foreground flex items-center gap-1">
+                              <span className="text-amber-500" title="Giro do Dia">⚡</span> {mat.quantityGiro || 0} {formatUnit(mat.unit)}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -752,7 +874,9 @@ export default function Materials() {
                   <button 
                     onClick={() => {
                       setSelectedMaterial(mat);
-                      setCountQuantity(mat.quantity);
+                      const targetStock = activeTab === 'giro' ? 'giro' : activeTab === 'pulmao' ? 'pulmao' : (mat.isPulmao !== false ? 'pulmao' : 'giro');
+                      setCountTargetStock(targetStock);
+                      setCountQuantity(targetStock === 'giro' ? (mat.quantityGiro || 0) : mat.quantity);
                       setCountNotes(mat.notes || '');
                       setCountStatus(mat.status);
                     }}
@@ -860,6 +984,51 @@ export default function Materials() {
                </div>
                
                <form onSubmit={handleCountSubmit} className="space-y-5">
+               {/* Seletor de Estoque Alvo (Pulmão vs Giro) */}
+               {selectedMaterial.isGiro && selectedMaterial.isPulmao !== false ? (
+                  <div className="bg-secondary/40 p-1.5 rounded-xl border border-border/60 flex gap-2">
+                     <button
+                        type="button"
+                        onClick={() => {
+                           setCountTargetStock('pulmao');
+                           setCountQuantity(selectedMaterial.quantity || 0);
+                        }}
+                        className={cn(
+                           "flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
+                           countTargetStock === 'pulmao'
+                              ? "bg-blue-500/10 text-blue-500 border border-blue-500/25 shadow-sm"
+                              : "text-muted-foreground hover:text-foreground"
+                        )}
+                     >
+                        📦 Estoque Pulmão
+                     </button>
+                     <button
+                        type="button"
+                        onClick={() => {
+                           setCountTargetStock('giro');
+                           setCountQuantity(selectedMaterial.quantityGiro || 0);
+                        }}
+                        className={cn(
+                           "flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
+                           countTargetStock === 'giro'
+                              ? "bg-amber-500/10 text-amber-500 border border-amber-500/25 shadow-sm"
+                              : "text-muted-foreground hover:text-foreground"
+                        )}
+                     >
+                        ⚡ Giro do Dia
+                     </button>
+                  </div>
+               ) : (
+                  <div className="text-xs text-muted-foreground flex items-center gap-1.5 font-medium px-1">
+                     <span>Estoque Alvo:</span>
+                     {countTargetStock === 'giro' ? (
+                        <span className="text-amber-500 font-semibold flex items-center gap-1">⚡ Giro do Dia</span>
+                     ) : (
+                        <span className="text-blue-500 font-semibold flex items-center gap-1">📦 Estoque Pulmão</span>
+                     )}
+                  </div>
+               )}
+
                <div>
                   <label className="block text-sm font-medium text-muted-foreground mb-1.5">Quantidade Encontrada Fisicamente ({formatUnit(selectedMaterial.unit)})</label>
                   <div className="flex items-center gap-4">
@@ -872,13 +1041,13 @@ export default function Materials() {
                      required
                      />
                      <div className="text-sm text-muted-foreground flex flex-col">
-                        <span>Anterior: <strong className="text-foreground">{selectedMaterial.quantity} {formatUnit(selectedMaterial.unit)}</strong></span>
+                        <span>Anterior: <strong className="text-foreground">{(countTargetStock === 'giro' ? (selectedMaterial.quantityGiro || 0) : selectedMaterial.quantity)} {formatUnit(selectedMaterial.unit)}</strong></span>
                         <span className={cn(
                            "font-medium mt-0.5",
-                           Number(countQuantity) > selectedMaterial.quantity ? "text-emerald-500" : 
-                           Number(countQuantity) < selectedMaterial.quantity ? "text-red-500" : "text-muted-foreground"
+                           Number(countQuantity) > (countTargetStock === 'giro' ? (selectedMaterial.quantityGiro || 0) : selectedMaterial.quantity) ? "text-emerald-500" : 
+                           Number(countQuantity) < (countTargetStock === 'giro' ? (selectedMaterial.quantityGiro || 0) : selectedMaterial.quantity) ? "text-red-500" : "text-muted-foreground"
                         )}>
-                           Diferença: {Number(countQuantity) - selectedMaterial.quantity > 0 ? '+' : ''}{Number(countQuantity) - selectedMaterial.quantity} {formatUnit(selectedMaterial.unit)}
+                           Diferença: {Number(countQuantity) - (countTargetStock === 'giro' ? (selectedMaterial.quantityGiro || 0) : selectedMaterial.quantity) > 0 ? '+' : ''}{Number(countQuantity) - (countTargetStock === 'giro' ? (selectedMaterial.quantityGiro || 0) : selectedMaterial.quantity)} {formatUnit(selectedMaterial.unit)}
                         </span>
                      </div>
                   </div>
@@ -896,6 +1065,9 @@ export default function Materials() {
                      <option value="AWAITING_CONFIRMATION">Aguardando Conferência (Gestor)</option>
                      <option value="PURCHASE_REQUESTED">Solicitado à Compra</option>
                      <option value="COMPLETED">Finalizado / Reposto / OK</option>
+                     {countTargetStock === 'pulmao' && (
+                        <option value="REALOCATED_TO_GIRO">Realocado para estoque de giro</option>
+                     )}
                   </select>
                </div>
                
@@ -928,6 +1100,140 @@ export default function Materials() {
                </form>
             </motion.div>
             </motion.div>
+         )}
+      </AnimatePresence>
+
+      {/* Modal de Confirmação de Quantidades (Pulmão vs Giro) */}
+      <AnimatePresence>
+         {showConfirmQuantitiesModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in-0 duration-200">
+               <motion.div 
+                  initial={{ opacity: 0 }} 
+                  animate={{ opacity: 1 }} 
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+                  onClick={() => setShowConfirmQuantitiesModal(false)}
+               />
+               <motion.div 
+                  initial={{ scale: 0.95, y: 20 }}
+                  animate={{ scale: 1, y: 0 }}
+                  exit={{ scale: 0.95, y: 20 }}
+                  className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 relative z-10 overflow-hidden"
+               >
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-amber-500"></div>
+                  
+                  <div className="flex justify-between items-start mb-4 mt-2">
+                     <div>
+                        <h3 className="text-lg font-bold text-foreground">Definir Quantidades de Estoque</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">{quantitiesModalData.productName}</p>
+                     </div>
+                     <button onClick={() => setShowConfirmQuantitiesModal(false)} className="p-1 text-muted-foreground hover:bg-secondary rounded-lg transition-colors">
+                        <X className="w-5 h-5" />
+                     </button>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground mb-4">
+                     Configure as quantidades físicas disponíveis em cada tipo de estoque para este produto.
+                  </p>
+
+                  <div className="space-y-4">
+                     {/* Seção Estoque Pulmão */}
+                     <div className={cn(
+                        "p-3 rounded-xl border transition-all",
+                        quantitiesModalData.isPulmao 
+                           ? "bg-blue-500/5 border-blue-500/20" 
+                           : "bg-secondary/10 border-border/30 opacity-60"
+                     )}>
+                        <label className="flex items-center gap-2 mb-2 cursor-pointer">
+                           <input 
+                              type="checkbox"
+                              checked={quantitiesModalData.isPulmao}
+                              onChange={e => setQuantitiesModalData(prev => ({ ...prev, isPulmao: e.target.checked }))}
+                              className="rounded text-blue-500 bg-secondary/50 border-border focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                           />
+                           <span className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                              📦 Estoque Pulmão
+                           </span>
+                        </label>
+                        {quantitiesModalData.isPulmao && (
+                           <div className="mt-2 pl-6 animate-in slide-in-from-top-1 duration-200">
+                              <label className="block text-xs text-muted-foreground mb-1">Quantidade em Estoque Pulmão</label>
+                              <input 
+                                 type="number"
+                                 min="0"
+                                 value={quantitiesModalData.quantityPulmao}
+                                 onChange={e => setQuantitiesModalData(prev => ({ ...prev, quantityPulmao: e.target.value ? parseInt(e.target.value) : '' }))}
+                                 className="w-full bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
+                              />
+                           </div>
+                        )}
+                     </div>
+
+                     {/* Seção Giro do Dia */}
+                     <div className={cn(
+                        "p-3 rounded-xl border transition-all",
+                        quantitiesModalData.isGiro 
+                           ? "bg-amber-500/5 border-amber-500/20" 
+                           : "bg-secondary/10 border-border/30 opacity-60"
+                     )}>
+                        <label className="flex items-center gap-2 mb-2 cursor-pointer">
+                           <input 
+                              type="checkbox"
+                              checked={quantitiesModalData.isGiro}
+                              onChange={e => setQuantitiesModalData(prev => ({ ...prev, isGiro: e.target.checked }))}
+                              className="rounded text-amber-500 bg-secondary/50 border-border focus:ring-amber-500 w-4 h-4 cursor-pointer"
+                           />
+                           <span className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                              ⚡ Giro do Dia
+                           </span>
+                        </label>
+                        {quantitiesModalData.isGiro && (
+                           <div className="mt-2 pl-6 animate-in slide-in-from-top-1 duration-200">
+                              <label className="block text-xs text-muted-foreground mb-1">Quantidade em Estoque de Giro</label>
+                              <input 
+                                 type="number"
+                                 min="0"
+                                 value={quantitiesModalData.quantityGiro}
+                                 onChange={e => setQuantitiesModalData(prev => ({ ...prev, quantityGiro: e.target.value ? parseInt(e.target.value) : '' }))}
+                                 className="w-full bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500/50 outline-none text-foreground"
+                              />
+                           </div>
+                        )}
+                     </div>
+                  </div>
+
+                  {!quantitiesModalData.isPulmao && !quantitiesModalData.isGiro && (
+                     <p className="text-[11px] text-red-500 font-medium mt-3 italic text-center">
+                        Você precisa selecionar pelo menos um destino de estoque!
+                     </p>
+                  )}
+
+                  <div className="flex gap-3 pt-4 border-t border-border/50 mt-5">
+                     <button 
+                        type="button"
+                        onClick={() => setShowConfirmQuantitiesModal(false)}
+                        className="flex-1 px-4 py-2.5 border border-border text-foreground text-sm font-medium rounded-xl hover:bg-secondary transition-colors"
+                     >
+                        Cancelar
+                     </button>
+                     <button 
+                        type="button"
+                        disabled={!quantitiesModalData.isPulmao && !quantitiesModalData.isGiro}
+                        onClick={() => {
+                           quantitiesModalData.onConfirm(
+                              Number(quantitiesModalData.quantityPulmao) || 0,
+                              Number(quantitiesModalData.quantityGiro) || 0,
+                              quantitiesModalData.isPulmao,
+                              quantitiesModalData.isGiro
+                           );
+                        }}
+                        className="flex-1 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg shadow-blue-500/20"
+                     >
+                        Confirmar e Salvar
+                     </button>
+                  </div>
+               </motion.div>
+            </div>
          )}
       </AnimatePresence>
 
@@ -1258,24 +1564,94 @@ export default function Materials() {
                      </div>
                   </div>
 
-                  {/* Campo de Giro do Dia */}
-                  <div className="border-t border-border/50 pt-4">
-                     <label className="flex items-start gap-3 p-3 bg-secondary/20 hover:bg-secondary/30 rounded-xl border border-border/50 cursor-pointer transition-all">
-                        <input
-                           type="checkbox"
-                           checked={newMaterial.isGiro}
-                           onChange={e => setNewMaterial({ ...newMaterial, isGiro: e.target.checked })}
-                           className="mt-1 rounded text-amber-500 bg-secondary/50 border-border focus:ring-amber-500 w-4 h-4 shrink-0"
-                        />
-                        <div className="flex flex-col">
-                           <span className="text-sm font-semibold text-foreground flex items-center gap-1">
-                              ⚡ Este item pertence ao Giro do Dia (Uso Rápido)?
-                           </span>
-                           <span className="text-xs text-muted-foreground mt-0.5">
-                              Ative para destacar no fluxo de giro e habilitar contagens diárias rápidas.
-                           </span>
+                  {/* Configuração de Estoques */}
+                  <div className="border-t border-border/50 pt-4 space-y-3">
+                     <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Configuração de Destino de Estoque</span>
+                     
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {/* Estoque Pulmão */}
+                        <label className="flex items-start gap-3 p-3 bg-secondary/20 hover:bg-secondary/30 rounded-xl border border-border/50 cursor-pointer transition-all">
+                           <input
+                              type="checkbox"
+                              checked={newMaterial.isPulmao !== undefined ? newMaterial.isPulmao : true}
+                              onChange={e => handleToggleStockNew('pulmao', e.target.checked)}
+                              className="mt-1 rounded text-blue-500 bg-secondary/50 border-border focus:ring-blue-500 w-4 h-4 shrink-0"
+                           />
+                           <div className="flex flex-col">
+                              <span className="text-sm font-semibold text-foreground flex items-center gap-1">
+                                 📦 Estoque Pulmão
+                              </span>
+                              <span className="text-xs text-muted-foreground mt-0.5">
+                                 Estoque geral a granel.
+                              </span>
+                           </div>
+                        </label>
+
+                        {/* Estoque de Giro */}
+                        <label className="flex items-start gap-3 p-3 bg-secondary/20 hover:bg-secondary/30 rounded-xl border border-border/50 cursor-pointer transition-all">
+                           <input
+                              type="checkbox"
+                              checked={newMaterial.isGiro}
+                              onChange={e => handleToggleStockNew('giro', e.target.checked)}
+                              className="mt-1 rounded text-amber-500 bg-secondary/50 border-border focus:ring-amber-500 w-4 h-4 shrink-0"
+                           />
+                           <div className="flex flex-col">
+                              <span className="text-sm font-semibold text-foreground flex items-center gap-1">
+                                 ⚡ Giro do Dia
+                              </span>
+                              <span className="text-xs text-muted-foreground mt-0.5">
+                                 Estoque rotativo de uso diário.
+                              </span>
+                           </div>
+                        </label>
+                     </div>
+
+                     {/* Resumo de quantidades */}
+                     <div className="bg-secondary/30 p-3 rounded-xl border border-border/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-sm">
+                        <div className="space-y-1">
+                           {(newMaterial.isPulmao !== undefined ? newMaterial.isPulmao : true) && (
+                              <div className="flex items-center gap-2">
+                                 <span className="text-blue-500 font-bold">📦 Pulmão:</span>
+                                 <span className="text-foreground font-semibold">{newMaterial.quantity || 0} {formatUnit(newMaterial.unit)}</span>
+                              </div>
+                           )}
+                           {newMaterial.isGiro && (
+                              <div className="flex items-center gap-2">
+                                 <span className="text-amber-500 font-bold">⚡ Giro:</span>
+                                 <span className="text-foreground font-semibold">{newMaterial.quantityGiro || 0} {formatUnit(newMaterial.unit)}</span>
+                              </div>
+                           )}
+                           {!(newMaterial.isPulmao !== undefined ? newMaterial.isPulmao : true) && !newMaterial.isGiro && (
+                              <span className="text-red-500 font-semibold italic text-xs">Selecione pelo menos um destino de estoque</span>
+                           )}
                         </div>
-                     </label>
+                        <button
+                           type="button"
+                           onClick={() => {
+                              setQuantitiesModalData({
+                                 productName: newMaterial.name || 'Novo Produto',
+                                 isPulmao: newMaterial.isPulmao !== undefined ? newMaterial.isPulmao : true,
+                                 isGiro: newMaterial.isGiro,
+                                 quantityPulmao: newMaterial.quantity || 0,
+                                 quantityGiro: newMaterial.quantityGiro || 0,
+                                 onConfirm: (qPulmao, qGiro, finalIsP, finalIsG) => {
+                                    setNewMaterial(prev => ({
+                                       ...prev,
+                                       isPulmao: finalIsP,
+                                       isGiro: finalIsG,
+                                       quantity: qPulmao,
+                                       quantityGiro: qGiro
+                                    }));
+                                    setShowConfirmQuantitiesModal(false);
+                                 }
+                              });
+                              setShowConfirmQuantitiesModal(true);
+                           }}
+                           className="text-xs px-3 py-1.5 bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 border border-blue-500/20 rounded-lg transition-colors font-semibold"
+                        >
+                           Definir Quantidades
+                        </button>
+                     </div>
                   </div>
 
                   <div className="flex gap-3 pt-4 border-t border-border/50">
@@ -1722,24 +2098,94 @@ export default function Materials() {
                      </div>
                   </div>
 
-                  {/* Campo de Giro do Dia */}
-                  <div className="border-t border-border/50 pt-4">
-                     <label className="flex items-start gap-3 p-3 bg-secondary/20 hover:bg-secondary/30 rounded-xl border border-border/50 cursor-pointer transition-all">
-                        <input
-                           type="checkbox"
-                           checked={editMaterialForm.isGiro}
-                           onChange={e => setEditMaterialForm({ ...editMaterialForm, isGiro: e.target.checked })}
-                           className="mt-1 rounded text-amber-500 bg-secondary/50 border-border focus:ring-amber-500 w-4 h-4 shrink-0"
-                        />
-                        <div className="flex flex-col">
-                           <span className="text-sm font-semibold text-foreground flex items-center gap-1">
-                              ⚡ Este item pertence ao Giro do Dia (Uso Rápido)?
-                           </span>
-                           <span className="text-xs text-muted-foreground mt-0.5">
-                              Ative para destacar no fluxo de giro e habilitar contagens diárias rápidas.
-                           </span>
+                  {/* Configuração de Estoques */}
+                  <div className="border-t border-border/50 pt-4 space-y-3">
+                     <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Configuração de Destino de Estoque</span>
+                     
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {/* Estoque Pulmão */}
+                        <label className="flex items-start gap-3 p-3 bg-secondary/20 hover:bg-secondary/30 rounded-xl border border-border/50 cursor-pointer transition-all">
+                           <input
+                              type="checkbox"
+                              checked={editMaterialForm.isPulmao !== undefined ? editMaterialForm.isPulmao : true}
+                              onChange={e => handleToggleStockEdit('pulmao', e.target.checked)}
+                              className="mt-1 rounded text-blue-500 bg-secondary/50 border-border focus:ring-blue-500 w-4 h-4 shrink-0"
+                           />
+                           <div className="flex flex-col">
+                              <span className="text-sm font-semibold text-foreground flex items-center gap-1">
+                                 📦 Estoque Pulmão
+                              </span>
+                              <span className="text-xs text-muted-foreground mt-0.5">
+                                 Estoque geral a granel.
+                              </span>
+                           </div>
+                        </label>
+
+                        {/* Estoque de Giro */}
+                        <label className="flex items-start gap-3 p-3 bg-secondary/20 hover:bg-secondary/30 rounded-xl border border-border/50 cursor-pointer transition-all">
+                           <input
+                              type="checkbox"
+                              checked={editMaterialForm.isGiro}
+                              onChange={e => handleToggleStockEdit('giro', e.target.checked)}
+                              className="mt-1 rounded text-amber-500 bg-secondary/50 border-border focus:ring-amber-500 w-4 h-4 shrink-0"
+                           />
+                           <div className="flex flex-col">
+                              <span className="text-sm font-semibold text-foreground flex items-center gap-1">
+                                 ⚡ Giro do Dia
+                              </span>
+                              <span className="text-xs text-muted-foreground mt-0.5">
+                                 Estoque rotativo de uso diário.
+                              </span>
+                           </div>
+                        </label>
+                     </div>
+
+                     {/* Resumo de quantidades */}
+                     <div className="bg-secondary/30 p-3 rounded-xl border border-border/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-sm">
+                        <div className="space-y-1">
+                           {(editMaterialForm.isPulmao !== undefined ? editMaterialForm.isPulmao : true) && (
+                              <div className="flex items-center gap-2">
+                                 <span className="text-blue-500 font-bold">📦 Pulmão:</span>
+                                 <span className="text-foreground font-semibold">{editMaterialForm.quantity || 0} {formatUnit(editMaterialForm.unit)}</span>
+                              </div>
+                           )}
+                           {editMaterialForm.isGiro && (
+                              <div className="flex items-center gap-2">
+                                 <span className="text-amber-500 font-bold">⚡ Giro:</span>
+                                 <span className="text-foreground font-semibold">{editMaterialForm.quantityGiro || 0} {formatUnit(editMaterialForm.unit)}</span>
+                              </div>
+                           )}
+                           {!(editMaterialForm.isPulmao !== undefined ? editMaterialForm.isPulmao : true) && !editMaterialForm.isGiro && (
+                              <span className="text-red-500 font-semibold italic text-xs">Selecione pelo menos um destino de estoque</span>
+                           )}
                         </div>
-                     </label>
+                        <button
+                           type="button"
+                           onClick={() => {
+                              setQuantitiesModalData({
+                                 productName: editMaterialForm.name || 'Editar Produto',
+                                 isPulmao: editMaterialForm.isPulmao !== undefined ? editMaterialForm.isPulmao : true,
+                                 isGiro: editMaterialForm.isGiro,
+                                 quantityPulmao: editMaterialForm.quantity || 0,
+                                 quantityGiro: editMaterialForm.quantityGiro || 0,
+                                 onConfirm: (qPulmao, qGiro, finalIsP, finalIsG) => {
+                                    setEditMaterialForm(prev => ({
+                                       ...prev,
+                                       isPulmao: finalIsP,
+                                       isGiro: finalIsG,
+                                       quantity: qPulmao,
+                                       quantityGiro: qGiro
+                                    }));
+                                    setShowConfirmQuantitiesModal(false);
+                                 }
+                              });
+                              setShowConfirmQuantitiesModal(true);
+                           }}
+                           className="text-xs px-3 py-1.5 bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 border border-blue-500/20 rounded-lg transition-colors font-semibold"
+                        >
+                           Definir Quantidades
+                        </button>
+                     </div>
                   </div>
 
                   <div className="flex gap-3 pt-4 border-t border-border/50">

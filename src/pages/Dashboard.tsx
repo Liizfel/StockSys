@@ -504,6 +504,35 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
   const [orderPackageQuantity, setOrderPackageQuantity] = useState<number>(1);
   const [orderPackageUnit, setOrderPackageUnit] = useState<string>('caixas');
 
+  // Estados para Modal de Contagem no ManagerDashboard
+  const [showCountModal, setShowCountModal] = useState(false);
+  const [activeMaterial, setActiveMaterial] = useState<Material | null>(null);
+  const [countQuantity, setCountQuantity] = useState<number | string>('');
+  const [countNotes, setCountNotes] = useState('');
+  const [countStatus, setCountStatus] = useState<Material['status']>('COMPLETED');
+  const [countTargetStock, setCountTargetStock] = useState<'pulmao' | 'giro'>('giro');
+
+  const handleCountSubmitManager = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeMaterial) return;
+    try {
+      await apiFetch(`/api/materials/${activeMaterial.id}/count`, {
+        method: 'POST',
+        body: JSON.stringify({ 
+           newQuantity: countQuantity, 
+           notes: countNotes,
+           status: countStatus,
+           countType: countTargetStock
+        })
+      }, token);
+      setShowCountModal(false);
+      if (onRefresh) onRefresh();
+      window.dispatchEvent(new CustomEvent('products-changed'));
+    } catch (err) {
+      alert('Erro ao registrar contagem');
+    }
+  };
+
   const handleConfirmOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pendingOrder) return;
@@ -1095,6 +1124,132 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
          </div>
       </div>
 
+      {/* Listagem de Estoque de Giro (Gestão) */}
+      <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden mt-6">
+         <div className="px-6 py-5 border-b border-border bg-card/80 flex items-center justify-between">
+            <div>
+               <h3 className="font-semibold text-foreground flex items-center gap-2">
+                  <span className="text-amber-500 text-lg">⚡</span> Listagem de Estoque de Giro (Gestão)
+               </h3>
+               <p className="text-sm text-muted-foreground mt-1">Produtos ativos configurados no Giro do Dia com as respectivas quantidades físicas.</p>
+            </div>
+            <span className="text-xs bg-amber-500/10 text-amber-500 border border-amber-500/20 px-2.5 py-1 rounded-full font-bold">
+               {materials.filter(m => m.isGiro).length} Itens no Giro
+            </span>
+         </div>
+         <div className="overflow-x-auto">
+            <div className="hidden md:block w-full">
+               <table className="w-full text-left border-collapse table-fixed">
+                  <thead>
+                     <tr className="bg-secondary/30 border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
+                        <th className="px-6 py-4 font-medium w-[40%]">Produto</th>
+                        <th className="px-6 py-4 font-medium w-[20%]">Setor</th>
+                        <th className="px-6 py-4 font-medium w-[15%]">Giro do Dia</th>
+                        <th className="px-6 py-4 font-medium w-[15%]">Estoque Pulmão</th>
+                        <th className="px-6 py-4 font-medium text-right w-[10%]">Ação</th>
+                     </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                     {materials.filter(m => m.isGiro).map(mat => (
+                        <tr key={mat.id} className="hover:bg-secondary/20 transition-colors">
+                           <td className="px-6 py-4">
+                              <div className="font-semibold text-foreground flex items-center gap-2">
+                                 <span>{mat.name}</span>
+                                 <button 
+                                    onClick={() => setImageModalMaterial(mat)}
+                                    className="text-amber-500 hover:text-amber-400 p-1 rounded hover:bg-amber-500/10 transition-colors"
+                                    title="Visualizar Foto"
+                                 >
+                                    <Eye className="w-4 h-4" />
+                                 </button>
+                              </div>
+                              <div className="text-xs text-muted-foreground font-mono mt-0.5">{mat.code}</div>
+                           </td>
+                           <td className="px-6 py-4 text-sm text-muted-foreground">{mat.sector}</td>
+                           <td className="px-6 py-4 font-bold text-amber-500">
+                              ⚡ {mat.quantityGiro || 0} {formatUnit(mat.unit)}
+                           </td>
+                           <td className="px-6 py-4 font-medium text-blue-500">
+                              📦 {mat.quantity} {formatUnit(mat.unit)}
+                           </td>
+                           <td className="px-6 py-4 whitespace-nowrap text-right">
+                              <button
+                                 type="button"
+                                 onClick={() => {
+                                    setActiveMaterial(mat);
+                                    setCountTargetStock('giro');
+                                    setCountQuantity(mat.quantityGiro || 0);
+                                    setCountNotes('');
+                                    setCountStatus('COMPLETED');
+                                    setShowCountModal(true);
+                                 }}
+                                 className="px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ml-auto"
+                              >
+                                 <Edit3 className="w-3.5 h-3.5" /> Ajustar
+                              </button>
+                           </td>
+                        </tr>
+                     ))}
+                     {materials.filter(m => m.isGiro).length === 0 && (
+                        <tr>
+                           <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                              Nenhum produto cadastrado no Giro do Dia.
+                           </td>
+                        </tr>
+                     )}
+                  </tbody>
+               </table>
+            </div>
+
+            {/* Mobile Cards for Giro (Gestão) */}
+            <div className="md:hidden divide-y divide-border">
+               {materials.filter(m => m.isGiro).map(mat => (
+                  <div key={mat.id} className="p-4 space-y-3">
+                     <div className="flex justify-between items-start gap-2">
+                        <div>
+                           <span className="font-bold text-foreground text-sm flex items-center gap-1.5">
+                              {mat.name}
+                              <button 
+                                 onClick={() => setImageModalMaterial(mat)}
+                                 className="text-amber-500 hover:text-amber-400 p-1 rounded hover:bg-amber-500/10 transition-colors"
+                              >
+                                 <Eye className="w-4 h-4" />
+                              </button>
+                           </span>
+                           <span className="text-xs text-muted-foreground font-mono mt-0.5 block">{mat.code}</span>
+                        </div>
+                        <span className="text-xs bg-secondary/80 px-2 py-1 rounded border border-border">{mat.sector}</span>
+                     </div>
+                     <div className="flex justify-between items-center text-xs">
+                        <div className="flex flex-col">
+                           <span className="text-muted-foreground">⚡ Giro:</span>
+                           <strong className="text-amber-500 font-bold">{mat.quantityGiro || 0} {formatUnit(mat.unit)}</strong>
+                        </div>
+                        <div className="flex flex-col text-right">
+                           <span className="text-muted-foreground">📦 Pulmão:</span>
+                           <strong className="text-blue-500 font-semibold">{mat.quantity} {formatUnit(mat.unit)}</strong>
+                        </div>
+                     </div>
+                     <button
+                        type="button"
+                        onClick={() => {
+                           setActiveMaterial(mat);
+                           setCountTargetStock('giro');
+                           setCountQuantity(mat.quantityGiro || 0);
+                           setCountNotes('');
+                           setCountStatus('COMPLETED');
+                           setShowCountModal(true);
+                        }}
+                        className="w-full bg-amber-500/15 hover:bg-amber-500/20 text-amber-500 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5"
+                     >
+                        <Edit3 className="w-4 h-4" /> Ajustar Estoque Giro
+                     </button>
+                  </div>
+               ))}
+            </div>
+         </div>
+      </div>
+
       <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm p-6 mt-6">
          <div className="flex items-center justify-between mb-6">
             <div>
@@ -1413,6 +1568,9 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
   const [reportText, setReportText] = useState<string>('');
   const [isReportOpen, setIsReportOpen] = useState<boolean>(false);
 
+  const [dashboardStockTab, setDashboardStockTab] = useState<'pulmao' | 'giro'>('pulmao');
+  const [countTargetStock, setCountTargetStock] = useState<'pulmao' | 'giro'>('pulmao');
+
   const giroStats = useMemo(() => {
     const giroMaterials = materials.filter(m => m.isGiro);
     const todayStr = new Date().toLocaleDateString('pt-BR');
@@ -1444,6 +1602,15 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
       if (user?.sectorId && m.sectorId !== user.sectorId) {
         return false;
       }
+      
+      // Filtrar pelo estoque selecionado (Pulmão vs Giro)
+      if (dashboardStockTab === 'giro' && !m.isGiro) {
+        return false;
+      }
+      if (dashboardStockTab === 'pulmao' && m.isPulmao === false) {
+        return false;
+      }
+
       const matchSearch = m.name.toLowerCase().includes(search.toLowerCase()) || 
                           m.code.toLowerCase().includes(search.toLowerCase()) ||
                           (m.sector && m.sector.toLowerCase().includes(search.toLowerCase())) ||
@@ -1465,7 +1632,7 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
       }
       return 0;
     });
-  }, [materials, search, filterMode, user]);
+  }, [materials, search, filterMode, user, dashboardStockTab]);
 
   const handleScanResult = (decodedText: string) => {
     setShowScanner(false);
@@ -1474,7 +1641,9 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
     
     if (found) {
       setActiveMaterial(found);
-      setCountQuantity(found.quantity);
+      const initialStockType = found.isGiro && found.isPulmao === false ? 'giro' : 'pulmao';
+      setCountTargetStock(initialStockType);
+      setCountQuantity(initialStockType === 'giro' ? (found.quantityGiro || 0) : found.quantity);
       setCountNotes('');
       setCountStatus('AWAITING_CONFIRMATION');
       setShowCountModal(true);
@@ -1492,7 +1661,8 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
         body: JSON.stringify({ 
            newQuantity: countQuantity, 
            notes: countNotes,
-           status: countStatus
+           status: countStatus,
+           countType: countTargetStock
         })
       }, token);
       setShowCountModal(false);
@@ -1551,10 +1721,40 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
          {/* Seção de Contagem (Esquerda) */}
          <div className="lg:col-span-2 space-y-6">
             <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-sm flex flex-col gap-4 justify-between">
+               {/* Seletor de Estoque do Dashboard (Pulmão vs Giro) */}
+               <div className="flex border-b border-border/60 pb-1 mb-1 gap-4">
+                  <button
+                     onClick={() => setDashboardStockTab('pulmao')}
+                     className={cn(
+                        "pb-2 text-sm font-semibold relative transition-all flex items-center gap-1.5",
+                        dashboardStockTab === 'pulmao'
+                           ? "text-blue-500 font-bold border-b-2 border-blue-500"
+                           : "text-muted-foreground hover:text-foreground"
+                     )}
+                  >
+                     <span>📦 Estoque Pulmão</span>
+                  </button>
+                  <button
+                     onClick={() => setDashboardStockTab('giro')}
+                     className={cn(
+                        "pb-2 text-sm font-semibold relative transition-all flex items-center gap-1.5",
+                        dashboardStockTab === 'giro'
+                           ? "text-amber-500 font-bold border-b-2 border-amber-500"
+                           : "text-muted-foreground hover:text-foreground"
+                     )}
+                  >
+                     <span>⚡ Giro do Dia</span>
+                  </button>
+               </div>
+
                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div>
                      <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-                        <Package className="w-6 h-6 text-blue-500" /> Produtos para Contagem
+                        {dashboardStockTab === 'giro' ? (
+                           <><span className="text-amber-500">⚡</span> Produtos de Giro do Dia</>
+                        ) : (
+                           <><Package className="w-6 h-6 text-blue-500" /> Produtos para Contagem</>
+                        )}
                      </h2>
                      <p className="text-sm text-muted-foreground mt-1">Busque o produto, utilize os filtros rápidos ou escaneie para contar.</p>
                   </div>
@@ -1619,7 +1819,13 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
                               </td>
                               <td className="px-6 py-4 text-sm break-words">{mat.sector}</td>
                               <td className="px-6 py-4">
-                                <div className="font-medium mb-1">{mat.quantity} {formatUnit(mat.unit)}</div>
+                                <div className="font-medium mb-1">
+                                  {dashboardStockTab === 'giro' ? (
+                                    <span className="text-amber-500 font-semibold">⚡ {mat.quantityGiro || 0} {formatUnit(mat.unit)}</span>
+                                  ) : (
+                                    <span className="text-blue-500 font-semibold">📦 {mat.quantity} {formatUnit(mat.unit)}</span>
+                                  )}
+                                </div>
                                 <StatusBadge status={mat.status} />
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-right flex justify-end gap-2">
@@ -1636,12 +1842,18 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
                                   type="button"
                                   onClick={() => {
                                     setActiveMaterial(mat);
-                                    setCountQuantity(mat.quantity);
+                                    setCountTargetStock(dashboardStockTab);
+                                    setCountQuantity(dashboardStockTab === 'giro' ? (mat.quantityGiro || 0) : mat.quantity);
                                     setCountNotes('');
                                     setCountStatus('AWAITING_CONFIRMATION');
                                     setShowCountModal(true);
                                   }}
-                                  className="bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-1.5"
+                                  className={cn(
+                                    "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-1.5",
+                                    dashboardStockTab === 'giro'
+                                      ? "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"
+                                      : "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20"
+                                  )}
                                 >
                                   <Edit3 className="w-4 h-4" /> Contar
                                 </button>
@@ -1681,7 +1893,13 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
                               <span className="font-medium text-foreground">Setor:</span> {mat.sector}
                             </div>
                             <div className="text-right shrink-0">
-                              <div className="font-semibold text-foreground text-sm">{mat.quantity} {formatUnit(mat.unit)}</div>
+                              <div className="font-semibold text-foreground text-sm">
+                                {dashboardStockTab === 'giro' ? (
+                                  <span className="text-amber-500 font-semibold">⚡ {mat.quantityGiro || 0} {formatUnit(mat.unit)}</span>
+                                ) : (
+                                  <span className="text-blue-500 font-semibold">📦 {mat.quantity} {formatUnit(mat.unit)}</span>
+                                )}
+                              </div>
                               <div className="mt-1"><StatusBadge status={mat.status} /></div>
                             </div>
                           </div>
@@ -1690,12 +1908,18 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
                             type="button"
                             onClick={() => {
                               setActiveMaterial(mat);
-                              setCountQuantity(mat.quantity);
+                              setCountTargetStock(dashboardStockTab);
+                              setCountQuantity(dashboardStockTab === 'giro' ? (mat.quantityGiro || 0) : mat.quantity);
                               setCountNotes('');
                               setCountStatus('AWAITING_CONFIRMATION');
                               setShowCountModal(true);
                             }}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/10"
+                            className={cn(
+                              "w-full py-2.5 px-4 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-1.5 shadow-md",
+                              dashboardStockTab === 'giro'
+                                ? "bg-amber-600 hover:bg-amber-700 text-white shadow-amber-500/10"
+                                : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/10"
+                            )}
                           >
                             <Edit3 className="w-4 h-4" /> Registrar Contagem
                           </button>
@@ -1838,6 +2062,51 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
                </div>
 
                <form onSubmit={handleCountSubmit} className="space-y-4">
+                 {/* Seletor de Estoque Alvo (Pulmão vs Giro) */}
+                 {activeMaterial.isGiro && activeMaterial.isPulmao !== false ? (
+                    <div className="bg-secondary/40 p-1.5 rounded-xl border border-border/60 flex gap-2">
+                       <button
+                          type="button"
+                          onClick={() => {
+                             setCountTargetStock('pulmao');
+                             setCountQuantity(activeMaterial.quantity || 0);
+                          }}
+                          className={cn(
+                             "flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
+                             countTargetStock === 'pulmao'
+                                ? "bg-blue-500/10 text-blue-500 border border-blue-500/25 shadow-sm"
+                                : "text-muted-foreground hover:text-foreground"
+                          )}
+                       >
+                          📦 Estoque Pulmão
+                       </button>
+                       <button
+                          type="button"
+                          onClick={() => {
+                             setCountTargetStock('giro');
+                             setCountQuantity(activeMaterial.quantityGiro || 0);
+                          }}
+                          className={cn(
+                             "flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
+                             countTargetStock === 'giro'
+                                ? "bg-amber-500/10 text-amber-500 border border-amber-500/25 shadow-sm"
+                                : "text-muted-foreground hover:text-foreground"
+                          )}
+                       >
+                          ⚡ Giro do Dia
+                       </button>
+                    </div>
+                 ) : (
+                    <div className="text-xs text-muted-foreground flex items-center gap-1.5 font-medium px-1">
+                       <span>Estoque Alvo:</span>
+                       {countTargetStock === 'giro' ? (
+                          <span className="text-amber-500 font-semibold flex items-center gap-1">⚡ Giro do Dia</span>
+                       ) : (
+                          <span className="text-blue-500 font-semibold flex items-center gap-1">📦 Estoque Pulmão</span>
+                       )}
+                    </div>
+                 )}
+
                  <div>
                     <label className="block text-sm font-medium text-muted-foreground mb-1.5">Estoque Físico ({formatUnit(activeMaterial?.unit)})</label>
                     <input 
@@ -1862,6 +2131,9 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
                        <option value="AWAITING_CONFIRMATION">Aguardando Conferência</option>
                        <option value="PURCHASE_REQUESTED">Solicitando Compra</option>
                        <option value="COMPLETED">Finalizado/Reposto</option>
+                       {countTargetStock === 'pulmao' && (
+                          <option value="REALOCATED_TO_GIRO">Realocado para estoque de giro</option>
+                       )}
                     </select>
                  </div>
                  

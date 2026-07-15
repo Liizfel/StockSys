@@ -1,6 +1,6 @@
 import React from 'react';
 import { Material } from '../types';
-import { Package, TrendingUp, Clock, ShoppingCart, CheckCircle2 } from 'lucide-react';
+import { Package, TrendingUp, Clock, ShoppingCart, CheckCircle2, ArrowLeftRight } from 'lucide-react';
 
 export const StatusBadge = ({ status }: { status: Material['status'] }) => {
   switch (status) {
@@ -32,6 +32,12 @@ export const StatusBadge = ({ status }: { status: Material['status'] }) => {
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border border-emerald-500/20">
           <CheckCircle2 className="w-3.5 h-3.5" /> Reposto
+        </span>
+      );
+    case 'REALOCATED_TO_GIRO':
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-500 dark:text-amber-400 border border-amber-500/20">
+          <ArrowLeftRight className="w-3.5 h-3.5" /> Realocado Giro
         </span>
       );
     default:

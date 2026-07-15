@@ -828,6 +828,7 @@ export default function Kanban() {
                        <option value="AWAITING_CONFIRMATION">Aguardando Conferência (Gestor)</option>
                        <option value="PURCHASE_REQUESTED">Solicitado à Compra</option>
                        <option value="COMPLETED">Finalizado / Reposto / OK</option>
+                       <option value="REALOCATED_TO_GIRO">Realocado para estoque de giro</option>
                     </select>
                  </div>
                  
