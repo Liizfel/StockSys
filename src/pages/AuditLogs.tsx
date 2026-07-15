@@ -225,9 +225,23 @@ export default function AuditLogs() {
   const [timeEnd, setTimeEnd] = useState('');
   const [sectorFilter, setSectorFilter] = useState('');
   const [productFilter, setProductFilter] = useState('');
+  const [stockCountFilter, setStockCountFilter] = useState<'all' | 'pulmao' | 'giro'>('all');
 
   // Otimização de Performance: Paginação
   const [visibleCount, setVisibleCount] = useState(30);
+
+  const cleanNotes = (notes: string | undefined | null): string => {
+    if (!notes) return '';
+    return notes
+      .replace(/^\[GIRO\]\s*/i, '')
+      .replace(/^\[PULMÃO\]\s*/i, '')
+      .trim();
+  };
+
+  const getStockTypeLabel = (notes: string | undefined | null): string => {
+    if (notes && notes.includes('[GIRO]')) return '⚡ Giro';
+    return '📦 Pulmão';
+  };
 
   // Estado do Modal de Relatório
   const [isReportOpen, setIsReportOpen] = useState(false);
@@ -298,10 +312,17 @@ export default function AuditLogs() {
       if (productFilter && log.materialId !== productFilter) {
          return false;
       }
+
+      // 6. Stock Count Type Filter (Todos, Pulmão, Giro)
+      if (stockCountFilter === 'giro') {
+         if (!log.notes || !log.notes.includes('[GIRO]')) return false;
+      } else if (stockCountFilter === 'pulmao') {
+         if (log.notes && log.notes.includes('[GIRO]')) return false;
+      }
       
       return true;
     }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }, [logs, userFilter, dateFilter, timeStart, timeEnd, sectorFilter, productFilter]);
+  }, [logs, userFilter, dateFilter, timeStart, timeEnd, sectorFilter, productFilter, stockCountFilter]);
 
   // Fila de logs paginados
   const visibleLogs = useMemo(() => {
@@ -472,7 +493,7 @@ export default function AuditLogs() {
       report += `   - *Data/Hora:* ${format(parseISO(l.timestamp), "dd/MM/yyyy 'às' HH:mm")}\n`;
       report += `   - *Setor:* ${l.materialSector || 'Geral'}\n`;
       
-      const noteContent = l.notes && l.notes.trim() ? l.notes.trim() : 'Sem observações';
+      const noteContent = l.notes && cleanNotes(l.notes) ? cleanNotes(l.notes) : 'Sem observações';
       report += `   - *Obs:* ${noteContent}\n\n`;
     });
 
@@ -671,8 +692,8 @@ export default function AuditLogs() {
       currentY += 6;
       
       // Auto-embrulho de observações/comentários
-      if (log.notes && log.notes.trim()) {
-        const notesLines = doc.splitTextToSize(`Obs: ${log.notes.trim()}`, 170);
+      if (log.notes && cleanNotes(log.notes)) {
+        const notesLines = doc.splitTextToSize(`Obs: ${cleanNotes(log.notes)}`, 170);
         notesLines.forEach((line: string) => {
           if (currentY > 275) {
             doc.addPage();
@@ -880,7 +901,7 @@ export default function AuditLogs() {
         <div className="p-4 border-b border-border bg-secondary/30 flex items-center gap-2">
           <SlidersHorizontal className="w-4 h-4 text-blue-500" />
           <h3 className="font-bold text-sm text-foreground">Filtros de Pesquisa Avançados</h3>
-          {(userFilter || dateFilter || timeStart || timeEnd || sectorFilter || productFilter) && (
+          {(userFilter || dateFilter || timeStart || timeEnd || sectorFilter || productFilter || stockCountFilter !== 'all') && (
              <button 
                 onClick={() => { 
                   setUserFilter(''); 
@@ -889,6 +910,7 @@ export default function AuditLogs() {
                   setTimeEnd(''); 
                   setSectorFilter('');
                   setProductFilter('');
+                  setStockCountFilter('all');
                 }}
                 className="text-xs text-blue-500 hover:text-blue-600 font-medium ml-auto flex items-center gap-1 bg-blue-500/5 px-2 py-1 rounded-md border border-blue-500/10"
              >
@@ -898,7 +920,7 @@ export default function AuditLogs() {
         </div>
         
         {/* Dynamic Controls Grid */}
-        <div className="p-5 grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4 bg-card">
+        <div className="p-5 grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-4 bg-card">
            {/* Attendant filter */}
            <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
@@ -989,6 +1011,22 @@ export default function AuditLogs() {
                  />
               </div>
            </div>
+
+           {/* Stock Count Type filter */}
+           <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                 <Filter className="w-3.5 h-3.5 text-blue-500" /> Tipo de Estoque (Filtro)
+              </label>
+              <select 
+                 className="bg-secondary/40 border border-border rounded-xl px-3 py-2 text-sm text-foreground w-full focus:ring-2 focus:ring-blue-500/50 outline-none transition-all cursor-pointer h-[40px]"
+                 value={stockCountFilter}
+                 onChange={e => setStockCountFilter(e.target.value as 'all' | 'pulmao' | 'giro')}
+              >
+                 <option value="all">Ver contagem de todos</option>
+                 <option value="pulmao">Apenas Estoque Pulmão 📦</option>
+                 <option value="giro">Apenas Estoque de Giro ⚡</option>
+              </select>
+           </div>
         </div>
       </div>
 
@@ -1033,6 +1071,14 @@ export default function AuditLogs() {
                                    {log.materialSector}
                                 </span>
                              )}
+                             <span className={cn(
+                                "text-[10px] font-semibold px-1.5 py-0.5 rounded border",
+                                log.notes && log.notes.includes('[GIRO]') 
+                                   ? "text-amber-500 bg-amber-500/10 border-amber-500/10" 
+                                   : "text-blue-500 bg-blue-500/10 border-blue-500/10"
+                             )}>
+                                {getStockTypeLabel(log.notes)}
+                             </span>
                           </div>
                           
                           <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
@@ -1078,7 +1124,7 @@ export default function AuditLogs() {
                     <div className="flex items-start gap-2 bg-secondary/30 border border-border/60 p-3 rounded-xl">
                        <MessageSquare className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
                        <p className="text-xs text-muted-foreground italic leading-relaxed">
-                          "{log.notes.trim()}"
+                          "{cleanNotes(log.notes)}"
                        </p>
                     </div>
                  )}

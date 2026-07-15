@@ -46,7 +46,10 @@ export default function Sectors() {
     prateleira: '',
     palete: '',
     paleteQty: '' as string | number,
-    additionalSectors: ''
+    additionalSectors: '',
+    isPulmao: true,
+    isGiro: false,
+    quantityGiro: 0 as string | number
   });
 
   // Estados para Edição de Produto
@@ -70,7 +73,10 @@ export default function Sectors() {
     prateleira: '',
     palete: '',
     paleteQty: '' as string | number,
-    additionalSectors: ''
+    additionalSectors: '',
+    isPulmao: true,
+    isGiro: false,
+    quantityGiro: 0 as string | number
   });
 
   const [showUserModal, setShowUserModal] = useState(false);
@@ -236,7 +242,10 @@ export default function Sectors() {
           prateleira: newProduct.prateleira || null,
           palete: newProduct.palete || null,
           paleteQty: newProduct.palete ? (newProduct.paleteQty !== '' ? Number(newProduct.paleteQty) : null) : null,
-          additionalSectors: newProduct.additionalSectors || null
+          additionalSectors: newProduct.additionalSectors || null,
+          isPulmao: newProduct.isPulmao !== false,
+          isGiro: !!newProduct.isGiro,
+          quantityGiro: Number(newProduct.quantityGiro || 0)
         })
       }, token);
       setShowProductModal(false);
@@ -256,7 +265,10 @@ export default function Sectors() {
         prateleira: '',
         palete: '',
         paleteQty: '',
-        additionalSectors: ''
+        additionalSectors: '',
+        isPulmao: true,
+        isGiro: false,
+        quantityGiro: 0
       });
       fetchData();
       window.dispatchEvent(new CustomEvent('products-changed'));
@@ -323,7 +335,10 @@ export default function Sectors() {
       prateleira: mat.prateleira || '',
       palete: mat.palete || '',
       paleteQty: mat.paleteQty !== null && mat.paleteQty !== undefined ? mat.paleteQty : '',
-      additionalSectors: mat.additionalSectors || ''
+      additionalSectors: mat.additionalSectors || '',
+      isPulmao: mat.isPulmao !== false,
+      isGiro: !!mat.isGiro,
+      quantityGiro: mat.quantityGiro !== null && mat.quantityGiro !== undefined ? mat.quantityGiro : 0
     });
     setShowEditProductModal(true);
   };
@@ -362,7 +377,10 @@ export default function Sectors() {
           prateleira: editProductForm.prateleira || null,
           palete: editProductForm.palete || null,
           paleteQty: editProductForm.palete ? (editProductForm.paleteQty !== '' ? Number(editProductForm.paleteQty) : null) : null,
-          additionalSectors: editProductForm.additionalSectors || null
+          additionalSectors: editProductForm.additionalSectors || null,
+          isPulmao: editProductForm.isPulmao !== false,
+          isGiro: !!editProductForm.isGiro,
+          quantityGiro: Number(editProductForm.quantityGiro || 0)
         })
       }, token);
       setShowEditProductModal(false);
@@ -962,43 +980,95 @@ export default function Sectors() {
                   </div>
 
                   {/* Detalhes de Quantidade na base */}
-                  <div className="grid grid-cols-3 gap-4 border-t border-border/50 pt-4">
-                     <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1.5">Unidade</label>
-                        <select 
-                           value={newProduct.unit}
-                           onChange={e => setNewProduct({...newProduct, unit: e.target.value})}
-                           className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground cursor-pointer text-sm"
-                        >
-                           <option value="unidade">un</option>
-                           <option value="pacote">pct</option>
-                           <option value="caixa">cx</option>
-                           <option value="palete">plt</option>
-                           <option value="kg">kg</option>
-                           <option value="l">l</option>
-                        </select>
+                  <div className="border-t border-border/50 pt-4 space-y-4">
+                     <div className="grid grid-cols-2 gap-4">
+                        <div>
+                           <label className="block text-sm font-medium text-muted-foreground mb-1.5">Unidade</label>
+                           <select 
+                              value={newProduct.unit}
+                              onChange={e => setNewProduct({...newProduct, unit: e.target.value})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground cursor-pointer text-sm"
+                           >
+                              <option value="unidade">un</option>
+                              <option value="pacote">pct</option>
+                              <option value="caixa">cx</option>
+                              <option value="palete">plt</option>
+                              <option value="kg">kg</option>
+                              <option value="l">l</option>
+                           </select>
+                        </div>
+                        <div>
+                           <label className="block text-sm font-medium text-muted-foreground mb-1.5">Mínimo</label>
+                           <input 
+                              type="number" 
+                              min="0"
+                              value={newProduct.estoqueMinimo}
+                              onChange={e => setNewProduct({...newProduct, estoqueMinimo: e.target.value ? parseInt(e.target.value) : ''})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground font-bold text-sm"
+                              required
+                           />
+                        </div>
                      </div>
-                     <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1.5">Qtd. Inicial</label>
-                        <input 
-                           type="number" 
-                           min="0"
-                           value={newProduct.quantity}
-                           onChange={e => setNewProduct({...newProduct, quantity: e.target.value ? parseInt(e.target.value) : ''})}
-                           className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground font-bold text-sm"
-                           required
-                        />
+
+                     {/* Configuração de Destino de Estoque */}
+                     <div className="space-y-3">
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Destino de Estoque</span>
+                        <div className="flex flex-col sm:flex-row gap-4 bg-secondary/20 p-3 rounded-xl border border-border/50">
+                           <label className="flex items-start gap-2.5 cursor-pointer flex-1">
+                              <input
+                                 type="checkbox"
+                                 checked={newProduct.isPulmao !== false}
+                                 onChange={e => setNewProduct(prev => ({ ...prev, isPulmao: e.target.checked }))}
+                                 className="mt-1 rounded text-emerald-500 bg-secondary/50 border-border focus:ring-emerald-500 w-4 h-4 shrink-0"
+                              />
+                              <div className="flex flex-col">
+                                 <span className="text-sm font-medium text-foreground flex items-center gap-1">📦 Estoque Pulmão</span>
+                                 <span className="text-xxs text-muted-foreground">Armazenamento principal de reserva.</span>
+                              </div>
+                           </label>
+
+                           <label className="flex items-start gap-2.5 cursor-pointer flex-1">
+                              <input
+                                 type="checkbox"
+                                 checked={newProduct.isGiro || false}
+                                 onChange={e => setNewProduct(prev => ({ ...prev, isGiro: e.target.checked }))}
+                                 className="mt-1 rounded text-emerald-500 bg-secondary/50 border-border focus:ring-emerald-500 w-4 h-4 shrink-0"
+                              />
+                               <div className="flex flex-col">
+                                 <span className="text-sm font-medium text-foreground flex items-center gap-1">⚡ Giro do Dia</span>
+                                 <span className="text-xxs text-muted-foreground">Uso rápido para consumo diário.</span>
+                              </div>
+                           </label>
+                        </div>
                      </div>
-                     <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1.5">Mínimo</label>
-                        <input 
-                           type="number" 
-                           min="0"
-                           value={newProduct.estoqueMinimo}
-                           onChange={e => setNewProduct({...newProduct, estoqueMinimo: e.target.value ? parseInt(e.target.value) : ''})}
-                           className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground font-bold text-sm"
-                           required
-                        />
+
+                     <div className="grid grid-cols-2 gap-4">
+                        {(newProduct.isPulmao !== false) && (
+                           <div>
+                              <label className="block text-sm font-medium text-muted-foreground mb-1.5">Qtd. Estoque Pulmão 📦</label>
+                              <input 
+                                 type="number" 
+                                 min="0"
+                                 value={newProduct.quantity}
+                                 onChange={e => setNewProduct({...newProduct, quantity: e.target.value ? parseInt(e.target.value) : 0})}
+                                 className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground font-bold text-sm border-emerald-500/20 focus:border-emerald-500"
+                                 required
+                              />
+                           </div>
+                        )}
+                        {newProduct.isGiro && (
+                           <div>
+                               <label className="block text-sm font-medium text-muted-foreground mb-1.5">Qtd. Giro do Dia ⚡</label>
+                               <input 
+                                  type="number" 
+                                  min="0"
+                                  value={newProduct.quantityGiro}
+                                  onChange={e => setNewProduct({...newProduct, quantityGiro: e.target.value ? parseInt(e.target.value) : 0})}
+                                  className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground font-bold text-sm border-emerald-500/20 focus:border-emerald-500"
+                                  required
+                               />
+                           </div>
+                        )}
                      </div>
                   </div>
 
@@ -1444,43 +1514,95 @@ export default function Sectors() {
                   </div>
 
                   {/* Detalhes de Quantidade na base */}
-                  <div className="grid grid-cols-3 gap-4 border-t border-border/50 pt-4">
-                     <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1.5">Unidade</label>
-                        <select 
-                           value={editProductForm.unit}
-                           onChange={e => setEditProductForm({...editProductForm, unit: e.target.value})}
-                           className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer text-sm"
-                        >
-                           <option value="unidade">un</option>
-                           <option value="pacote">pct</option>
-                           <option value="caixa">cx</option>
-                           <option value="palete">plt</option>
-                           <option value="kg">kg</option>
-                           <option value="l">l</option>
-                        </select>
+                  <div className="border-t border-border/50 pt-4 space-y-4">
+                     <div className="grid grid-cols-2 gap-4">
+                        <div>
+                           <label className="block text-sm font-medium text-muted-foreground mb-1.5">Unidade</label>
+                           <select 
+                              value={editProductForm.unit}
+                              onChange={e => setEditProductForm({...editProductForm, unit: e.target.value})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer text-sm"
+                           >
+                              <option value="unidade">un</option>
+                              <option value="pacote">pct</option>
+                              <option value="caixa">cx</option>
+                              <option value="palete">plt</option>
+                              <option value="kg">kg</option>
+                              <option value="l">l</option>
+                           </select>
+                        </div>
+                        <div>
+                           <label className="block text-sm font-medium text-muted-foreground mb-1.5">Mínimo</label>
+                           <input 
+                              type="number" 
+                              min="0"
+                              value={editProductForm.estoqueMinimo}
+                              onChange={e => setEditProductForm({...editProductForm, estoqueMinimo: e.target.value ? parseInt(e.target.value) : ''})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-bold text-sm"
+                              required
+                           />
+                        </div>
                      </div>
-                     <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1.5">Qtd. Atual</label>
-                        <input 
-                           type="number" 
-                           min="0"
-                           value={editProductForm.quantity}
-                           onChange={e => setEditProductForm({...editProductForm, quantity: e.target.value ? parseInt(e.target.value) : ''})}
-                           className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-bold text-sm"
-                           required
-                        />
+
+                     {/* Configuração de Destino de Estoque */}
+                     <div className="space-y-3">
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Destino de Estoque</span>
+                        <div className="flex flex-col sm:flex-row gap-4 bg-secondary/20 p-3 rounded-xl border border-border/50">
+                           <label className="flex items-start gap-2.5 cursor-pointer flex-1">
+                              <input
+                                 type="checkbox"
+                                 checked={editProductForm.isPulmao !== false}
+                                 onChange={e => setEditProductForm(prev => ({ ...prev, isPulmao: e.target.checked }))}
+                                 className="mt-1 rounded text-blue-500 bg-secondary/50 border-border focus:ring-blue-500 w-4 h-4 shrink-0"
+                              />
+                              <div className="flex flex-col">
+                                 <span className="text-sm font-medium text-foreground flex items-center gap-1">📦 Estoque Pulmão</span>
+                                 <span className="text-xxs text-muted-foreground">Armazenamento principal de reserva.</span>
+                              </div>
+                           </label>
+
+                           <label className="flex items-start gap-2.5 cursor-pointer flex-1">
+                              <input
+                                 type="checkbox"
+                                 checked={editProductForm.isGiro || false}
+                                 onChange={e => setEditProductForm(prev => ({ ...prev, isGiro: e.target.checked }))}
+                                 className="mt-1 rounded text-blue-500 bg-secondary/50 border-border focus:ring-blue-500 w-4 h-4 shrink-0"
+                              />
+                               <div className="flex flex-col">
+                                 <span className="text-sm font-medium text-foreground flex items-center gap-1">⚡ Giro do Dia</span>
+                                 <span className="text-xxs text-muted-foreground">Uso rápido para consumo diário.</span>
+                              </div>
+                           </label>
+                        </div>
                      </div>
-                     <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1.5">Mínimo</label>
-                        <input 
-                           type="number" 
-                           min="0"
-                           value={editProductForm.estoqueMinimo}
-                           onChange={e => setEditProductForm({...editProductForm, estoqueMinimo: e.target.value ? parseInt(e.target.value) : ''})}
-                           className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-bold text-sm"
-                           required
-                        />
+
+                     <div className="grid grid-cols-2 gap-4">
+                        {(editProductForm.isPulmao !== false) && (
+                           <div>
+                              <label className="block text-sm font-medium text-muted-foreground mb-1.5">Qtd. Estoque Pulmão 📦</label>
+                              <input 
+                                 type="number" 
+                                 min="0"
+                                 value={editProductForm.quantity}
+                                 onChange={e => setEditProductForm({...editProductForm, quantity: e.target.value ? parseInt(e.target.value) : 0})}
+                                 className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-bold text-sm border-blue-500/20 focus:border-blue-500"
+                                 required
+                              />
+                           </div>
+                        )}
+                        {editProductForm.isGiro && (
+                           <div>
+                               <label className="block text-sm font-medium text-muted-foreground mb-1.5">Qtd. Giro do Dia ⚡</label>
+                               <input 
+                                  type="number" 
+                                  min="0"
+                                  value={editProductForm.quantityGiro}
+                                  onChange={e => setEditProductForm({...editProductForm, quantityGiro: e.target.value ? parseInt(e.target.value) : 0})}
+                                  className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-bold text-sm border-blue-500/20 focus:border-blue-500"
+                                  required
+                               />
+                           </div>
+                        )}
                      </div>
                   </div>
 

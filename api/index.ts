@@ -329,7 +329,7 @@ app.post('/api/materials', authMiddleware, managerMiddleware, async (req: Reques
         : String(additionalSectors);
     }
 
-    const newMaterial = await prisma.material.create({
+    const newMaterial = await (prisma.material as any).create({
       data: {
         code,
         codigoBarras,
@@ -428,7 +428,7 @@ app.put('/api/materials/:id', authMiddleware, managerMiddleware, async (req: Req
       }
     }
 
-    const updated = await prisma.material.update({
+    const updated = await (prisma.material as any).update({
       where: { id: String(id) },
       data: {
         name,
@@ -483,7 +483,7 @@ app.post('/api/materials/:id/count', authMiddleware, async (req: AuthenticatedRe
   if (!material) return res.status(404).json({ error: 'Material não encontrado' });
 
   const isCountingGiro = countType === 'giro';
-  const previousQuantity = isCountingGiro ? material.quantityGiro : material.quantity;
+  const previousQuantity = isCountingGiro ? (material as any).quantityGiro : material.quantity;
   const estoqueMinimo = material.estoqueMinimo;
   
   let finalStatus = status !== undefined ? status : 'COMPLETED';
@@ -519,15 +519,18 @@ app.post('/api/materials/:id/count', authMiddleware, async (req: AuthenticatedRe
     if (finalStatus === 'REALOCATED_TO_GIRO') {
       const diff = material.quantity - resolvedNewQuantity;
       if (diff > 0) {
-        updateData.quantityGiro = (material.quantityGiro || 0) + diff;
+        updateData.quantityGiro = ((material as any).quantityGiro || 0) + diff;
       }
     }
   }
 
-  const updatedMaterial = await prisma.material.update({
+  const updatedMaterial = await (prisma.material as any).update({
     where: { id: String(id) },
     data: updateData
   });
+
+  const prefix = isCountingGiro ? '[GIRO]' : '[PULMÃO]';
+  const finalNotes = notes ? `${prefix} ${notes}` : prefix;
 
   await prisma.stockCount.create({
     data: {
@@ -535,7 +538,7 @@ app.post('/api/materials/:id/count', authMiddleware, async (req: AuthenticatedRe
       userId: req.user?.id || '',
       previousQuantity,
       newQuantity: resolvedNewQuantity,
-      notes: notes !== undefined ? notes : null
+      notes: finalNotes
     }
   });
 
