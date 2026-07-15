@@ -58,7 +58,7 @@ const getOrderTag = (material: Material): string => {
   return 'Pedido Feito';
 };
 
-const SortableItem = React.memo(({ id, material, onClick }: { id: string, material: Material, onClick?: (material: Material) => void }) => {
+const SortableItem = React.memo(({ id, material, onClick, focusGiro }: { id: string, material: Material, onClick?: (material: Material) => void, focusGiro?: boolean }) => {
   const {
     attributes,
     listeners,
@@ -72,6 +72,8 @@ const SortableItem = React.memo(({ id, material, onClick }: { id: string, materi
     transform: CSS.Transform.toString(transform),
     transition,
   };
+
+  const currentQty = focusGiro ? (material.quantityGiro || 0) : material.quantity;
 
   return (
     <div
@@ -98,10 +100,10 @@ const SortableItem = React.memo(({ id, material, onClick }: { id: string, materi
              {material.status === 'PURCHASE_REQUESTED' && material.requestedQuantity ? (
                  <>
                    <span className="text-xs px-2 py-1 bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded font-semibold whitespace-nowrap">Solicitado: {material.requestedQuantity} {formatUnit(material.unit)}</span>
-                   <span className="text-xs px-2 py-1 bg-secondary rounded text-muted-foreground whitespace-nowrap">Estoque: {material.quantity} {formatUnit(material.unit)}</span>
+                   <span className="text-xs px-2 py-1 bg-secondary rounded text-muted-foreground whitespace-nowrap">Estoque: {currentQty} {formatUnit(material.unit)}</span>
                  </>
               ) : (
-                 <span className="text-xs px-2 py-1 bg-secondary rounded text-muted-foreground">Estoque: <strong className="text-foreground">{material.quantity} {formatUnit(material.unit)}</strong></span>
+                 <span className="text-xs px-2 py-1 bg-secondary rounded text-muted-foreground">Estoque: <strong className="text-foreground">{currentQty} {formatUnit(material.unit)}</strong></span>
               )}
              {material.lastCountedBy && (
                  <span className="text-[10px] text-muted-foreground">por {material.lastCountedBy.split(' ')[0]}</span>
@@ -119,11 +121,14 @@ const SortableItem = React.memo(({ id, material, onClick }: { id: string, materi
   return prevProps.id === nextProps.id && 
          prevProps.material.id === nextProps.material.id &&
          prevProps.material.status === nextProps.material.status &&
+         prevProps.material.statusGiro === nextProps.material.statusGiro &&
          prevProps.material.quantity === nextProps.material.quantity &&
+         prevProps.material.quantityGiro === nextProps.material.quantityGiro &&
+         prevProps.focusGiro === nextProps.focusGiro &&
          prevProps.material.highDiscrepancy === nextProps.material.highDiscrepancy;
 });
 
-const KanbanColumn = ({ col, colMaterials, handleCardClick }: { col: any, colMaterials: Material[], handleCardClick: (m: Material) => void }) => {
+const KanbanColumn = ({ col, colMaterials, handleCardClick, focusGiro }: { col: any, colMaterials: Material[], handleCardClick: (m: Material) => void, focusGiro?: boolean }) => {
   const { setNodeRef } = useDroppable({ id: col.id });
   const Icon = col.icon;
   
@@ -148,7 +153,7 @@ const KanbanColumn = ({ col, colMaterials, handleCardClick }: { col: any, colMat
               <div className="min-h-[200px] space-y-3" style={{ height: '100%' }}>
                  <AnimatePresence>
                     {colMaterials.map(material => (
-                       <SortableItem key={material.id} id={material.id} material={material} onClick={handleCardClick} />
+                       <SortableItem key={material.id} id={material.id} material={material} onClick={handleCardClick} focusGiro={focusGiro} />
                     ))}
                  </AnimatePresence>
               </div>
@@ -189,7 +194,6 @@ export default function Kanban() {
   const [moveQuantity, setMoveQuantity] = useState<number | string>('');
   const [moveRequestedQuantity, setMoveRequestedQuantity] = useState<number | string>('');
 
-  // Preferências de colunas
   const [showColumnsModal, setShowColumnsModal] = useState(false);
   const [visibleCols, setVisibleCols] = useState<string[]>([]);
   
@@ -247,9 +251,9 @@ export default function Kanban() {
 
   const handleCardClick = (material: Material) => {
     setCountMaterial(material);
-    setCountQuantity(material.quantity);
+    setCountQuantity(focusGiro ? (material.quantityGiro || 0) : material.quantity);
     setCountNotes('');
-    setCountStatus('AWAITING_CONFIRMATION');
+    setCountStatus(focusGiro ? (material.statusGiro || 'PENDING') : material.status);
     setShowCountModal(true);
   };
 
@@ -262,7 +266,8 @@ export default function Kanban() {
         body: JSON.stringify({ 
            newQuantity: countQuantity, 
            notes: countNotes,
-           status: countStatus
+           status: countStatus,
+           countType: focusGiro ? 'giro' : 'pulmao'
         })
       }, token);
       setShowCountModal(false);
@@ -280,9 +285,9 @@ export default function Kanban() {
     
     if (found) {
       setCountMaterial(found);
-      setCountQuantity(found.quantity);
+      setCountQuantity(focusGiro ? (found.quantityGiro || 0) : found.quantity);
       setCountNotes('');
-      setCountStatus(found.status);
+      setCountStatus(focusGiro ? (found.statusGiro || 'PENDING') : found.status);
       setShowCountModal(true);
     } else {
       alert(`Produto com código ${decodedText} não encontrado.`);
@@ -335,17 +340,22 @@ export default function Kanban() {
 
     const isOverColumn = columns.find(c => c.id === overId);
     if (isOverColumn) {
-       if (activeMaterial.status !== overId && isManager) {
-          setMaterials(prev => prev.map(m => m.id === activeMaterialId ? { ...m, status: overId as Material['status'] } : m));
+       const currentStatus = focusGiro ? (activeMaterial.statusGiro || 'PENDING') : activeMaterial.status;
+       if (currentStatus !== overId && isManager) {
+          setMaterials(prev => prev.map(m => m.id === activeMaterialId ? { ...m, [focusGiro ? 'statusGiro' : 'status']: overId as Material['status'] } : m));
           initPendingMove(activeMaterial, overId as Material['status']);
        }
        return;
     }
 
     const overMaterial = materials.find(m => m.id === overId);
-    if (overMaterial && activeMaterial.status !== overMaterial.status && isManager) {
-       setMaterials(prev => prev.map(m => m.id === activeMaterialId ? { ...m, status: overMaterial.status as Material['status'] } : m));
-       initPendingMove(activeMaterial, overMaterial.status as Material['status']);
+    if (overMaterial && isManager) {
+       const activeStatus = focusGiro ? (activeMaterial.statusGiro || 'PENDING') : activeMaterial.status;
+       const overStatus = focusGiro ? (overMaterial.statusGiro || 'PENDING') : overMaterial.status;
+       if (activeStatus !== overStatus) {
+          setMaterials(prev => prev.map(m => m.id === activeMaterialId ? { ...m, [focusGiro ? 'statusGiro' : 'status']: overStatus as Material['status'] } : m));
+          initPendingMove(activeMaterial, overStatus as Material['status']);
+       }
     }
   };
 
@@ -353,13 +363,13 @@ export default function Kanban() {
       setPendingMove({ material, newStatus });
       setMoveTag('Verificado');
       setMoveNotes('');
-      setMoveQuantity(material.quantity);
+      setMoveQuantity(focusGiro ? (material.quantityGiro || 0) : material.quantity);
       setMoveRequestedQuantity(material.requestedQuantity || 0);
   };
 
   const handleCancelMove = () => {
       if (pendingMove) {
-          setMaterials(prev => prev.map(m => m.id === pendingMove.material.id ? { ...m, status: pendingMove.material.status } : m));
+          setMaterials(prev => prev.map(m => m.id === pendingMove.material.id ? { ...m, [focusGiro ? 'statusGiro' : 'status']: focusGiro ? (pendingMove.material.statusGiro || 'PENDING') : pendingMove.material.status } : m));
           setPendingMove(null);
       }
   };
@@ -392,41 +402,27 @@ export default function Kanban() {
             newQuantity: moveQuantity, 
             notes: finalNotes,
             status: finalStatus,
+            countType: focusGiro ? 'giro' : 'pulmao',
             repostedAt: (finalStatus === 'COMPLETED' || moveTag === 'Pedido Entregue') ? new Date().toISOString() : undefined,
             requestedQuantity: (finalStatus === 'COMPLETED' || moveTag === 'Pedido Entregue') ? 0 : (moveRequestedQuantity !== '' ? Number(moveRequestedQuantity) : undefined)
          })
        }, token);
        setPendingMove(null);
-        window.dispatchEvent(new CustomEvent('products-changed'));
+       window.dispatchEvent(new CustomEvent('products-changed'));
        fetchData();
      } catch (err) {
        alert('Erro ao mover material e registrar contagem');
      }
   };
 
-  const updateMaterialStatus = async (materialId: string, newStatus: Material['status']) => {
-     setMaterials(prev => prev.map(m => m.id === materialId ? { ...m, status: newStatus } : m));
-     try {
-       await apiFetch(`/api/materials/${materialId}/status`, {
-          method: 'PATCH',
-          body: JSON.stringify({ status: newStatus })
-       }, token);
-       window.dispatchEvent(new CustomEvent('products-changed'));
-     } catch (err) {
-       fetchData(); 
-     }
-  };
-
   const activeMaterial = activeId ? materials.find(m => m.id === activeId) : null;
 
-  /* 💡 CORREÇÃO DA REGRA DE NEGÓCIO: Tratamento de múltiplos setores para Atendentes no Kanban */
   const filteredMaterials = useMemo(() => {
     let list = materials;
     if (focusGiro) {
       list = list.filter(m => !!m.isGiro);
     }
     
-    // Alinha a lógica de permissões com a página Materials.tsx para suportar setores adicionais com segurança
     if (!isManager && user) {
       const userSectors = [user.sectorId, ...(user.additionalSectors || '').split(',')].filter(Boolean);
       if (userSectors.length > 0) {
@@ -465,8 +461,11 @@ export default function Kanban() {
              }
           }
        } else {
-          if (grouped[m.status]) {
-             grouped[m.status].push(m);
+          const currentStatus = focusGiro ? (m.statusGiro || 'PENDING') : m.status;
+          if (grouped[currentStatus]) {
+             grouped[currentStatus].push(m);
+          } else {
+             grouped['PENDING']?.push(m);
           }
        }
     });
@@ -487,7 +486,7 @@ export default function Kanban() {
     });
 
     return sortedGrouped;
-  }, [filteredMaterials, kanbanMode]);
+  }, [filteredMaterials, kanbanMode, focusGiro]);
 
   return (
     <div className="h-full flex flex-col">
@@ -586,7 +585,7 @@ export default function Kanban() {
            <div className="flex h-full gap-6 min-w-max">
              {(kanbanMode === 'PEDIDOS' ? purchaseColumns : columns.filter(c => visibleCols.includes(c.id))).map(col => {
                 const colMaterials = groupedMaterials[col.id] || [];
-                return <KanbanColumn key={col.id} col={col} colMaterials={colMaterials} handleCardClick={handleCardClick} />;
+                return <KanbanColumn key={col.id} col={col} colMaterials={colMaterials} handleCardClick={handleCardClick} focusGiro={focusGiro} />;
              })}
            </div>
 
@@ -813,13 +812,13 @@ export default function Kanban() {
                            required
                         />
                         <div className="text-sm text-muted-foreground flex flex-col">
-                           <span>Anterior: <strong className="text-foreground">{countMaterial.quantity} {formatUnit(countMaterial.unit)}</strong></span>
+                           <span>Anterior: <strong className="text-foreground">{(focusGiro ? (countMaterial.quantityGiro || 0) : countMaterial.quantity)} {formatUnit(countMaterial.unit)}</strong></span>
                            <span className={cn(
                               "font-medium mt-0.5",
-                              Number(countQuantity) > countMaterial.quantity ? "text-emerald-500" : 
-                              Number(countQuantity) < countMaterial.quantity ? "text-red-500" : "text-muted-foreground"
+                              Number(countQuantity) > (focusGiro ? (countMaterial.quantityGiro || 0) : countMaterial.quantity) ? "text-emerald-500" : 
+                              Number(countQuantity) < (focusGiro ? (countMaterial.quantityGiro || 0) : countMaterial.quantity) ? "text-red-500" : "text-muted-foreground"
                            )}>
-                              Diferença: {Number(countQuantity) - countMaterial.quantity > 0 ? '+' : ''}{Number(countQuantity) - countMaterial.quantity} {formatUnit(countMaterial.unit)}
+                              Diferença: {Number(countQuantity) - (focusGiro ? (countMaterial.quantityGiro || 0) : countMaterial.quantity) > 0 ? '+' : ''}{Number(countQuantity) - (focusGiro ? (countMaterial.quantityGiro || 0) : countMaterial.quantity)} {formatUnit(countMaterial.unit)}
                            </span>
                         </div>
                      </div>
@@ -837,7 +836,7 @@ export default function Kanban() {
                         <option value="AWAITING_CONFIRMATION">Aguardando Conferência (Gestor)</option>
                         <option value="PURCHASE_REQUESTED">Solicitado à Compra</option>
                         <option value="COMPLETED">Finalizado / Reposto / OK</option>
-                        <option value="REALOCATED_TO_GIRO">Realocado para estoque de giro</option>
+                        {!focusGiro && <option value="REALOCATED_TO_GIRO">Realocado para estoque de giro</option>}
                      </select>
                   </div>
                   

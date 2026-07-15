@@ -319,6 +319,7 @@ app.post('/api/materials', authMiddleware, managerMiddleware, async (req: Reques
         estoqueMinimo: Number(estoqueMinimo) || 5,
         unit: unit || 'un',
         status: 'PENDING',
+        statusGiro: 'PENDING',
         supplier: supplierId ? { connect: { id: supplierId } } : undefined,
         supplierDeliveryDays: supplierDeliveryDays !== undefined && supplierDeliveryDays !== null ? Number(supplierDeliveryDays) : null,
         origin: origin || null,
@@ -343,15 +344,20 @@ app.post('/api/materials', authMiddleware, managerMiddleware, async (req: Reques
 
 app.patch('/api/materials/:id/status', authMiddleware, async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { status } = req.body;
+  const { status, countType } = req.body;
   
   try {
-    const updateData: any = { status };
-    if (status === 'COMPLETED') {
-      updateData.repostedAt = new Date();
+    const updateData: any = {};
+    const isGiroTarget = countType === 'giro';
+
+    if (isGiroTarget) {
+      updateData.statusGiro = status;
+      updateData.repostedAtGiro = status === 'COMPLETED' ? new Date() : null;
     } else {
-      updateData.repostedAt = null;
+      updateData.status = status;
+      updateData.repostedAt = status === 'COMPLETED' ? new Date() : null;
     }
+
     const updated = await prisma.material.update({
       where: { id: String(id) },
       data: updateData
@@ -384,27 +390,31 @@ app.put('/api/materials/:id', authMiddleware, managerMiddleware, async (req: Req
     additionalSectors,
     isGiro,
     isPulmao,
-    quantityGiro
+    quantityGiro,
+    status,
+    statusGiro
   } = req.body;
   try {
     const material = await prisma.material.findUnique({ where: { id: String(id) } });
     if (!material) return res.status(404).json({ error: 'Material não encontrado' });
 
-    let finalStatus = material.status as any;
+    let finalStatus = status !== undefined ? status : material.status;
     let finalRepostedAt = material.repostedAt;
 
     const newQty = quantity !== undefined ? Number(quantity) : material.quantity;
     const minEstoque = estoqueMinimo !== undefined ? Number(estoqueMinimo) : material.estoqueMinimo;
 
-    if (newQty <= minEstoque) {
-      if (material.status !== 'PURCHASE_REQUESTED' && material.status !== 'AWAITING_CONFIRMATION') {
-        finalStatus = 'PURCHASE_REQUESTED';
-        finalRepostedAt = null;
-      }
-    } else {
-      if (material.status === 'PURCHASE_REQUESTED') {
-        finalStatus = 'COMPLETED';
-        finalRepostedAt = new Date();
+    if (quantity !== undefined || estoqueMinimo !== undefined) {
+      if (newQty <= minEstoque) {
+        if (material.status !== 'PURCHASE_REQUESTED' && material.status !== 'AWAITING_CONFIRMATION') {
+          finalStatus = 'PURCHASE_REQUESTED';
+          finalRepostedAt = null;
+        }
+      } else {
+        if (material.status === 'PURCHASE_REQUESTED') {
+          finalStatus = 'COMPLETED';
+          finalRepostedAt = new Date();
+        }
       }
     }
 
@@ -419,6 +429,7 @@ app.put('/api/materials/:id', authMiddleware, managerMiddleware, async (req: Req
         unit,
         sector: sectorId ? { connect: { id: sectorId } } : undefined,
         status: finalStatus,
+        statusGiro: statusGiro !== undefined ? statusGiro : undefined,
         repostedAt: finalRepostedAt,
         supplier: supplierId !== undefined ? (supplierId ? { connect: { id: supplierId } } : { disconnect: true }) : undefined,
         supplierDeliveryDays: supplierDeliveryDays !== undefined ? (supplierDeliveryDays !== null ? Number(supplierDeliveryDays) : null) : undefined,
@@ -486,30 +497,32 @@ app.post('/api/materials/:id/count', authMiddleware, async (req: AuthenticatedRe
       finalStatus = 'PURCHASE_REQUESTED';
     }
     
-    let resolvedRepostedAt = material.repostedAt;
+    let resolvedRepostedAt = isCountingGiro ? (material as any).repostedAtGiro : material.repostedAt;
     if (repostedAt !== undefined) {
       resolvedRepostedAt = repostedAt ? new Date(repostedAt) : null;
     } else {
       if (finalStatus === 'COMPLETED') {
         resolvedRepostedAt = new Date();
-      } else if (finalStatus !== material.status) {
+      } else if (finalStatus !== (isCountingGiro ? (material as any).statusGiro : material.status)) {
         resolvedRepostedAt = null;
       }
     }
 
     const updateData: any = {
       notes: notes !== undefined ? notes : material.notes,
-      status: finalStatus,
       requestedQuantity: req.body.requestedQuantity !== undefined 
         ? (req.body.requestedQuantity === null ? null : Math.round(Number(req.body.requestedQuantity))) 
-        : material.requestedQuantity,
-      repostedAt: resolvedRepostedAt
+        : material.requestedQuantity
     };
 
     if (isCountingGiro) {
       updateData.quantityGiro = resolvedNewQuantity;
+      updateData.statusGiro = finalStatus;
+      updateData.repostedAtGiro = resolvedRepostedAt;
     } else {
       updateData.quantity = resolvedNewQuantity;
+      updateData.status = finalStatus;
+      updateData.repostedAt = resolvedRepostedAt;
       if (finalStatus === 'REALOCATED_TO_GIRO') {
         const diff = material.quantity - resolvedNewQuantity;
         if (diff > 0) {
@@ -526,12 +539,13 @@ app.post('/api/materials/:id/count', authMiddleware, async (req: AuthenticatedRe
     const prefix = isCountingGiro ? '[GIRO]' : '[PULMÃO]';
     const finalNotes = notes ? `${prefix} ${notes}` : prefix;
 
-    await prisma.stockCount.create({
+    await (prisma.stockCount as any).create({
       data: {
         materialId: String(id),
         userId: req.user.id,
         previousQuantity,
         newQuantity: resolvedNewQuantity,
+        countType: isCountingGiro ? 'GIRO' : 'PULMAO',
         notes: finalNotes
       }
     });
@@ -889,7 +903,7 @@ app.get('/api/logs/stock', authMiddleware, async (req: AuthenticatedRequest, res
     orderBy: { timestamp: 'desc' }
   });
 
-  const enriched = counts.map(c => ({
+  const enriched = counts.map((c: any) => ({
     id: c.id,
     materialId: c.materialId,
     userId: c.userId,
@@ -900,6 +914,7 @@ app.get('/api/logs/stock', authMiddleware, async (req: AuthenticatedRequest, res
     materialName: c.material.name,
     materialCode: c.material.code,
     materialSector: c.material.sector?.name || 'Desconhecido',
+    countType: c.countType,
     notes: c.notes
   }));
 
@@ -909,7 +924,7 @@ app.get('/api/logs/stock', authMiddleware, async (req: AuthenticatedRequest, res
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
   import('vite').then(({ createServer }) => {
     createServer({ server: { middlewareMode: true }, appType: 'spa' })
-      .then(vite => app.use(vite.middlewares));
+       .then(vite => app.use(vite.middlewares));
   });
 } else {
   app.use(express.static(path.join(process.cwd(), 'dist')));

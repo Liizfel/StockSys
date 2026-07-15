@@ -13,7 +13,6 @@ import { StockCountLog } from '../types';
 import { BarcodeScanner } from '../components/BarcodeScanner';
 import { ProductImageModal } from '../components/ProductImageModal';
 
-// Gerador de dados de mini gráfico para efeito de hover
 const generateMiniChartData = (baseQty: number) => {
    return Array.from({ length: 5 }).map((_, i) => ({
       val: Math.max(0, baseQty + (Math.random() * 20 - 10) * (i - 2))
@@ -40,7 +39,6 @@ export default function Materials() {
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'visao_geral' | 'pulmao' | 'giro'>('visao_geral');
 
-  // Preferências de colunas
   const [showColumnsModal, setShowColumnsModal] = useState(false);
   const [visibleCols, setVisibleCols] = useState<string[]>([]);
   
@@ -65,7 +63,6 @@ export default function Materials() {
      }
   };
 
-  // Estados do Modal de Contagem e Detalhes
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
   const [countQuantity, setCountQuantity] = useState<number | string>('');
   const [countNotes, setCountNotes] = useState('');
@@ -118,7 +115,6 @@ export default function Materials() {
   const [showScanner, setShowScanner] = useState(false);
   const [scanTarget, setScanTarget] = useState<'search' | 'editMaterial' | null>(null);
 
-  // Estado do Modal de Confirmação de Quantidades (Pulmão/Giro)
   const [showConfirmQuantitiesModal, setShowConfirmQuantitiesModal] = useState(false);
   const [quantitiesModalData, setQuantitiesModalData] = useState({
     productName: '',
@@ -177,13 +173,11 @@ export default function Materials() {
     setShowConfirmQuantitiesModal(true);
   };
 
-  // Estado do Modal de Cadastro de Fornecedor
   const [showAddSupplierModal, setShowAddSupplierModal] = useState(false);
   const [supplierModalTarget, setSupplierModalTarget] = useState<'new' | 'edit' | null>(null);
   const [newSupplierName, setNewSupplierName] = useState('');
   const [newSupplierDeliveryDays, setNewSupplierDeliveryDays] = useState(0);
 
-  // Estado do Modal de Edição de Material
   const [showEditMaterialModal, setShowEditMaterialModal] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [editMaterialForm, setEditMaterialForm] = useState({
@@ -324,7 +318,6 @@ export default function Materials() {
     }
   };
 
-  // Estado do Modal de Histórico de Contagens
   const [historyMaterial, setHistoryMaterial] = useState<Material | null>(null);
   const [historyLogs, setHistoryLogs] = useState<StockCountLog[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -528,9 +521,11 @@ export default function Materials() {
     
     if (found) {
       setSelectedMaterial(found);
-      setCountQuantity(found.quantity);
+      const targetStock = activeTab === 'giro' ? 'giro' : activeTab === 'pulmao' ? 'pulmao' : (found.isPulmao !== false ? 'pulmao' : 'giro');
+      setCountTargetStock(targetStock);
+      setCountQuantity(targetStock === 'giro' ? (found.quantityGiro || 0) : found.quantity);
       setCountNotes('');
-      setCountStatus(found.status);
+      setCountStatus(targetStock === 'giro' ? (found.statusGiro || 'PENDING') : found.status);
     } else {
       setUnregisteredProductModal({
         isOpen: true,
@@ -724,7 +719,31 @@ export default function Materials() {
                         </div>
                       </td>
                     )}
-                    {visibleCols.includes('status') && <td className="px-6 py-4 whitespace-nowrap"><StatusBadge status={mat.status} /></td>}
+                    {/* 💡 CORREÇÃO DA EXIBIÇÃO DE STATUS DO KANBAN NA TABELA DESKTOP */}
+                    {visibleCols.includes('status') && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {activeTab === 'giro' ? (
+                          <StatusBadge status={mat.statusGiro || 'PENDING'} />
+                        ) : activeTab === 'pulmao' ? (
+                          <StatusBadge status={mat.status} />
+                        ) : (
+                          <div className="flex flex-col gap-1">
+                            {mat.isPulmao !== false && (
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs text-muted-foreground">📦</span>
+                                <StatusBadge status={mat.status} />
+                              </div>
+                            )}
+                            {mat.isGiro && (
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs text-muted-foreground">⚡</span>
+                                <StatusBadge status={mat.statusGiro || 'PENDING'} />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    )}
                     {visibleCols.includes('actions') && (
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end gap-2">
@@ -750,7 +769,7 @@ export default function Materials() {
                                setCountTargetStock(targetStock);
                                setCountQuantity(targetStock === 'giro' ? (mat.quantityGiro || 0) : mat.quantity);
                                setCountNotes(mat.notes || '');
-                               setCountStatus(mat.status);
+                               setCountStatus(targetStock === 'giro' ? (mat.statusGiro || 'PENDING') : mat.status);
                              }}
                              className="text-blue-500 hover:text-blue-400 p-2 rounded-lg hover:bg-blue-500/10 transition-colors inline-flex items-center gap-1.5"
                            >
@@ -814,8 +833,18 @@ export default function Materials() {
                       {mat.codigoBarras && <span className="opacity-60 text-[10px] truncate">EAN: {mat.codigoBarras}</span>}
                     </div>
                   </div>
+                  {/* 💡 CORREÇÃO DA EXIBIÇÃO DE STATUS DO KANBAN NO MOBILE */}
                   <div className="shrink-0">
-                     <StatusBadge status={mat.status} />
+                     {activeTab === 'giro' ? (
+                        <StatusBadge status={mat.statusGiro || 'PENDING'} />
+                     ) : activeTab === 'pulmao' ? (
+                        <StatusBadge status={mat.status} />
+                     ) : (
+                        <div className="flex flex-col gap-1 items-end">
+                           {mat.isPulmao !== false && <StatusBadge status={mat.status} />}
+                           {mat.isGiro && <StatusBadge status={mat.statusGiro || 'PENDING'} />}
+                        </div>
+                     )}
                   </div>
                 </div>
 
@@ -879,7 +908,7 @@ export default function Materials() {
                       setCountTargetStock(targetStock);
                       setCountQuantity(targetStock === 'giro' ? (mat.quantityGiro || 0) : mat.quantity);
                       setCountNotes(mat.notes || '');
-                      setCountStatus(mat.status);
+                      setCountStatus(targetStock === 'giro' ? (mat.statusGiro || 'PENDING') : mat.status);
                     }}
                     className="text-blue-500 hover:text-blue-400 p-2 rounded-lg hover:bg-blue-500/10 transition-colors inline-flex items-center gap-1 text-xs"
                   >
@@ -1004,6 +1033,7 @@ export default function Materials() {
                         onClick={() => {
                            setCountTargetStock('pulmao');
                            setCountQuantity(selectedMaterial.quantity || 0);
+                           setCountStatus(selectedMaterial.status);
                         }}
                         className={cn(
                            "flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
@@ -1019,6 +1049,7 @@ export default function Materials() {
                         onClick={() => {
                            setCountTargetStock('giro');
                            setCountQuantity(selectedMaterial.quantityGiro || 0);
+                           setCountStatus(selectedMaterial.statusGiro || 'PENDING');
                         }}
                         className={cn(
                            "flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
@@ -1766,12 +1797,21 @@ export default function Materials() {
                               </div>
                            </div>
                            
+                           {/* 💡 CORREÇÃO DO RELATÓRIO DO HISTÓRICO INDIVIDUAL POR CANAL DE ESTOQUE */}
                            <div className="flex items-center justify-between text-sm bg-secondary/30 p-2 rounded-lg">
                               <div className="flex items-center gap-2">
                                  <span className="text-muted-foreground line-through opacity-70">{log.previousQuantity} {formatUnit(historyMaterial.unit)}</span>
                                  <span className="text-foreground font-medium">→</span>
                                  <span className="text-emerald-500 font-bold">{log.newQuantity} {formatUnit(historyMaterial.unit)}</span>
                               </div>
+                              <span className={cn(
+                                 "text-[10px] font-bold px-2 py-0.5 rounded-md border",
+                                 log.countType === 'GIRO' 
+                                    ? "bg-amber-500/10 text-amber-500 border-amber-500/20" 
+                                    : "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                              )}>
+                                 {log.countType === 'GIRO' ? '⚡ Giro' : '📦 Pulmão'}
+                              </span>
                            </div>
                            
                            {log.notes && (
@@ -2327,7 +2367,7 @@ export default function Materials() {
                </motion.div>
             </motion.div>
          )}
-      </AnimatePresence>
+      </AnPresence>
 
       {showScanner && (
         <BarcodeScanner 
@@ -2589,8 +2629,16 @@ export default function Materials() {
                            </span>
                         </div>
                         <div>
-                           <span className="text-[10px] text-muted-foreground block uppercase tracking-wider font-semibold">Status no Kanban</span>
+                           {/* Espaço em branco intencional para manter grid simétrica */}
+                        </div>
+                        {/* 💡 CORREÇÃO DA EXIBIÇÃO DE AMBOS OS STATUS DE FORMA ISOLADA NA FICHA DO PRODUTO */}
+                        <div>
+                           <span className="text-[10px] text-muted-foreground block uppercase tracking-wider font-semibold flex items-center gap-1">📦 Status Pulmão</span>
                            <div className="mt-1"><StatusBadge status={detailMaterial.status} /></div>
+                        </div>
+                        <div>
+                           <span className="text-[10px] text-muted-foreground block uppercase tracking-wider font-semibold flex items-center gap-1">⚡ Status Giro</span>
+                           <div className="mt-1"><StatusBadge status={(detailMaterial as any).statusGiro || 'PENDING'} /></div>
                         </div>
                         <div>
                            <span className="text-[10px] text-muted-foreground block uppercase tracking-wider font-semibold">Estoque Físico</span>
@@ -2707,9 +2755,11 @@ export default function Materials() {
                            <button 
                               onClick={() => {
                                  setSelectedMaterial(detailMaterial);
-                                 setCountQuantity(detailMaterial.quantity);
+                                 const targetStock = activeTab === 'giro' ? 'giro' : activeTab === 'pulmao' ? 'pulmao' : (detailMaterial.isPulmao !== false ? 'pulmao' : 'giro');
+                                 setCountTargetStock(targetStock);
+                                 setCountQuantity(targetStock === 'giro' ? (detailMaterial.quantityGiro || 0) : detailMaterial.quantity);
                                  setCountNotes(detailMaterial.notes || '');
-                                 setCountStatus(detailMaterial.status);
+                                 setCountStatus(targetStock === 'giro' ? ((detailMaterial as any).statusGiro || 'PENDING') : detailMaterial.status);
                                  setDetailMaterial(null);
                               }}
                               className="flex items-center gap-2 justify-center py-2.5 px-3 rounded-xl border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 text-blue-500 transition-colors font-bold text-xs"
