@@ -110,7 +110,7 @@ export default function TimeLogs() {
       <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm overflow-hidden">
          {/* Desktop view: table */}
          <div className="overflow-x-auto hidden md:block">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse min-w-[700px]">
                <thead>
                   <tr className="bg-secondary/30 border-b border-border">
                      <th className="p-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Colaborador</th>

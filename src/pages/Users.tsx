@@ -206,7 +206,7 @@ export default function UsersPage() {
                ) : users.length === 0 ? (
                  <div className="p-8 text-center text-muted-foreground">Nenhum usuário cadastrado.</div>
                ) : (
-                 <table className="w-full text-left border-collapse">
+                 <table className="w-full text-left border-collapse min-w-[700px]">
                    <thead>
                      <tr className="bg-secondary/50 border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
                        <th className="px-6 py-4 font-medium">Nome / Email</th>

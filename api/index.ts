@@ -458,8 +458,12 @@ app.put('/api/materials/:id', authMiddleware, managerMiddleware, async (req: Req
       }
     });
     res.json(updated);
-  } catch (error) {
-    res.status(400).json({ error: 'Erro ao atualizar material. Verifique se o código é único ou se o setor existe.' });
+  } catch (error: any) {
+    console.error("Erro ao atualizar material:", error);
+    res.status(400).json({ 
+      error: 'Erro ao atualizar material. Verifique se o código é único, se o setor existe ou se os campos numéricos são válidos.',
+      details: error.message || String(error)
+    });
   }
 });
 
@@ -479,70 +483,87 @@ app.post('/api/materials/:id/count', authMiddleware, async (req: AuthenticatedRe
   const { id } = req.params;
   const { newQuantity, notes, status, requestedQuantity, repostedAt, countType } = req.body;
   
-  const material = await prisma.material.findUnique({ where: { id: String(id) } });
-  if (!material) return res.status(404).json({ error: 'Material não encontrado' });
+  try {
+    const material = await prisma.material.findUnique({ where: { id: String(id) } });
+    if (!material) return res.status(404).json({ error: 'Material não encontrado' });
 
-  const isCountingGiro = countType === 'giro';
-  const previousQuantity = isCountingGiro ? (material as any).quantityGiro : material.quantity;
-  const estoqueMinimo = material.estoqueMinimo;
-  
-  let finalStatus = status !== undefined ? status : 'COMPLETED';
-  const resolvedNewQuantity = newQuantity !== undefined ? Number(newQuantity) : previousQuantity;
-  if (resolvedNewQuantity <= estoqueMinimo && status === undefined) {
-    finalStatus = 'PURCHASE_REQUESTED';
-  }
-  
-  let resolvedRepostedAt = material.repostedAt;
-  if (repostedAt !== undefined) {
-    resolvedRepostedAt = repostedAt ? new Date(repostedAt) : null;
-  } else {
-    if (finalStatus === 'COMPLETED') {
-      resolvedRepostedAt = new Date();
-    } else if (finalStatus !== material.status) {
-      resolvedRepostedAt = null;
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ error: 'Usuário não autenticado ou ID do usuário ausente' });
     }
-  }
 
-  const updateData: any = {
-    notes: notes !== undefined ? notes : material.notes,
-    status: finalStatus,
-    requestedQuantity: req.body.requestedQuantity !== undefined 
-      ? (req.body.requestedQuantity === null ? null : Number(req.body.requestedQuantity)) 
-      : material.requestedQuantity,
-    repostedAt: resolvedRepostedAt
-  };
+    const isCountingGiro = countType === 'giro';
+    const previousQuantity = Math.round(Number(isCountingGiro ? ((material as any).quantityGiro ?? 0) : (material.quantity ?? 0)));
+    const estoqueMinimo = material.estoqueMinimo;
+    
+    let finalStatus = status !== undefined ? status : 'COMPLETED';
+    const resolvedNewQuantity = Math.round(Number(newQuantity !== undefined && newQuantity !== '' && newQuantity !== null ? newQuantity : previousQuantity));
+    
+    if (isNaN(resolvedNewQuantity)) {
+      return res.status(400).json({ error: 'A quantidade de contagem deve ser um número válido.' });
+    }
 
-  if (isCountingGiro) {
-    updateData.quantityGiro = resolvedNewQuantity;
-  } else {
-    updateData.quantity = resolvedNewQuantity;
-    if (finalStatus === 'REALOCATED_TO_GIRO') {
-      const diff = material.quantity - resolvedNewQuantity;
-      if (diff > 0) {
-        updateData.quantityGiro = ((material as any).quantityGiro || 0) + diff;
+    if (resolvedNewQuantity <= estoqueMinimo && status === undefined) {
+      finalStatus = 'PURCHASE_REQUESTED';
+    }
+    
+    let resolvedRepostedAt = material.repostedAt;
+    if (repostedAt !== undefined) {
+      resolvedRepostedAt = repostedAt ? new Date(repostedAt) : null;
+    } else {
+      if (finalStatus === 'COMPLETED') {
+        resolvedRepostedAt = new Date();
+      } else if (finalStatus !== material.status) {
+        resolvedRepostedAt = null;
       }
     }
-  }
 
-  const updatedMaterial = await (prisma.material as any).update({
-    where: { id: String(id) },
-    data: updateData
-  });
+    const updateData: any = {
+      notes: notes !== undefined ? notes : material.notes,
+      status: finalStatus,
+      requestedQuantity: req.body.requestedQuantity !== undefined 
+        ? (req.body.requestedQuantity === null ? null : Math.round(Number(req.body.requestedQuantity))) 
+        : material.requestedQuantity,
+      repostedAt: resolvedRepostedAt
+    };
 
-  const prefix = isCountingGiro ? '[GIRO]' : '[PULMÃO]';
-  const finalNotes = notes ? `${prefix} ${notes}` : prefix;
-
-  await prisma.stockCount.create({
-    data: {
-      materialId: String(id),
-      userId: req.user?.id || '',
-      previousQuantity,
-      newQuantity: resolvedNewQuantity,
-      notes: finalNotes
+    if (isCountingGiro) {
+      updateData.quantityGiro = resolvedNewQuantity;
+    } else {
+      updateData.quantity = resolvedNewQuantity;
+      if (finalStatus === 'REALOCATED_TO_GIRO') {
+        const diff = material.quantity - resolvedNewQuantity;
+        if (diff > 0) {
+          updateData.quantityGiro = Math.round(Number(((material as any).quantityGiro || 0) + diff));
+        }
+      }
     }
-  });
 
-  res.json(updatedMaterial);
+    const updatedMaterial = await (prisma.material as any).update({
+      where: { id: String(id) },
+      data: updateData
+    });
+
+    const prefix = isCountingGiro ? '[GIRO]' : '[PULMÃO]';
+    const finalNotes = notes ? `${prefix} ${notes}` : prefix;
+
+    await prisma.stockCount.create({
+      data: {
+        materialId: String(id),
+        userId: req.user.id,
+        previousQuantity,
+        newQuantity: resolvedNewQuantity,
+        notes: finalNotes
+      }
+    });
+
+    res.json(updatedMaterial);
+  } catch (error: any) {
+    console.error("Erro ao registrar contagem de material:", error);
+    res.status(500).json({ 
+      error: 'Erro interno ao registrar contagem de material.', 
+      details: error.message || String(error)
+    });
+  }
 });
 
 // ============================================================================

@@ -839,8 +839,8 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-         <div className="lg:col-span-2 bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm p-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 lg:grid-cols-12 gap-6">
+         <div className="xl:col-span-2 lg:col-span-8 bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm p-6">
             <div className="flex items-center justify-between mb-6">
                <div>
                   <h3 className="font-semibold text-foreground flex items-center gap-2">
@@ -871,7 +871,7 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
             </div>
          </div>
 
-         <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden">
+         <div className="xl:col-span-1 lg:col-span-4 bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden">
             <div className="px-6 py-5 border-b border-border bg-card/80 flex items-center justify-between">
                <div>
                   <h3 className="font-semibold text-foreground">Atenção Necessária (Conferência)</h3>
@@ -1138,15 +1138,15 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
             </span>
          </div>
          <div className="overflow-x-auto">
-            <div className="hidden md:block w-full">
-               <table className="w-full text-left border-collapse table-fixed">
+            <div className="hidden md:block w-full overflow-x-auto">
+               <table className="w-full text-left border-collapse table-fixed min-w-[750px]">
                   <thead>
                      <tr className="bg-secondary/30 border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
-                        <th className="px-6 py-4 font-medium w-[40%]">Produto</th>
+                        <th className="px-6 py-4 font-medium w-[35%]">Produto</th>
                         <th className="px-6 py-4 font-medium w-[20%]">Setor</th>
                         <th className="px-6 py-4 font-medium w-[15%]">Giro do Dia</th>
                         <th className="px-6 py-4 font-medium w-[15%]">Estoque Pulmão</th>
-                        <th className="px-6 py-4 font-medium text-right w-[10%]">Ação</th>
+                        <th className="px-6 py-4 font-medium text-right w-[15%]">Ação</th>
                      </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -1533,6 +1533,138 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
           </div>
         )}
 
+       {/* Modal de Contagem do Gestor */}
+       <AnimatePresence>
+         {showCountModal && activeMaterial && (
+           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+             <motion.div 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+                onClick={() => setShowCountModal(false)}
+             />
+             <motion.div 
+                initial={{ scale: 0.95, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 20 }}
+                className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl p-6 relative overflow-hidden z-10"
+             >
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-blue-500"></div>
+                
+                <div className="mb-6 mt-2">
+                   <h3 className="text-xl font-bold text-foreground">Ajustar Estoque (Gestão)</h3>
+                   <p className="text-sm text-muted-foreground mt-1">{activeMaterial.name} ({activeMaterial.code})</p>
+                </div>
+
+                <form onSubmit={handleCountSubmitManager} className="space-y-4">
+                  {/* Seletor de Estoque Alvo (Pulmão vs Giro) */}
+                  {activeMaterial.isGiro && activeMaterial.isPulmao !== false ? (
+                     <div className="bg-secondary/40 p-1.5 rounded-xl border border-border/60 flex gap-2">
+                        <button
+                           type="button"
+                           onClick={() => {
+                              setCountTargetStock('pulmao');
+                              setCountQuantity(activeMaterial.quantity || 0);
+                           }}
+                           className={cn(
+                              "flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
+                              countTargetStock === 'pulmao'
+                                 ? "bg-blue-500/10 text-blue-500 border border-blue-500/25 shadow-sm"
+                                 : "text-muted-foreground hover:text-foreground"
+                           )}
+                        >
+                           📦 Estoque Pulmão
+                        </button>
+                        <button
+                           type="button"
+                           onClick={() => {
+                              setCountTargetStock('giro');
+                              setCountQuantity(activeMaterial.quantityGiro || 0);
+                           }}
+                           className={cn(
+                              "flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
+                              countTargetStock === 'giro'
+                                 ? "bg-amber-500/10 text-amber-500 border border-amber-500/25 shadow-sm"
+                                 : "text-muted-foreground hover:text-foreground"
+                           )}
+                        >
+                           ⚡ Giro do Dia
+                        </button>
+                     </div>
+                  ) : (
+                     <div className="text-xs text-muted-foreground flex items-center gap-1.5 font-medium px-1">
+                        <span>Estoque Alvo:</span>
+                        {countTargetStock === 'giro' ? (
+                           <span className="text-amber-500 font-semibold flex items-center gap-1">⚡ Giro do Dia</span>
+                        ) : (
+                           <span className="text-blue-500 font-semibold flex items-center gap-1">📦 Estoque Pulmão</span>
+                        )}
+                     </div>
+                  )}
+
+                  <div>
+                     <label className="block text-sm font-medium text-muted-foreground mb-1.5">Quantidade Física ({formatUnit(activeMaterial?.unit)})</label>
+                     <input 
+                        type="number" 
+                        min="0"
+                        value={countQuantity}
+                        onChange={e => setCountQuantity(e.target.value ? parseInt(e.target.value) : '')}
+                        className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 text-lg font-bold focus:ring-2 focus:ring-amber-500/50 outline-none text-foreground"
+                        required
+                     />
+                  </div>
+                  
+                  <div>
+                     <label className="block text-sm font-medium text-muted-foreground mb-1.5">Status/Tag</label>
+                     <select
+                        value={countStatus}
+                        onChange={e => setCountStatus(e.target.value as Material['status'])}
+                        className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-amber-500/50 outline-none text-foreground"
+                     >
+                        <option value="COMPLETED">Finalizado/Reposto</option>
+                        <option value="COUNTED_RECENTLY">Recém Contado</option>
+                        <option value="PENDING">Contagem Pendente</option>
+                        <option value="AWAITING_CONFIRMATION">Aguardando Conferência</option>
+                        <option value="PURCHASE_REQUESTED">Solicitando Compra</option>
+                        {countTargetStock === 'pulmao' && (
+                           <option value="REALOCATED_TO_GIRO">Realocado para estoque de giro</option>
+                        )}
+                     </select>
+                  </div>
+
+                  <div>
+                     <label className="block text-sm font-medium text-muted-foreground mb-1.5">Motivo do Ajuste / Notas</label>
+                     <textarea 
+                        value={countNotes}
+                        onChange={e => setCountNotes(e.target.value)}
+                        className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-amber-500/50 outline-none text-foreground resize-none"
+                        rows={3}
+                        placeholder="Ex: Ajuste de divergência após contagem física rápida..."
+                     />
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                     <button 
+                        type="button"
+                        onClick={() => setShowCountModal(false)}
+                        className="flex-1 px-4 py-3 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors"
+                     >
+                        Cancelar
+                     </button>
+                     <button 
+                        type="submit"
+                        className="flex-1 px-4 py-3 bg-amber-600 text-white font-medium rounded-xl hover:bg-amber-700 transition-colors shadow-lg shadow-amber-500/25"
+                     >
+                        Salvar Ajuste
+                     </button>
+                  </div>
+                </form>
+             </motion.div>
+           </div>
+         )}
+       </AnimatePresence>
+
       <ReportPreviewModal 
         isOpen={isReportOpen} 
         onClose={() => setIsReportOpen(false)} 
@@ -1634,6 +1766,16 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
     });
   }, [materials, search, filterMode, user, dashboardStockTab]);
 
+  const [visibleCount, setVisibleCount] = useState(25);
+
+  useEffect(() => {
+    setVisibleCount(25);
+  }, [search, filterMode, dashboardStockTab]);
+
+  const visibleMaterials = useMemo(() => {
+    return filteredMaterials.slice(0, visibleCount);
+  }, [filteredMaterials, visibleCount]);
+
   const handleScanResult = (decodedText: string) => {
     setShowScanner(false);
     
@@ -1717,9 +1859,9 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
         </div>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 lg:grid-cols-12 gap-6">
          {/* Seção de Contagem (Esquerda) */}
-         <div className="lg:col-span-2 space-y-6">
+         <div className="xl:col-span-2 lg:col-span-8 space-y-6">
             <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-sm flex flex-col gap-4 justify-between">
                {/* Seletor de Estoque do Dashboard (Pulmão vs Giro) */}
                <div className="flex border-b border-border/60 pb-1 mb-1 gap-4">
@@ -1795,18 +1937,18 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
                   </div>
                ) : (
                   <>
-                  <div className="hidden md:block w-full">
-                      <table className="w-full text-left border-collapse table-fixed">
+                  <div className="hidden md:block w-full overflow-x-auto">
+                      <table className="w-full text-left border-collapse table-fixed min-w-[750px]">
                         <thead>
                           <tr className="bg-secondary/50 border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
-                            <th className="px-6 py-4 font-medium w-[45%]">Produto</th>
+                            <th className="px-6 py-4 font-medium w-[40%]">Produto</th>
                             <th className="px-6 py-4 font-medium w-[25%]">Setor</th>
                             <th className="px-6 py-4 font-medium w-[15%]">Estoque Sist.</th>
-                            <th className="px-6 py-4 font-medium text-right w-[15%]">Ação</th>
+                            <th className="px-6 py-4 font-medium text-right w-[20%]">Ação</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
-                          {filteredMaterials.map(mat => (
+                          {visibleMaterials.map(mat => (
                             <tr key={mat.id} className="hover:bg-secondary/30 transition-colors">
                               <td className="px-6 py-4">
                                 <div className="font-medium text-foreground flex items-center gap-2 flex-wrap break-words">
@@ -1866,7 +2008,7 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
 
                     {/* Mobile/Tablet view: Cards */}
                     <div className="md:hidden divide-y divide-border">
-                      {filteredMaterials.map(mat => (
+                      {visibleMaterials.map(mat => (
                         <div key={mat.id} className="p-4 space-y-3">
                           <div className="flex justify-between items-start gap-2">
                             <div className="min-w-0 flex-1">
@@ -1926,13 +2068,24 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
                         </div>
                       ))}
                     </div>
+                    {filteredMaterials.length > visibleCount && (
+                       <div className="p-4 border-t border-border bg-secondary/10 text-center">
+                          <button
+                             type="button"
+                             onClick={() => setVisibleCount(prev => prev + 25)}
+                             className="px-4 py-2.5 text-sm font-semibold text-blue-500 hover:text-blue-600 hover:bg-blue-500/5 rounded-xl border border-blue-500/10 transition-colors inline-flex items-center gap-1.5"
+                          >
+                             Carregar mais ({filteredMaterials.length - visibleCount} restantes)
+                          </button>
+                       </div>
+                    )}
                   </>
                )}
             </div>
          </div>
 
          {/* Histórico Recente e Pedidos (Direita) */}
-         <div className="flex flex-col gap-6">
+         <div className="xl:col-span-1 lg:col-span-4 flex flex-col gap-6">
             
             {/* Pedidos de Compra (Read Only for Attendant) */}
             <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm flex flex-col h-[250px]">

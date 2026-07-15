@@ -505,6 +505,16 @@ export default function Materials() {
     return 0;
   });
 
+  const [visibleCount, setVisibleCount] = useState(30);
+
+  useEffect(() => {
+    setVisibleCount(30);
+  }, [search, filterSector, activeTab]);
+
+  const visibleMaterials = useMemo(() => {
+    return filteredMaterials.slice(0, visibleCount);
+  }, [filteredMaterials, visibleCount]);
+
   const handleScanResult = (decodedText: string) => {
     setShowScanner(false);
     
@@ -639,7 +649,7 @@ export default function Materials() {
       <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm overflow-hidden relative z-10">
         {/* Desktop view: table */}
         <div className="overflow-x-auto hidden md:block">
-          <table className="min-w-full divide-y divide-border">
+          <table className="min-w-full divide-y divide-border min-w-[850px]">
             <thead className="bg-secondary/50">
               <tr>
                 {visibleCols.includes('code') && <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Código</th>}
@@ -652,7 +662,7 @@ export default function Materials() {
             </thead>
             <tbody className="divide-y divide-border relative">
               <AnimatePresence>
-                {filteredMaterials.map(mat => (
+                {visibleMaterials.map(mat => (
                   <motion.tr 
                     layout
                     initial={{ opacity: 0 }}
@@ -780,7 +790,7 @@ export default function Materials() {
         {/* Mobile view: Cards list */}
         <div className="md:hidden block divide-y divide-border/60">
           <AnimatePresence>
-            {filteredMaterials.map(mat => (
+            {visibleMaterials.map(mat => (
               <motion.div
                 layout
                 initial={{ opacity: 0 }}
@@ -902,6 +912,17 @@ export default function Materials() {
           {filteredMaterials.length === 0 && (
             <div className="p-8 text-center text-muted-foreground">
               Nenhum material encontrado com os filtros atuais.
+            </div>
+          )}
+          {filteredMaterials.length > visibleCount && (
+            <div className="p-4 border-t border-border bg-secondary/10 text-center">
+              <button
+                type="button"
+                onClick={() => setVisibleCount(prev => prev + 30)}
+                className="px-4 py-2.5 text-sm font-semibold text-blue-500 hover:text-blue-600 hover:bg-blue-500/5 rounded-xl border border-blue-500/10 transition-colors inline-flex items-center gap-1.5"
+              >
+                Carregar mais ({filteredMaterials.length - visibleCount} restantes)
+              </button>
             </div>
           )}
         </div>
@@ -1106,7 +1127,7 @@ export default function Materials() {
       {/* Modal de Confirmação de Quantidades (Pulmão vs Giro) */}
       <AnimatePresence>
          {showConfirmQuantitiesModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in-0 duration-200">
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in-0 duration-200">
                <motion.div 
                   initial={{ opacity: 0 }} 
                   animate={{ opacity: 1 }} 
@@ -2216,7 +2237,7 @@ export default function Materials() {
                initial={{ opacity: 0 }}
                animate={{ opacity: 1 }}
                exit={{ opacity: 0 }}
-               className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+               className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
             >
                <motion.div 
                   initial={{ scale: 0.95, y: 20 }}
