@@ -3,15 +3,15 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "/api/index"
+      "destination": "/api/index.ts"
     },
     {
       "source": "/((?!api).*\\..*)",
-      "destination": "/$1"
+      "destination": "/dist/$1"
     },
     {
       "source": "/((?!api).*)",
-      "destination": "/index.html"
+      "destination": "/dist/index.html"
     }
   ],
   "cleanUrls": true

@@ -225,6 +225,7 @@ export default function AuditLogs() {
   const [timeEnd, setTimeEnd] = useState('');
   const [sectorFilter, setSectorFilter] = useState('');
   const [productFilter, setProductFilter] = useState('');
+  const [stockFilter, setStockFilter] = useState<'all' | 'pulmao' | 'giro'>('all');
   const [stockCountFilter, setStockCountFilter] = useState<'all' | 'pulmao' | 'giro'>('all');
 
   // Otimização de Performance: Paginação
@@ -903,10 +904,10 @@ export default function AuditLogs() {
           )}
         </div>
         
-        {/* DISPOSIÇÃO CORRIGIDA: Grid fluida e adaptável para evitar sobreposições */}
-        <div className="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5 bg-card items-end">
+        {/* Grid fluida com larguras controladas para evitar estiramento */}
+        <div className="p-5 flex flex-wrap gap-x-5 gap-y-4 bg-card items-end">
            {/* Attendant filter */}
-           <div className="space-y-1.5 w-full min-w-0">
+           <div className="space-y-1.5 flex-1 min-w-[200px] max-w-full sm:max-w-[240px]">
               <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 whitespace-nowrap">
                  <User className="w-3.5 h-3.5 text-blue-500" /> Atendente/Contador
               </label>
@@ -926,7 +927,7 @@ export default function AuditLogs() {
            </div>
 
            {/* Sector filter */}
-           <div className="space-y-1.5 w-full min-w-0">
+           <div className="space-y-1.5 flex-1 min-w-[180px] max-w-full sm:max-w-[220px]">
               <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 whitespace-nowrap">
                  <MapPin className="w-3.5 h-3.5 text-blue-500" /> Setor do Produto
               </label>
@@ -943,7 +944,7 @@ export default function AuditLogs() {
            </div>
 
            {/* Specific product filter */}
-           <div className="space-y-1.5 w-full min-w-0">
+           <div className="space-y-1.5 flex-1 min-w-[260px] max-w-full sm:max-w-md">
               <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 whitespace-nowrap">
                  <Package className="w-3.5 h-3.5 text-blue-500" /> Produto Específico
               </label>
@@ -960,7 +961,7 @@ export default function AuditLogs() {
            </div>
 
            {/* Day / Date filter */}
-           <div className="space-y-1.5 w-full min-w-0">
+           <div className="space-y-1.5 w-full sm:w-[160px] shrink-0">
               <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 whitespace-nowrap">
                  <Calendar className="w-3.5 h-3.5 text-blue-500" /> Dia Específico
               </label>
@@ -973,7 +974,7 @@ export default function AuditLogs() {
            </div>
 
            {/* Hour filter */}
-           <div className="space-y-1.5 w-full min-w-0">
+           <div className="space-y-1.5 w-full sm:w-[220px] shrink-0">
               <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 whitespace-nowrap">
                  <Clock className="w-3.5 h-3.5 text-blue-500" /> Intervalo Horário (Filtro)
               </label>
@@ -997,18 +998,18 @@ export default function AuditLogs() {
            </div>
 
            {/* Stock Count Type filter */}
-           <div className="space-y-1.5 w-full min-w-0">
+           <div className="space-y-1.5 w-full sm:w-[240px] shrink-0">
               <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 whitespace-nowrap">
-                 <Filter className="w-3.5 h-3.5 text-blue-500" /> Tipo de Estoque 
+                 <Filter className="w-3.5 h-3.5 text-blue-500" /> Tipo de Estoque (Filtro)
               </label>
               <select 
                  className="bg-secondary/40 border border-border rounded-xl px-3 py-2 text-sm text-foreground w-full focus:ring-2 focus:ring-blue-500/50 outline-none transition-all cursor-pointer h-[40px] truncate max-w-full"
                  value={stockCountFilter}
                  onChange={e => setStockCountFilter(e.target.value as 'all' | 'pulmao' | 'giro')}
               >
-                 <option value="all"> Estoque Geral </option>
+                 <option value="all"> Estoque Geral 🗂️ </option>
                  <option value="pulmao"> Estoque Pulmão 📦</option>
-                 <option value="giro">Estoque de Giro ⚡</option>
+                 <option value="giro"> Estoque de Giro ⚡</option>
               </select>
            </div>
         </div>
