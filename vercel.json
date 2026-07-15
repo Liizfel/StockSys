@@ -7,11 +7,11 @@
     },
     {
       "source": "/((?!api).*\\..*)",
-      "destination": "/dist/$1"
+      "destination": "/$1"
     },
     {
       "source": "/((?!api).*)",
-      "destination": "/dist/index.html"
+      "destination": "/index.html"
     }
   ],
   "cleanUrls": true
