@@ -139,7 +139,7 @@ const KanbanColumn = ({ col, colMaterials, handleCardClick }: { col: any, colMat
           <span className="text-xs font-bold text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">{colMaterials.length}</span>
        </div>
        
-                       <div className="flex-1 p-4 overflow-y-auto">
+       <div className="flex-1 p-4 overflow-y-auto">
            <SortableContext 
              id={col.id}
              items={colMaterials.map(m => m.id)}
@@ -276,7 +276,6 @@ export default function Kanban() {
   const handleScanResult = (decodedText: string) => {
     setShowScanner(false);
     
-    // Buscar material por código de barras ou código
     const found = materials.find(m => m.codigoBarras === decodedText || m.code === decodedText);
     
     if (found) {
@@ -334,7 +333,6 @@ export default function Kanban() {
        return;
     }
 
-    // Verificar se foi solto sobre uma coluna
     const isOverColumn = columns.find(c => c.id === overId);
     if (isOverColumn) {
        if (activeMaterial.status !== overId && isManager) {
@@ -344,7 +342,6 @@ export default function Kanban() {
        return;
     }
 
-    // Verificar se foi solto sobre outro item
     const overMaterial = materials.find(m => m.id === overId);
     if (overMaterial && activeMaterial.status !== overMaterial.status && isManager) {
        setMaterials(prev => prev.map(m => m.id === activeMaterialId ? { ...m, status: overMaterial.status as Material['status'] } : m));
@@ -411,25 +408,35 @@ export default function Kanban() {
      setMaterials(prev => prev.map(m => m.id === materialId ? { ...m, status: newStatus } : m));
      try {
        await apiFetch(`/api/materials/${materialId}/status`, {
-         method: 'PATCH',
-         body: JSON.stringify({ status: newStatus })
+          method: 'PATCH',
+          body: JSON.stringify({ status: newStatus })
        }, token);
        window.dispatchEvent(new CustomEvent('products-changed'));
      } catch (err) {
-       fetchData(); // reverte em caso de erro
+       fetchData(); 
      }
   };
 
   const activeMaterial = activeId ? materials.find(m => m.id === activeId) : null;
 
+  /* 💡 CORREÇÃO DA REGRA DE NEGÓCIO: Tratamento de múltiplos setores para Atendentes no Kanban */
   const filteredMaterials = useMemo(() => {
     let list = materials;
     if (focusGiro) {
       list = list.filter(m => !!m.isGiro);
     }
-    if (!isManager && user?.sectorId) {
-      list = list.filter(m => m.sectorId === user.sectorId);
+    
+    // Alinha a lógica de permissões com a página Materials.tsx para suportar setores adicionais com segurança
+    if (!isManager && user) {
+      const userSectors = [user.sectorId, ...(user.additionalSectors || '').split(',')].filter(Boolean);
+      if (userSectors.length > 0) {
+        list = list.filter(m => {
+          const matSectors = [m.sectorId, ...(m.additionalSectors || '').split(',')].filter(Boolean);
+          return matSectors.some(id => userSectors.includes(id));
+        });
+      }
     }
+
     const lowerSearch = search.toLowerCase();
     if (!lowerSearch) return list;
     return list.filter(m => {
@@ -464,7 +471,6 @@ export default function Kanban() {
        }
     });
 
-    // Ordenar materiais dentro de cada coluna: reabastecidos recentemente primeiro
     const sortedGrouped: Record<string, Material[]> = {};
     const now = new Date().getTime();
     Object.keys(grouped).forEach(key => {
@@ -541,15 +547,18 @@ export default function Kanban() {
              
              <div className="relative flex-1">
                <input 
-                   type="text" 
-                   placeholder="Buscar por nome, código, usuário, dia, hora..." 
-                   className="w-full px-4 py-2 bg-secondary/50 border border-border rounded-xl text-sm focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
-                   value={search}
-                   onChange={e => setSearch(e.target.value)}
+                  type="text" 
+                  placeholder="Buscar por nome, código, usuário, dia, hora..." 
+                  className="w-full px-4 py-2 bg-secondary/50 border border-border rounded-xl text-sm focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
                />
              </div>
              <button 
-                onClick={() => setShowScanner(true)}
+                onClick={() => {
+                   setSearch('');
+                   setShowScanner(true);
+                }}
                 className="p-2 bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 border border-blue-500/20 rounded-xl transition-colors flex items-center justify-center shrink-0"
                 title="Ler Código do Produto ou QR Code"
              >
@@ -643,30 +652,30 @@ export default function Kanban() {
                         </select>
                      </div>
 
-                                           <div>
-                         <label className="block text-sm font-medium text-muted-foreground mb-1.5">Nova Quantidade ({formatUnit(pendingMove?.material.unit)})</label>
-                         <input 
-                            type="number" 
-                            min="0"
-                            value={moveQuantity}
-                            onChange={e => setMoveQuantity(e.target.value ? parseInt(e.target.value) : '')}
-                            className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 text-lg font-bold focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
-                            required
-                         />
-                      </div>
-                      {kanbanMode === 'PEDIDOS' && (
-                         <div>
-                            <label className="block text-sm font-medium text-muted-foreground mb-1.5">Quantidade Solicitada / Pedida</label>
-                            <input 
-                               type="number" 
-                               min="0"
-                               value={moveRequestedQuantity}
-                               onChange={e => setMoveRequestedQuantity(e.target.value ? parseInt(e.target.value) : '')}
-                               className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 text-lg font-bold focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
-                               required
-                            />
-                         </div>
-                      )}
+                     <div>
+                        <label className="block text-sm font-medium text-muted-foreground mb-1.5">Nova Quantidade ({formatUnit(pendingMove?.material.unit)})</label>
+                        <input 
+                           type="number" 
+                           min="0"
+                           value={moveQuantity}
+                           onChange={e => setMoveQuantity(e.target.value ? parseInt(e.target.value) : '')}
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 text-lg font-bold focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
+                           required
+                        />
+                     </div>
+                     {kanbanMode === 'PEDIDOS' && (
+                        <div>
+                           <label className="block text-sm font-medium text-muted-foreground mb-1.5">Quantidade Solicitada / Pedida</label>
+                           <input 
+                              type="number" 
+                              min="0"
+                              value={moveRequestedQuantity}
+                              onChange={e => setMoveRequestedQuantity(e.target.value ? parseInt(e.target.value) : '')}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 text-lg font-bold focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
+                              required
+                           />
+                        </div>
+                     )}
 
                      <div>
                         <label className="block text-sm font-medium text-muted-foreground mb-1.5">Observações (Obrigatório)</label>
@@ -743,14 +752,14 @@ export default function Kanban() {
                   className="w-full px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25"
                >
                   Concluído
-                </button>
-             </motion.div>
-          </motion.div>
-       )}
-    </AnimatePresence>
+               </button>
+            </motion.div>
+            </motion.div>
+         )}
+      </AnimatePresence>
 
-    <AnimatePresence>
-       {showCountModal && countMaterial && (
+      <AnimatePresence>
+         {showCountModal && countMaterial && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div 
                initial={{ opacity: 0 }} 
@@ -792,72 +801,72 @@ export default function Kanban() {
                </div>
 
                <form onSubmit={handleCountSubmit} className="space-y-5">
-                 <div>
-                    <label className="block text-sm font-medium text-muted-foreground mb-1.5">Quantidade Encontrada Fisicamente ({formatUnit(countMaterial.unit)})</label>
-                    <div className="flex items-center gap-4">
-                       <input 
-                          type="number" 
-                          min="0"
-                          value={countQuantity}
-                          onChange={e => setCountQuantity(e.target.value ? parseInt(e.target.value) : '')}
-                          className="w-32 bg-secondary/50 border border-border rounded-xl px-4 py-3 text-lg font-bold focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
-                          required
-                       />
-                       <div className="text-sm text-muted-foreground flex flex-col">
-                          <span>Anterior: <strong className="text-foreground">{countMaterial.quantity} {formatUnit(countMaterial.unit)}</strong></span>
-                          <span className={cn(
-                             "font-medium mt-0.5",
-                             Number(countQuantity) > countMaterial.quantity ? "text-emerald-500" : 
-                             Number(countQuantity) < countMaterial.quantity ? "text-red-500" : "text-muted-foreground"
-                          )}>
-                             Diferença: {Number(countQuantity) - countMaterial.quantity > 0 ? '+' : ''}{Number(countQuantity) - countMaterial.quantity} {formatUnit(countMaterial.unit)}
-                          </span>
-                       </div>
-                    </div>
-                 </div>
-                 
-                 <div>
-                    <label className="block text-sm font-medium text-muted-foreground mb-1.5">Ação de Kanban / Status</label>
-                    <select
-                       value={countStatus}
-                       onChange={e => setCountStatus(e.target.value as Material['status'])}
-                       className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
-                    >
-                       <option value="PENDING">Pendente / Contagem Pendente</option>
-                       <option value="COUNTED_RECENTLY">Recém Contado</option>
-                       <option value="AWAITING_CONFIRMATION">Aguardando Conferência (Gestor)</option>
-                       <option value="PURCHASE_REQUESTED">Solicitado à Compra</option>
-                       <option value="COMPLETED">Finalizado / Reposto / OK</option>
-                       <option value="REALOCATED_TO_GIRO">Realocado para estoque de giro</option>
-                    </select>
-                 </div>
-                 
-                 <div>
-                    <label className="block text-sm font-medium text-muted-foreground mb-1.5">Observações (Opcional)</label>
-                    <textarea 
-                       value={countNotes}
-                       onChange={e => setCountNotes(e.target.value)}
-                       className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground resize-none"
-                       rows={3}
-                       placeholder="Ex: Embalagem danificada, vencimento próximo..."
-                    />
-                 </div>
+                  <div>
+                     <label className="block text-sm font-medium text-muted-foreground mb-1.5">Quantidade Encontrada Fisicamente ({formatUnit(countMaterial.unit)})</label>
+                     <div className="flex items-center gap-4">
+                        <input 
+                           type="number" 
+                           min="0"
+                           value={countQuantity}
+                           onChange={e => setCountQuantity(e.target.value ? parseInt(e.target.value) : '')}
+                           className="w-32 bg-secondary/50 border border-border rounded-xl px-4 py-3 text-lg font-bold focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
+                           required
+                        />
+                        <div className="text-sm text-muted-foreground flex flex-col">
+                           <span>Anterior: <strong className="text-foreground">{countMaterial.quantity} {formatUnit(countMaterial.unit)}</strong></span>
+                           <span className={cn(
+                              "font-medium mt-0.5",
+                              Number(countQuantity) > countMaterial.quantity ? "text-emerald-500" : 
+                              Number(countQuantity) < countMaterial.quantity ? "text-red-500" : "text-muted-foreground"
+                           )}>
+                              Diferença: {Number(countQuantity) - countMaterial.quantity > 0 ? '+' : ''}{Number(countQuantity) - countMaterial.quantity} {formatUnit(countMaterial.unit)}
+                           </span>
+                        </div>
+                     </div>
+                  </div>
+                  
+                  <div>
+                     <label className="block text-sm font-medium text-muted-foreground mb-1.5">Ação de Kanban / Status</label>
+                     <select
+                        value={countStatus}
+                        onChange={e => setCountStatus(e.target.value as Material['status'])}
+                        className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
+                     >
+                        <option value="PENDING">Pendente / Contagem Pendente</option>
+                        <option value="COUNTED_RECENTLY">Recém Contado</option>
+                        <option value="AWAITING_CONFIRMATION">Aguardando Conferência (Gestor)</option>
+                        <option value="PURCHASE_REQUESTED">Solicitado à Compra</option>
+                        <option value="COMPLETED">Finalizado / Reposto / OK</option>
+                        <option value="REALOCATED_TO_GIRO">Realocado para estoque de giro</option>
+                     </select>
+                  </div>
+                  
+                  <div>
+                     <label className="block text-sm font-medium text-muted-foreground mb-1.5">Observações (Opcional)</label>
+                     <textarea 
+                        value={countNotes}
+                        onChange={e => setCountNotes(e.target.value)}
+                        className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground resize-none"
+                        rows={3}
+                        placeholder="Ex: Embalagem danificada, vencimento próximo..."
+                     />
+                  </div>
 
-                 <div className="flex gap-3 pt-2">
-                    <button 
-                       type="button" 
-                       onClick={() => setShowCountModal(false)}
-                       className="flex-1 px-4 py-3 text-muted-foreground font-medium rounded-xl hover:bg-secondary transition-colors"
-                    >
-                       Cancelar
-                    </button>
-                    <button 
-                       type="submit" 
-                       className="flex-1 px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25"
-                    >
-                       Confirmar
-                    </button>
-                 </div>
+                  <div className="flex gap-3 pt-2">
+                     <button 
+                        type="button" 
+                        onClick={() => setShowCountModal(false)}
+                        className="flex-1 px-4 py-3 text-muted-foreground font-medium rounded-xl hover:bg-secondary transition-colors"
+                     >
+                        Cancelar
+                     </button>
+                     <button 
+                        type="submit" 
+                        className="flex-1 px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25"
+                     >
+                        Confirmar
+                     </button>
+                  </div>
                </form>
             </motion.div>
           </div>

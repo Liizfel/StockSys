@@ -999,16 +999,16 @@ export default function AuditLogs() {
            {/* Stock Count Type filter */}
            <div className="space-y-1.5 w-full min-w-0">
               <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 whitespace-nowrap">
-                 <Filter className="w-3.5 h-3.5 text-blue-500" /> Tipo de Estoque (Filtro)
+                 <Filter className="w-3.5 h-3.5 text-blue-500" /> Tipo de Estoque 
               </label>
               <select 
                  className="bg-secondary/40 border border-border rounded-xl px-3 py-2 text-sm text-foreground w-full focus:ring-2 focus:ring-blue-500/50 outline-none transition-all cursor-pointer h-[40px] truncate max-w-full"
                  value={stockCountFilter}
                  onChange={e => setStockCountFilter(e.target.value as 'all' | 'pulmao' | 'giro')}
               >
-                 <option value="all">Ver contagem de todos</option>
-                 <option value="pulmao">Apenas Estoque Pulmão 📦</option>
-                 <option value="giro">Apenas Estoque de Giro ⚡</option>
+                 <option value="all"> Estoque Geral </option>
+                 <option value="pulmao"> Estoque Pulmão 📦</option>
+                 <option value="giro">Estoque de Giro ⚡</option>
               </select>
            </div>
         </div>
