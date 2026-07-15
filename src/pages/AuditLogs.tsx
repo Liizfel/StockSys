@@ -390,19 +390,18 @@ export default function AuditLogs() {
         .map(m => {
            const deficit = m.estoqueMinimo - m.quantity;
            const isPurchaseRequested = m.status === 'PURCHASE_REQUESTED';
-           // Se foi solicitado pelos atendentes, o deficit pode ser a quantidade solicitada (se houver) ou o deficit físico
            const finalDeficit = isPurchaseRequested 
               ? Math.max(deficit, m.requestedQuantity || 1) 
               : deficit;
               
            return {
-              name: m.name,
-              code: m.code,
-              current: m.quantity,
-              min: m.estoqueMinimo,
-              deficit: finalDeficit,
-              unit: formatUnit(m.unit),
-              isPurchaseRequested
+             name: m.name,
+             code: m.code,
+             current: m.quantity,
+             min: m.estoqueMinimo,
+             deficit: finalDeficit,
+             unit: formatUnit(m.unit),
+             isPurchaseRequested
            };
         })
         .filter(m => m.deficit > 0 || m.isPurchaseRequested)
@@ -458,7 +457,6 @@ export default function AuditLogs() {
       return report;
     }
 
-    // Calcular as estatísticas baseadas nos logs filtrados do relatório
     const reportStats = logsForReport.reduce((acc, log) => {
       const diff = log.newQuantity - log.previousQuantity;
       if (diff > 0) acc.positive++;
@@ -507,7 +505,6 @@ export default function AuditLogs() {
     setIsReportOpen(true);
   };
 
-  // Exportador PDF Profissional com quebra de página, layouts e estatísticas
   const handleExportPDF = (filter: 'all' | 'pulmao' | 'giro' = stockReportFilter) => {
     const doc = new jsPDF('p', 'mm', 'a4');
     
@@ -520,14 +517,11 @@ export default function AuditLogs() {
 
     const logsForReport = getLogsForReport(filter);
 
-    // Configurações de fonte
     doc.setFont("helvetica", "normal");
     
-    // Cabeçalho elegante escuro
-    doc.setFillColor(15, 23, 42); // slate-900 (combina com o lindo tema escuro)
+    doc.setFillColor(15, 23, 42); 
     doc.rect(0, 0, 210, 42, 'F');
     
-    // Título e detalhes do cabeçalho
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
@@ -543,7 +537,7 @@ export default function AuditLogs() {
     
     doc.setFontSize(8.5);
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(203, 213, 225); // slate-300
+    doc.setTextColor(203, 213, 225); 
     doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`, 15, 24);
     
     const filterDesc = [
@@ -558,7 +552,6 @@ export default function AuditLogs() {
     doc.text(`Filtros: ${filterDesc}`, 15, 30);
     doc.text(`Total de registros: ${logsForReport.length} contagem(ns)`, 15, 35);
     
-    // Calcular estatísticas específicas do relatório
     const reportStats = logsForReport.reduce((acc, log) => {
       const diff = log.newQuantity - log.previousQuantity;
       if (diff > 0) acc.positive++;
@@ -567,8 +560,7 @@ export default function AuditLogs() {
       return acc;
     }, { positive: 0, negative: 0, zero: 0 });
 
-    // Caixas de Resumo de Estatísticas
-    doc.setTextColor(30, 41, 59); // slate-800
+    doc.setTextColor(30, 41, 59); 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.text("Resumo Estatístico:", 15, 52);
@@ -576,8 +568,7 @@ export default function AuditLogs() {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     
-    // Caixas de grade para estatísticas
-    doc.setFillColor(241, 245, 249); // slate-100
+    doc.setFillColor(241, 245, 249); 
     doc.rect(15, 56, 40, 16, 'F');
     doc.rect(60, 56, 40, 16, 'F');
     doc.rect(105, 56, 40, 16, 'F');
@@ -591,7 +582,7 @@ export default function AuditLogs() {
     
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
-    doc.setTextColor(100, 116, 139); // slate-500
+    doc.setTextColor(100, 116, 139); 
     doc.text("TOTAL CONTAS", 35, 62, { align: 'center' });
     doc.text("SOBRAS (+)", 80, 62, { align: 'center' });
     doc.text("FALTAS (-)", 125, 62, { align: 'center' });
@@ -599,8 +590,7 @@ export default function AuditLogs() {
     
     let currentY = 82;
     
-    // Cabeçalho da Tabela
-    doc.setFillColor(15, 23, 42); // slate-900
+    doc.setFillColor(15, 23, 42); 
     doc.rect(15, currentY, 180, 8, 'F');
     
     doc.setTextColor(255, 255, 255);
@@ -617,12 +607,10 @@ export default function AuditLogs() {
     doc.setTextColor(30, 41, 59);
     
     logsForReport.forEach((log) => {
-      // Auto-paginação
       if (currentY > 270) {
         doc.addPage();
         currentY = 20;
         
-        // Repintar Cabeçalho
         doc.setFillColor(15, 23, 42);
         doc.rect(15, currentY, 180, 8, 'F');
         doc.setTextColor(255, 255, 255);
@@ -655,9 +643,8 @@ export default function AuditLogs() {
       const qtyChangeToDisplay = qtyChangeText.length > 20 ? qtyChangeText.substring(0, 18) + '..' : qtyChangeText;
       const diffText = diff > 0 ? `+${diff} ${unit}` : diff === 0 ? '0' : `${diff} ${unit}`;
       
-      // Cores de alerta/zebra
       if (diff !== 0) {
-        doc.setFillColor(254, 242, 242); // vermelho bem claro para divergência
+        doc.setFillColor(254, 242, 242); 
       } else {
         doc.setFillColor(255, 255, 255);
       }
@@ -677,13 +664,13 @@ export default function AuditLogs() {
       doc.text(qtyChangeToDisplay, 151, currentY + 4.2);
       
       if (diff > 0) {
-        doc.setTextColor(16, 185, 129); // verde esmeralda
+        doc.setTextColor(16, 185, 129); 
         doc.setFont("helvetica", "bold");
       } else if (diff < 0) {
-        doc.setTextColor(239, 68, 68); // vermelho suave
+        doc.setTextColor(239, 68, 68); 
         doc.setFont("helvetica", "bold");
       } else {
-        doc.setTextColor(100, 116, 139); // cinza ardósia
+        doc.setTextColor(100, 116, 139); 
       }
       doc.text(diffText, 195, currentY + 4.2, { align: 'right' });
       doc.setTextColor(30, 41, 59);
@@ -691,7 +678,6 @@ export default function AuditLogs() {
       
       currentY += 6;
       
-      // Auto-embrulho de observações/comentários
       if (log.notes && cleanNotes(log.notes)) {
         const notesLines = doc.splitTextToSize(`Obs: ${cleanNotes(log.notes)}`, 170);
         notesLines.forEach((line: string) => {
@@ -700,10 +686,9 @@ export default function AuditLogs() {
             currentY = 20;
           }
           
-          doc.setFillColor(248, 250, 252); // fundo slate-50 para nota
+          doc.setFillColor(248, 250, 252); 
           doc.rect(15, currentY, 180, 5, 'F');
           
-          // Indicador vertical esquerdo Slate-200
           doc.setFillColor(226, 232, 240);
           doc.rect(15, currentY, 1.5, 5, 'F');
           
@@ -719,7 +704,6 @@ export default function AuditLogs() {
       }
     });
     
-    // Bloco de Assinatura inferior
     if (currentY > 240) {
       doc.addPage();
       currentY = 30;
@@ -919,15 +903,15 @@ export default function AuditLogs() {
           )}
         </div>
         
-        {/* Dynamic Controls Grid */}
-        <div className="p-5 grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-4 bg-card">
+        {/* DISPOSIÇÃO CORRIGIDA: Grid fluida e adaptável para evitar sobreposições */}
+        <div className="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5 bg-card items-end">
            {/* Attendant filter */}
-           <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+           <div className="space-y-1.5 w-full min-w-0">
+              <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 whitespace-nowrap">
                  <User className="w-3.5 h-3.5 text-blue-500" /> Atendente/Contador
               </label>
               <select 
-                 className="bg-secondary/40 border border-border rounded-xl px-3 py-2 text-sm text-foreground w-full focus:ring-2 focus:ring-blue-500/50 outline-none transition-all cursor-pointer h-[40px]"
+                 className="bg-secondary/40 border border-border rounded-xl px-3 py-2 text-sm text-foreground w-full focus:ring-2 focus:ring-blue-500/50 outline-none transition-all cursor-pointer h-[40px] truncate max-w-full"
                  value={userFilter}
                  onChange={e => setUserFilter(e.target.value)}
               >
@@ -942,12 +926,12 @@ export default function AuditLogs() {
            </div>
 
            {/* Sector filter */}
-           <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+           <div className="space-y-1.5 w-full min-w-0">
+              <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 whitespace-nowrap">
                  <MapPin className="w-3.5 h-3.5 text-blue-500" /> Setor do Produto
               </label>
               <select 
-                 className="bg-secondary/40 border border-border rounded-xl px-3 py-2 text-sm text-foreground w-full focus:ring-2 focus:ring-blue-500/50 outline-none transition-all cursor-pointer h-[40px]"
+                 className="bg-secondary/40 border border-border rounded-xl px-3 py-2 text-sm text-foreground w-full focus:ring-2 focus:ring-blue-500/50 outline-none transition-all cursor-pointer h-[40px] truncate max-w-full"
                  value={sectorFilter}
                  onChange={e => setSectorFilter(e.target.value)}
               >
@@ -959,12 +943,12 @@ export default function AuditLogs() {
            </div>
 
            {/* Specific product filter */}
-           <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+           <div className="space-y-1.5 w-full min-w-0">
+              <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 whitespace-nowrap">
                  <Package className="w-3.5 h-3.5 text-blue-500" /> Produto Específico
               </label>
               <select 
-                 className="bg-secondary/40 border border-border rounded-xl px-3 py-2 text-sm text-foreground w-full focus:ring-2 focus:ring-blue-500/50 outline-none transition-all cursor-pointer h-[40px]"
+                 className="bg-secondary/40 border border-border rounded-xl px-3 py-2 text-sm text-foreground w-full focus:ring-2 focus:ring-blue-500/50 outline-none transition-all cursor-pointer h-[40px] truncate max-w-full"
                  value={productFilter}
                  onChange={e => setProductFilter(e.target.value)}
               >
@@ -976,8 +960,8 @@ export default function AuditLogs() {
            </div>
 
            {/* Day / Date filter */}
-           <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+           <div className="space-y-1.5 w-full min-w-0">
+              <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 whitespace-nowrap">
                  <Calendar className="w-3.5 h-3.5 text-blue-500" /> Dia Específico
               </label>
               <input 
@@ -989,22 +973,22 @@ export default function AuditLogs() {
            </div>
 
            {/* Hour filter */}
-           <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+           <div className="space-y-1.5 w-full min-w-0">
+              <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 whitespace-nowrap">
                  <Clock className="w-3.5 h-3.5 text-blue-500" /> Intervalo Horário (Filtro)
               </label>
-              <div className="flex gap-2 items-center">
+              <div className="flex gap-2 items-center w-full">
                  <input 
                     type="time" 
-                    className="bg-secondary/40 border border-border rounded-xl px-2.5 py-2 text-xs text-foreground w-full focus:ring-2 focus:ring-blue-500/50 outline-none transition-all cursor-pointer h-[40px]"
+                    className="bg-secondary/40 border border-border rounded-xl px-2 py-2 text-xs text-foreground w-full focus:ring-2 focus:ring-blue-500/50 outline-none transition-all cursor-pointer h-[40px]"
                     value={timeStart}
                     onChange={e => setTimeStart(e.target.value)}
                     placeholder="Início"
                  />
-                 <span className="text-muted-foreground text-xs font-bold">às</span>
+                 <span className="text-muted-foreground text-xs font-bold shrink-0">às</span>
                  <input 
                     type="time" 
-                    className="bg-secondary/40 border border-border rounded-xl px-2.5 py-2 text-xs text-foreground w-full focus:ring-2 focus:ring-blue-500/50 outline-none transition-all cursor-pointer h-[40px]"
+                    className="bg-secondary/40 border border-border rounded-xl px-2 py-2 text-xs text-foreground w-full focus:ring-2 focus:ring-blue-500/50 outline-none transition-all cursor-pointer h-[40px]"
                     value={timeEnd}
                     onChange={e => setTimeEnd(e.target.value)}
                     placeholder="Fim"
@@ -1013,12 +997,12 @@ export default function AuditLogs() {
            </div>
 
            {/* Stock Count Type filter */}
-           <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+           <div className="space-y-1.5 w-full min-w-0">
+              <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 whitespace-nowrap">
                  <Filter className="w-3.5 h-3.5 text-blue-500" /> Tipo de Estoque (Filtro)
               </label>
               <select 
-                 className="bg-secondary/40 border border-border rounded-xl px-3 py-2 text-sm text-foreground w-full focus:ring-2 focus:ring-blue-500/50 outline-none transition-all cursor-pointer h-[40px]"
+                 className="bg-secondary/40 border border-border rounded-xl px-3 py-2 text-sm text-foreground w-full focus:ring-2 focus:ring-blue-500/50 outline-none transition-all cursor-pointer h-[40px] truncate max-w-full"
                  value={stockCountFilter}
                  onChange={e => setStockCountFilter(e.target.value as 'all' | 'pulmao' | 'giro')}
               >
