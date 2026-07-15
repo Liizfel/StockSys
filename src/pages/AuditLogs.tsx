@@ -32,7 +32,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn, formatUnit, getWhatsAppShareUrl, getTelegramShareUrl } from '../lib/utils';
 import { jsPDF } from 'jspdf';
 
-// Modal para Pré-visualização e Compartilhamento de Relatórios
 interface ReportPreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -114,7 +113,6 @@ export const ReportPreviewModal = ({
               </button>
            </div>
 
-           {/* Opções de Filtro de Estoque */}
            {stockFilter !== undefined && onStockFilterChange !== undefined && (
              <div className="mb-4 bg-secondary/50 p-1 rounded-xl border border-border flex gap-1 shadow-inner">
                <button
@@ -218,17 +216,14 @@ export default function AuditLogs() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Estado dos Filtros
   const [userFilter, setUserFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
   const [timeStart, setTimeStart] = useState('');
   const [timeEnd, setTimeEnd] = useState('');
   const [sectorFilter, setSectorFilter] = useState('');
   const [productFilter, setProductFilter] = useState('');
-  const [stockFilter, setStockFilter] = useState<'all' | 'pulmao' | 'giro'>('all');
   const [stockCountFilter, setStockCountFilter] = useState<'all' | 'pulmao' | 'giro'>('all');
 
-  // Otimização de Performance: Paginação
   const [visibleCount, setVisibleCount] = useState(30);
 
   const cleanNotes = (notes: string | undefined | null): string => {
@@ -239,16 +234,9 @@ export default function AuditLogs() {
       .trim();
   };
 
-  const getStockTypeLabel = (notes: string | undefined | null): string => {
-    if (notes && notes.includes('[GIRO]')) return '⚡ Giro';
-    return '📦 Pulmão';
-  };
-
-  // Estado do Modal de Relatório
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [stockReportFilter, setStockReportFilter] = useState<'all' | 'pulmao' | 'giro'>('all');
 
-  // Buscar dados de auditoria ao montar
   useEffect(() => {
     if (!token) return;
     
@@ -272,26 +260,21 @@ export default function AuditLogs() {
     fetchAll();
   }, [token, isManager]);
 
-  // Processamento dinâmico de filtros com useMemo
   const filteredLogs = useMemo(() => {
-    // Reseta contador de paginação nas mudanças de filtro para evitar renderização inicial pesada
     setVisibleCount(30);
 
     return logs.filter(log => {
       const logDate = parseISO(log.timestamp);
       
-      // 1. User Filter (attendant)
       if (userFilter && log.userId !== userFilter && log.userName !== userFilter) {
          return false;
       }
       
-      // 2. Date Filter
       if (dateFilter) {
          const filterDate = parseISO(dateFilter);
          if (!isSameDay(logDate, filterDate)) return false;
       }
       
-      // 3. Hour/Time Filters
       if (timeStart) {
          const [hours, minutes] = timeStart.split(':').map(Number);
          const start = set(logDate, { hours, minutes, seconds: 0, milliseconds: 0 });
@@ -304,39 +287,33 @@ export default function AuditLogs() {
          if (logDate > end) return false;
       }
 
-      // 4. Sector Filter
       if (sectorFilter && log.materialSector !== sectorFilter) {
          return false;
       }
 
-      // 5. Specific Product Filter
       if (productFilter && log.materialId !== productFilter) {
          return false;
       }
 
-      // 6. Stock Count Type Filter (Todos, Pulmão, Giro)
       if (stockCountFilter === 'giro') {
-         if (!log.notes || !log.notes.includes('[GIRO]')) return false;
+         if (log.countType !== 'GIRO') return false;
       } else if (stockCountFilter === 'pulmao') {
-         if (log.notes && log.notes.includes('[GIRO]')) return false;
+         if (log.countType !== 'PULMAO') return false;
       }
       
       return true;
     }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [logs, userFilter, dateFilter, timeStart, timeEnd, sectorFilter, productFilter, stockCountFilter]);
 
-  // Fila de logs paginados
   const visibleLogs = useMemo(() => {
     return filteredLogs.slice(0, visibleCount);
   }, [filteredLogs, visibleCount]);
 
-  // Extrair setores únicos presentes no banco de dados de logs
   const uniqueSectors = useMemo(() => {
     const list = logs.map(l => l.materialSector).filter(Boolean) as string[];
     return Array.from(new Set(list)).sort();
   }, [logs]);
 
-  // Extrair produtos únicos presentes no banco de dados de logs
   const uniqueProducts = useMemo(() => {
     const map: Record<string, { id: string, name: string, code: string }> = {};
     logs.forEach(l => {
@@ -351,7 +328,6 @@ export default function AuditLogs() {
     return Object.values(map).sort((a, b) => a.name.localeCompare(b.name));
   }, [logs]);
 
-  // Cálculo de estatísticas sobre os logs filtrados
   const stats = useMemo(() => {
     let positive = 0;
     let negative = 0;
@@ -372,7 +348,6 @@ export default function AuditLogs() {
     };
   }, [filteredLogs]);
 
-  // Dados do Gráfico: Cronologia de atividades (soma o volume de contagem por dia em ordem cronológica)
   const activityTimelineData = useMemo(() => {
      const countsByDate: Record<string, number> = {};
      filteredLogs.forEach(log => {
@@ -382,10 +357,9 @@ export default function AuditLogs() {
      
      return Object.entries(countsByDate)
         .map(([date, count]) => ({ date, contagens: count }))
-        .reverse(); // colocar em sequência cronológica
+        .reverse();
   }, [filteredLogs]);
 
-  // Principais materiais críticos precisando de reposição
   const criticalReplacements = useMemo(() => {
      return materials
         .map(m => {
@@ -412,10 +386,8 @@ export default function AuditLogs() {
 
   const getLogsForReport = (filter: 'all' | 'pulmao' | 'giro') => {
     return filteredLogs.filter(l => {
-      const mat = materials.find(m => m.id === l.materialId);
-      const isGiroItem = mat ? !!mat.isGiro : false;
-      if (filter === 'pulmao' && isGiroItem) return false;
-      if (filter === 'giro' && !isGiroItem) return false;
+      if (filter === 'pulmao' && l.countType !== 'PULMAO') return false;
+      if (filter === 'giro' && l.countType !== 'GIRO') return false;
       return true;
     });
   };
@@ -437,7 +409,6 @@ export default function AuditLogs() {
     report += `${separator}\n`;
     report += `*Gerado em:* ${dateStr} às ${timeStr}\n`;
     
-    // Listar filtros aplicados
     const activeFilters = [
       userFilter ? `Colaborador: ${userFilter}` : '',
       dateFilter ? `Data: ${format(parseISO(dateFilter), 'dd/MM/yyyy')}` : '',
@@ -487,6 +458,7 @@ export default function AuditLogs() {
             ? ` _(Divergência: ${diff} ${unit})_` 
             : ` _(Sem divergência)_`;
 
+      report += `   - *Estoque Alvo:* ${l.countType === 'GIRO' ? 'Giro ⚡' : 'Pulmão 📦'}\n`;
       report += `   - *Qtd Contada:* ${l.newQuantity} ${unit}${diffText}\n`;
       report += `   - *Contador:* ${l.userName || 'Desconhecido'}\n`;
       report += `   - *Data/Hora:* ${format(parseISO(l.timestamp), "dd/MM/yyyy 'às' HH:mm")}\n`;
@@ -599,7 +571,7 @@ export default function AuditLogs() {
     doc.setFontSize(8);
     doc.text("Data/Hora", 15, currentY + 5.5);
     doc.text("Produto (SKU)", 43, currentY + 5.5);
-    doc.text("Setor", 98, currentY + 5.5);
+    doc.text("Tipo", 92, currentY + 5.5);
     doc.text("Responsável", 123, currentY + 5.5);
     doc.text("Contagem", 151, currentY + 5.5);
     doc.text("Divergência", 195, currentY + 5.5, { align: 'right' });
@@ -619,7 +591,7 @@ export default function AuditLogs() {
         doc.setFontSize(8);
         doc.text("Data/Hora", 15, currentY + 5.5);
         doc.text("Produto (SKU)", 43, currentY + 5.5);
-        doc.text("Setor", 98, currentY + 5.5);
+        doc.text("Tipo", 92, currentY + 5.5);
         doc.text("Responsável", 123, currentY + 5.5);
         doc.text("Contagem", 151, currentY + 5.5);
         doc.text("Divergência", 195, currentY + 5.5, { align: 'right' });
@@ -632,9 +604,8 @@ export default function AuditLogs() {
       const matName = log.materialName || mat?.name || 'Material';
       const matCode = log.materialCode || mat?.code || '';
       const fullProductText = matCode ? `${matName} (${matCode})` : matName;
-      const productToDisplay = fullProductText.length > 38 ? fullProductText.substring(0, 35) + '...' : fullProductText;
-      const sectorDisplay = log.materialSector || mat?.sector || 'Geral';
-      const sectorToDisplay = sectorDisplay.length > 15 ? sectorDisplay.substring(0, 13) + '...' : sectorDisplay;
+      const productToDisplay = fullProductText.length > 34 ? fullProductText.substring(0, 31) + '...' : fullProductText;
+      const typeDisplay = log.countType === 'GIRO' ? 'Giro' : 'Pulmão';
       const userDisplay = log.userName || log.userId || 'Desconhecido';
       const userToDisplay = userDisplay.length > 16 ? userDisplay.substring(0, 14) + '...' : userDisplay;
       
@@ -660,7 +631,7 @@ export default function AuditLogs() {
       doc.setTextColor(30, 41, 59);
       doc.text(dateStr, 15, currentY + 4.2);
       doc.text(productToDisplay, 43, currentY + 4.2);
-      doc.text(sectorToDisplay, 98, currentY + 4.2);
+      doc.text(typeDisplay, 92, currentY + 4.2);
       doc.text(userToDisplay, 123, currentY + 4.2);
       doc.text(qtyChangeToDisplay, 151, currentY + 4.2);
       
@@ -733,7 +704,6 @@ export default function AuditLogs() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto px-1 sm:px-4 pb-12 animate-in fade-in duration-500">
-      {/* Page Header */}
       <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between bg-card border border-border p-6 rounded-2xl shadow-sm">
          <div>
             <h2 className="text-2xl font-bold text-foreground flex items-center gap-3">
@@ -763,7 +733,6 @@ export default function AuditLogs() {
          </div>
       </div>
 
-      {/* Bento Stats Highlight Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-card border border-border p-4 rounded-xl flex items-center gap-3.5">
            <div className="p-3 bg-blue-500/10 text-blue-500 rounded-xl">
@@ -806,9 +775,7 @@ export default function AuditLogs() {
         </div>
       </div>
 
-      {/* Grid: Charts and Ranking */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-         {/* Chart: Activity timeline */}
          <div className="lg:col-span-2 bg-card border border-border p-6 rounded-2xl shadow-sm flex flex-col">
             <h3 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
                <TrendingUp className="w-4 h-4 text-blue-500" /> Histórico Volumétrico de Contagens
@@ -839,7 +806,6 @@ export default function AuditLogs() {
             </div>
          </div>
 
-         {/* Ranking */}
          <div className="bg-card border border-border p-6 rounded-2xl shadow-sm flex flex-col">
             <h3 className="text-base font-bold text-foreground mb-4 flex items-center gap-2">
                <AlertTriangle className="w-4 h-4 text-red-500" /> Top Críticos de Reposição
@@ -881,7 +847,6 @@ export default function AuditLogs() {
          </div>
       </div>
 
-      {/* Research and Advanced Filter Console Panel */}
       <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
         <div className="p-4 border-b border-border bg-secondary/30 flex items-center gap-2">
           <SlidersHorizontal className="w-4 h-4 text-blue-500" />
@@ -904,9 +869,7 @@ export default function AuditLogs() {
           )}
         </div>
         
-        {/* Grid fluida com larguras controladas para evitar estiramento */}
         <div className="p-5 flex flex-wrap gap-x-5 gap-y-4 bg-card items-end">
-           {/* Attendant filter */}
            <div className="space-y-1.5 flex-1 min-w-[200px] max-w-full sm:max-w-[240px]">
               <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 whitespace-nowrap">
                  <User className="w-3.5 h-3.5 text-blue-500" /> Atendente/Contador
@@ -926,7 +889,6 @@ export default function AuditLogs() {
               </select>
            </div>
 
-           {/* Sector filter */}
            <div className="space-y-1.5 flex-1 min-w-[180px] max-w-full sm:max-w-[220px]">
               <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 whitespace-nowrap">
                  <MapPin className="w-3.5 h-3.5 text-blue-500" /> Setor do Produto
@@ -943,8 +905,7 @@ export default function AuditLogs() {
               </select>
            </div>
 
-           {/* Specific product filter */}
-           <div className="space-y-1.5 flex-1 min-w-[260px] max-w-full sm:max-w-md">
+           <div className="space-y-1.5 flex-1 min-w-[260px] max-w-full sm:max-w-[380px]">
               <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 whitespace-nowrap">
                  <Package className="w-3.5 h-3.5 text-blue-500" /> Produto Específico
               </label>
@@ -960,7 +921,6 @@ export default function AuditLogs() {
               </select>
            </div>
 
-           {/* Day / Date filter */}
            <div className="space-y-1.5 w-full sm:w-[160px] shrink-0">
               <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 whitespace-nowrap">
                  <Calendar className="w-3.5 h-3.5 text-blue-500" /> Dia Específico
@@ -973,7 +933,6 @@ export default function AuditLogs() {
               />
            </div>
 
-           {/* Hour filter */}
            <div className="space-y-1.5 w-full sm:w-[220px] shrink-0">
               <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 whitespace-nowrap">
                  <Clock className="w-3.5 h-3.5 text-blue-500" /> Intervalo Horário (Filtro)
@@ -997,7 +956,6 @@ export default function AuditLogs() {
               </div>
            </div>
 
-           {/* Stock Count Type filter */}
            <div className="space-y-1.5 w-full sm:w-[240px] shrink-0">
               <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 whitespace-nowrap">
                  <Filter className="w-3.5 h-3.5 text-blue-500" /> Tipo de Estoque (Filtro)
@@ -1015,7 +973,6 @@ export default function AuditLogs() {
         </div>
       </div>
 
-      {/* Main Logs Table / Records List */}
       <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-border bg-card flex justify-between items-center flex-wrap gap-2">
            <h3 className="font-bold text-foreground text-base flex items-center gap-2">
@@ -1037,7 +994,6 @@ export default function AuditLogs() {
                  key={log.id} 
                  className="p-4 sm:p-5 hover:bg-secondary/20 transition-all duration-150 flex flex-col gap-3"
               >
-                 {/* Top row */}
                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-start sm:items-center gap-3">
                        <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-xs shrink-0 self-center">
@@ -1057,12 +1013,12 @@ export default function AuditLogs() {
                                 </span>
                              )}
                              <span className={cn(
-                                "text-[10px] font-semibold px-1.5 py-0.5 rounded border",
-                                log.notes && log.notes.includes('[GIRO]') 
+                                "text-[10px] font-semibold px-1.5 py-0.5 rounded border flex items-center gap-1",
+                                log.countType === 'GIRO' 
                                    ? "text-amber-500 bg-amber-500/10 border-amber-500/10" 
                                    : "text-blue-500 bg-blue-500/10 border-blue-500/10"
                              )}>
-                                {getStockTypeLabel(log.notes)}
+                                {log.countType === 'GIRO' ? '⚡ Giro' : '📦 Pulmão'}
                              </span>
                           </div>
                           
@@ -1074,7 +1030,6 @@ export default function AuditLogs() {
                        </div>
                     </div>
 
-                    {/* Numeric Divergence Block */}
                     <div className="flex items-center gap-4 sm:justify-end self-end sm:self-auto bg-secondary/30 sm:bg-transparent p-2 rounded-xl sm:p-0">
                        <div className="text-right">
                           <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">Alteração</p>
@@ -1104,7 +1059,6 @@ export default function AuditLogs() {
                     </div>
                  </div>
 
-                 {/* Comments/Notes Row */}
                  {log.notes && log.notes.trim() && (
                     <div className="flex items-start gap-2 bg-secondary/30 border border-border/60 p-3 rounded-xl">
                        <MessageSquare className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
@@ -1128,7 +1082,6 @@ export default function AuditLogs() {
           )}
         </div>
 
-        {/* Load More Pagination Trigger Button */}
         {filteredLogs.length > visibleCount && (
           <div className="p-4 text-center border-t border-border bg-secondary/10">
              <button 
@@ -1141,7 +1094,6 @@ export default function AuditLogs() {
         )}
       </div>
 
-      {/* Preview Modal for reports */}
       <ReportPreviewModal 
         isOpen={isReportOpen} 
         onClose={() => setIsReportOpen(false)} 
