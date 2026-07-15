@@ -8,23 +8,23 @@ datasource db {
 }
 
 model User {
-  id        String       @id @default(uuid())
-  name      String
-  email     String       @unique
-  password  String // Em produção, use sempre hash (bcrypt/argon2)
-  role      String // 'MANAGER' ou 'ATTENDANT'
-  createdAt DateTime     @default(now()) @map("created_at")
+  id                String       @id @default(uuid())
+  name              String
+  email             String       @unique
+  password          String // Em produção, use sempre hash (bcrypt/argon2)
+  role              String // 'MANAGER' ou 'ATTENDANT'
+  createdAt         DateTime     @default(now()) @map("created_at")
   
   // Relacionamento com Setor (Chave Estrangeira)
-  sectorId  String?      @map("sector_id")
-  sector    Sector?      @relation(fields: [sectorId], references: [id], onDelete: SetNull)
+  sectorId          String?      @map("sector_id")
+  sector            Sector?      @relation(fields: [sectorId], references: [id], onDelete: SetNull)
 
   // Setores adicionais separados por vírgula
-  additionalSectors String? @default("") @map("additional_sectors")
+  additionalSectors String?      @default("") @map("additional_sectors")
 
   // Históricos e Logs vinculados ao usuário
-  timeLogs  TimeLog[]
-  counts    StockCount[]
+  timeLogs          TimeLog[]
+  counts            StockCount[]
 
   @@map("users")
 }
@@ -41,45 +41,49 @@ model Sector {
 }
 
 model Material {
-  id            String       @id @default(uuid())
-  code          String       @unique
-  codigoBarras  String?      @map("codigo_barras")
-  name          String
-  quantity      Int          @default(0)
-  estoqueMinimo Int          @default(5) @map("estoque_minimo")
-  status        String       @default("PENDING") // 'PENDING', 'COUNTED_RECENTLY', 'AWAITING_CONFIRMATION', 'PURCHASE_REQUESTED', 'COMPLETED'
-  notes         String?
-  unit          String?      @default("un")
-  updatedAt     DateTime     @updatedAt @map("updated_at")
+  id                   String       @id @default(uuid())
+  code                 String       @unique
+  codigoBarras         String?      @map("codigo_barras")
+  name                 String
+  quantity             Int          @default(0)
+  estoqueMinimo        Int          @default(5) @map("estoque_minimo")
+  status               String       @default("PENDING") // 'PENDING', 'COUNTED_RECENTLY', 'AWAITING_CONFIRMATION', 'PURCHASE_REQUESTED', 'COMPLETED'
+  notes                String?
+  unit                 String?      @default("un")
+  updatedAt            DateTime     @updatedAt @map("updated_at")
 
   // Relacionamento com Setor (Chave Estrangeira)
-  sectorId      String       @map("sector_id")
-  sector        Sector       @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+  sectorId             String       @map("sector_id")
+  sector               Sector       @relation(fields: [sectorId], references: [id], onDelete: Cascade)
 
   // Relacionamento com Fornecedor (Chave Estrangeira)
-  supplierId    String?      @map("supplier_id")
-  supplier      Supplier?    @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  supplierId           String?      @map("supplier_id")
+  supplier             Supplier?    @relation(fields: [supplierId], references: [id], onDelete: SetNull)
 
-  supplierDeliveryDays Int?  @map("supplier_delivery_days")
-  dailyUsage           Int?  @map("daily_usage")
+  supplierDeliveryDays Int?         @map("supplier_delivery_days")
+  dailyUsage           Int?         @map("daily_usage")
   origin               String?
-  requestedQuantity    Int?      @default(0) @map("requested_quantity")
-  repostedAt           DateTime? @map("reposted_at")
-  imageUrl             String?   @map("image_url")
-  isGiro               Boolean   @default(false) @map("is_giro")
+  requestedQuantity    Int?         @default(0) @map("requested_quantity")
+  repostedAt           DateTime?    @map("reposted_at")
+  imageUrl             String?      @map("image_url")
+  isGiro               Boolean      @default(false) @map("is_giro")
+  
+  // 💡 COLUNAS DO SETOR DE GIRO ADICIONADAS AQUI:
+  isPulmao             Boolean      @default(true) @map("is_pulmao")
+  quantityGiro         Int          @default(0) @map("quantity_giro")
 
   // Localização física do material
   area                 String?
   estante              String?
   prateleira           String?
   palete               String?
-  paleteQty            Int?      @map("palete_qty")
+  paleteQty            Int?         @map("palete_qty")
 
   // Setores adicionais separados por vírgula
-  additionalSectors    String?   @default("") @map("additional_sectors")
+  additionalSectors    String?      @default("") @map("additional_sectors")
 
   // Histórico de contagens deste material
-  counts        StockCount[]
+  counts               StockCount[]
 
   @@map("materials")
 }

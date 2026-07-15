@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { apiFetch } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Material, Sector, Supplier } from '../types';
@@ -524,7 +524,6 @@ export default function Materials() {
       return;
     }
 
-    // Buscar material por código de barras ou código
     const found = materials.find(m => m.codigoBarras === decodedText || m.code === decodedText);
     
     if (found) {
@@ -533,18 +532,15 @@ export default function Materials() {
       setCountNotes('');
       setCountStatus(found.status);
     } else {
-      // Abre o modal informando que o produto não está cadastrado
       setUnregisteredProductModal({
         isOpen: true,
         code: decodedText
       });
-      // Preenche os dados no formulário de novo produto
       setNewMaterial(prev => ({
         ...prev,
         code: decodedText,
         codigoBarras: decodedText
       }));
-      // Abre o modal padrão de criação de produto
       setShowNewModal(true);
     }
     setScanTarget(null);
@@ -712,7 +708,6 @@ export default function Materials() {
                                  )}
                               </div>
                            )}
-                           {/* Smart Table Hover Chart */}
                            {hoveredRow === mat.id && (
                               <motion.div 
                                  initial={{ opacity: 0, scale: 0.8, x: -10 }}
@@ -804,7 +799,6 @@ export default function Materials() {
                 }}
                 className="p-4 hover:bg-secondary/10 cursor-pointer transition-colors flex flex-col gap-3.5 relative"
               >
-                {/* Header (SKU / Code & Title / Badge) */}
                 <div className="flex justify-between items-start gap-2">
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-semibold text-foreground flex items-center gap-1.5 flex-wrap">
@@ -825,7 +819,6 @@ export default function Materials() {
                   </div>
                 </div>
 
-                {/* Meta Detail Boxes */}
                 <div className="grid grid-cols-2 gap-3 bg-secondary/30 p-3 rounded-xl border border-border/40 text-xs">
                   <div>
                     <span className="text-muted-foreground block font-medium mb-0.5">Setor</span>
@@ -856,14 +849,12 @@ export default function Materials() {
                   </div>
                 </div>
 
-                {/* Notes if any */}
                 {mat.notes && (
                   <p className="text-xs text-muted-foreground line-clamp-2 bg-secondary/10 px-2.5 py-2 rounded-lg border border-border/20 italic">
                     {mat.notes}
                   </p>
                 )}
 
-                {/* Actions Row */}
                 <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-border/40 flex-wrap">
                   <button 
                     onClick={() => handleOpenHistory(mat)}
@@ -1403,7 +1394,7 @@ export default function Materials() {
                         </div>
 
                         <div>
-                           <label className="block text-sm font-medium text-muted-foreground mb-1.5 font-sans">Imagem do Produto (URL ou upload local)</label>
+                           <label className="block text-sm font-medium text-muted-foreground mb-1.5">Imagem do Produto (URL ou upload local)</label>
                            <div className="flex gap-2">
                               <input 
                                  type="text" 
@@ -2424,7 +2415,7 @@ export default function Materials() {
                    <AlertTriangle className="w-6 h-6" />
                  </div>
                  <div className="flex-1">
-                   <h3 className="text-lg font-bold text-foreground font-sans">Código já Cadastrado</h3>
+                   <h3 className="text-lg font-bold text-foreground Billings font-sans">Código já Cadastrado</h3>
                    <p className="text-sm text-muted-foreground mt-1">
                      O código <span className="font-mono bg-rose-500/10 px-1.5 py-0.5 rounded text-rose-500 font-semibold">{duplicateModal.code}</span> já está sendo utilizado por outro produto no sistema.
                    </p>
@@ -2641,7 +2632,6 @@ export default function Materials() {
                         </div>
                      </div>
 
-                     {/* Observações */}
                      {/* Localização Física */}
                       {(detailMaterial.area || detailMaterial.estante || detailMaterial.prateleira || detailMaterial.palete) && (
                          <div className="bg-secondary/15 border border-border/50 rounded-xl p-4 space-y-2.5">
@@ -2675,7 +2665,7 @@ export default function Materials() {
                                         )}
                                      </span>
                                   </div>
-                                )}
+                               )}
                             </div>
                          </div>
                       )}
@@ -2708,10 +2698,10 @@ export default function Materials() {
                            <span className="text-[10px] text-blue-500 block uppercase tracking-wider font-bold mb-1">Observações</span>
                            <p className="text-xs text-foreground italic break-words">"{detailMaterial.notes}"</p>
                         </div>
-                     )}
+                      )}
 
-                     {/* Ações Rápidas */}
-                     <div className="space-y-2.5 pt-1">
+                      {/* Ações Rápidas */}
+                      <div className="space-y-2.5 pt-1">
                         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Ações Disponíveis</span>
                         <div className="grid grid-cols-2 gap-2">
                            <button 
@@ -2763,7 +2753,7 @@ export default function Materials() {
                               </button>
                            )}
                         </div>
-                     </div>
+                      </div>
                   </div>
 
                   <div className="shrink-0 pt-3 border-t border-border mt-3 flex gap-2">
