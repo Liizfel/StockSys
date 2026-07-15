@@ -171,6 +171,7 @@ export default function Kanban() {
   }, [isManager]);
 
   const [materials, setMaterials] = useState<Material[]>([]);
+  const [focusGiro, setFocusGiro] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [showScanner, setShowScanner] = useState(false);
@@ -423,6 +424,9 @@ export default function Kanban() {
 
   const filteredMaterials = useMemo(() => {
     let list = materials;
+    if (focusGiro) {
+      list = list.filter(m => !!m.isGiro);
+    }
     if (!isManager && user?.sectorId) {
       list = list.filter(m => m.sectorId === user.sectorId);
     }
@@ -436,7 +440,7 @@ export default function Kanban() {
               (m.lastCountedBy && m.lastCountedBy.toLowerCase().includes(lowerSearch)) ||
               dateStr.includes(lowerSearch);
     });
-  }, [materials, search, isManager, user]);
+  }, [materials, search, isManager, user, focusGiro]);
 
   const groupedMaterials = useMemo(() => {
     const grouped: Record<string, Material[]> = {};
@@ -520,7 +524,21 @@ export default function Kanban() {
             )}
          </div>
 
-         <div className="w-full xl:w-[500px] shrink-0 flex gap-2">
+         <div className="w-full xl:w-[650px] shrink-0 flex gap-2 items-center">
+             <button
+               type="button"
+               onClick={() => setFocusGiro(!focusGiro)}
+               className={cn(
+                 "px-4 py-2 rounded-xl text-xs font-bold border transition-all duration-200 flex items-center gap-1.5 shrink-0 select-none",
+                 focusGiro
+                   ? "bg-amber-500/15 border-amber-500/30 text-amber-500 shadow-sm animate-none"
+                   : "bg-secondary text-muted-foreground hover:text-foreground border-border/80 hover:bg-secondary/80"
+               )}
+               title="Focar em Itens de Giro ⚡"
+             >
+               <span>⚡ Giro do Dia</span>
+             </button>
+             
              <div className="relative flex-1">
                <input 
                    type="text" 

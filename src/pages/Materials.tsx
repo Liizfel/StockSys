@@ -38,6 +38,7 @@ export default function Materials() {
   const [filterSector, setFilterSector] = useState('');
   const [loading, setLoading] = useState(true);
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'geral' | 'giro'>('geral');
 
   // Preferências de colunas
   const [showColumnsModal, setShowColumnsModal] = useState(false);
@@ -108,7 +109,8 @@ export default function Materials() {
     prateleira: '',
     palete: '',
     paleteQty: '' as string | number,
-    additionalSectors: ''
+    additionalSectors: '',
+    isGiro: false
   });
   const [showScanner, setShowScanner] = useState(false);
   const [scanTarget, setScanTarget] = useState<'search' | 'editMaterial' | null>(null);
@@ -140,7 +142,8 @@ export default function Materials() {
     prateleira: '',
     palete: '',
     paleteQty: '' as string | number,
-    additionalSectors: ''
+    additionalSectors: '',
+    isGiro: false
   });
 
   const handleSectorCheckboxChange = (checked: boolean, targetSector: Sector, isEdit: boolean) => {
@@ -200,7 +203,8 @@ export default function Materials() {
       prateleira: material.prateleira || '',
       palete: material.palete || '',
       paleteQty: material.paleteQty !== null && material.paleteQty !== undefined ? material.paleteQty : '',
-      additionalSectors: material.additionalSectors || ''
+      additionalSectors: material.additionalSectors || '',
+      isGiro: material.isGiro || false
     });
     setShowEditMaterialModal(true);
   };
@@ -233,6 +237,7 @@ export default function Materials() {
           supplierId: editMaterialForm.supplierId || null,
           origin: editMaterialForm.origin || null,
           imageUrl: editMaterialForm.imageUrl || null,
+          isGiro: editMaterialForm.isGiro,
           supplierDeliveryDays: editMaterialForm.supplierDeliveryDays !== '' ? Number(editMaterialForm.supplierDeliveryDays) : null,
           area: editMaterialForm.area || null,
           estante: editMaterialForm.estante || null,
@@ -361,6 +366,7 @@ export default function Materials() {
           supplierId: newMaterial.supplierId || null,
           origin: newMaterial.origin || null,
           imageUrl: newMaterial.imageUrl || null,
+          isGiro: newMaterial.isGiro,
           supplierDeliveryDays: newMaterial.supplierDeliveryDays !== '' ? Number(newMaterial.supplierDeliveryDays) : null,
           area: newMaterial.area || null,
           estante: newMaterial.estante || null,
@@ -388,7 +394,8 @@ export default function Materials() {
         prateleira: '',
         palete: '',
         paleteQty: '' as string | number,
-        additionalSectors: ''
+        additionalSectors: '',
+        isGiro: false
       });
       fetchData();
       window.dispatchEvent(new CustomEvent('products-changed'));
@@ -410,7 +417,8 @@ export default function Materials() {
     }
     const matchesSearch = m.name.toLowerCase().includes(search.toLowerCase()) || m.code.toLowerCase().includes(search.toLowerCase()) || (m.codigoBarras && m.codigoBarras.includes(search));
     const matchesSector = filterSector ? (m.sectorId === filterSector || (m.additionalSectors || '').split(',').includes(filterSector)) : true;
-    return matchesSearch && matchesSector;
+    const matchesGiro = activeTab === 'giro' ? !!m.isGiro : !m.isGiro;
+    return matchesSearch && matchesSector && matchesGiro;
   }).sort((a, b) => {
     const now = new Date().getTime();
     const aRecent = a.repostedAt ? (now - new Date(a.repostedAt).getTime() < 24 * 60 * 60 * 1000) : false;
@@ -462,6 +470,34 @@ export default function Materials() {
 
   return (
     <div className="space-y-6">
+      {/* Tab Switcher - Setor de Giro */}
+      <div className="inline-flex bg-card/60 backdrop-blur-md p-1 rounded-xl border border-border shadow-sm">
+        <button
+          type="button"
+          onClick={() => setActiveTab('geral')}
+          className={cn(
+            "px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2",
+            activeTab === 'geral'
+              ? "bg-secondary text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
+          )}
+        >
+          Estoque Geral (Pulmão)
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('giro')}
+          className={cn(
+            "px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2",
+            activeTab === 'giro'
+              ? "bg-amber-500/10 text-amber-500 dark:bg-amber-500/20 dark:text-amber-400 shadow-sm border border-amber-500/20"
+              : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
+          )}
+        >
+          ⚡ Giro do Dia (Uso Diário)
+        </button>
+      </div>
+
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-card/50 backdrop-blur-md p-4 rounded-2xl border border-border shadow-sm relative z-10">
         <div className="flex-1 flex flex-col sm:flex-row gap-4 w-full">
           <div className="relative flex-1 sm:max-w-md flex gap-2">
@@ -1222,6 +1258,26 @@ export default function Materials() {
                      </div>
                   </div>
 
+                  {/* Campo de Giro do Dia */}
+                  <div className="border-t border-border/50 pt-4">
+                     <label className="flex items-start gap-3 p-3 bg-secondary/20 hover:bg-secondary/30 rounded-xl border border-border/50 cursor-pointer transition-all">
+                        <input
+                           type="checkbox"
+                           checked={newMaterial.isGiro}
+                           onChange={e => setNewMaterial({ ...newMaterial, isGiro: e.target.checked })}
+                           className="mt-1 rounded text-amber-500 bg-secondary/50 border-border focus:ring-amber-500 w-4 h-4 shrink-0"
+                        />
+                        <div className="flex flex-col">
+                           <span className="text-sm font-semibold text-foreground flex items-center gap-1">
+                              ⚡ Este item pertence ao Giro do Dia (Uso Rápido)?
+                           </span>
+                           <span className="text-xs text-muted-foreground mt-0.5">
+                              Ative para destacar no fluxo de giro e habilitar contagens diárias rápidas.
+                           </span>
+                        </div>
+                     </label>
+                  </div>
+
                   <div className="flex gap-3 pt-4 border-t border-border/50">
                      <button 
                         type="button" 
@@ -1664,6 +1720,26 @@ export default function Materials() {
                            <p className="text-xs text-muted-foreground italic p-2 col-span-2">Nenhum outro setor disponível</p>
                         )}
                      </div>
+                  </div>
+
+                  {/* Campo de Giro do Dia */}
+                  <div className="border-t border-border/50 pt-4">
+                     <label className="flex items-start gap-3 p-3 bg-secondary/20 hover:bg-secondary/30 rounded-xl border border-border/50 cursor-pointer transition-all">
+                        <input
+                           type="checkbox"
+                           checked={editMaterialForm.isGiro}
+                           onChange={e => setEditMaterialForm({ ...editMaterialForm, isGiro: e.target.checked })}
+                           className="mt-1 rounded text-amber-500 bg-secondary/50 border-border focus:ring-amber-500 w-4 h-4 shrink-0"
+                        />
+                        <div className="flex flex-col">
+                           <span className="text-sm font-semibold text-foreground flex items-center gap-1">
+                              ⚡ Este item pertence ao Giro do Dia (Uso Rápido)?
+                           </span>
+                           <span className="text-xs text-muted-foreground mt-0.5">
+                              Ative para destacar no fluxo de giro e habilitar contagens diárias rápidas.
+                           </span>
+                        </div>
+                     </label>
                   </div>
 
                   <div className="flex gap-3 pt-4 border-t border-border/50">

@@ -66,6 +66,7 @@ model Material {
   requestedQuantity    Int?      @default(0) @map("requested_quantity")
   repostedAt           DateTime? @map("reposted_at")
   imageUrl             String?   @map("image_url")
+  isGiro               Boolean   @default(false) @map("is_giro")
 
   // Localização física do material
   area                 String?
@@ -109,7 +110,7 @@ model TimeLog {
 
   // Relacionamento com Usuário
   userId    String   @map("user_id")
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("time_logs")
 }

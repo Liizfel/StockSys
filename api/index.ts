@@ -316,7 +316,8 @@ app.post('/api/materials', authMiddleware, managerMiddleware, async (req: Reques
       prateleira,
       palete,
       paleteQty,
-      additionalSectors
+      additionalSectors,
+      isGiro
     } = req.body;
 
     let additionalSectorsStr = "";
@@ -340,6 +341,7 @@ app.post('/api/materials', authMiddleware, managerMiddleware, async (req: Reques
         supplierDeliveryDays: supplierDeliveryDays !== undefined && supplierDeliveryDays !== null ? Number(supplierDeliveryDays) : null,
         origin: origin || null,
         imageUrl: imageUrl || null,
+        isGiro: isGiro !== undefined ? Boolean(isGiro) : false,
         area: area || null,
         estante: estante || null,
         prateleira: prateleira || null,
@@ -395,7 +397,8 @@ app.put('/api/materials/:id', authMiddleware, managerMiddleware, async (req: Req
     prateleira,
     palete,
     paleteQty,
-    additionalSectors
+    additionalSectors,
+    isGiro
   } = req.body;
   try {
     const material = await prisma.material.findUnique({ where: { id: String(id) } });
@@ -435,6 +438,7 @@ app.put('/api/materials/:id', authMiddleware, managerMiddleware, async (req: Req
         supplierDeliveryDays: supplierDeliveryDays !== undefined ? (supplierDeliveryDays !== null ? Number(supplierDeliveryDays) : null) : undefined,
         origin: origin !== undefined ? origin : undefined,
         imageUrl: imageUrl !== undefined ? imageUrl : undefined,
+        isGiro: isGiro !== undefined ? Boolean(isGiro) : undefined,
         area: area !== undefined ? area : undefined,
         estante: estante !== undefined ? estante : undefined,
         prateleira: prateleira !== undefined ? prateleira : undefined,

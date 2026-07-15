@@ -12,7 +12,7 @@ import jsPDF from 'jspdf';
 import { ProductImageModal } from '../components/ProductImageModal';
 import { StatusBadge } from '../components/StatusBadge';
 
-const generateReportText = (targetUsers: { id: string, userName: string }[], logs: StockCountLog[], materials?: Material[], isGlobal = false) => {
+const generateReportText = (targetUsers: { id: string, userName: string }[], logs: StockCountLog[], materials?: Material[], isGlobal = false, stockFilter: 'all' | 'pulmao' | 'giro' = 'all') => {
    const now = new Date();
    const dateStr = now.toLocaleDateString('pt-BR');
    const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -25,7 +25,15 @@ const generateReportText = (targetUsers: { id: string, userName: string }[], log
          const logDate = new Date(l.timestamp).toLocaleDateString('pt-BR');
          const isSystemAutomatic = l.previousQuantity === l.newQuantity && 
             (l.notes?.includes('[Pedido') || l.notes?.includes('[Aguardando'));
-         return logDate === dateStr && !isSystemAutomatic;
+         
+         if (logDate !== dateStr || isSystemAutomatic) return false;
+
+         const mat = materials?.find(m => m.id === l.materialId);
+         const isGiroItem = mat ? !!mat.isGiro : false;
+         if (stockFilter === 'pulmao' && isGiroItem) return false;
+         if (stockFilter === 'giro' && !isGiroItem) return false;
+
+         return true;
       });
 
       if (todayLogs.length === 0) {
@@ -43,7 +51,14 @@ const generateReportText = (targetUsers: { id: string, userName: string }[], log
          contributorsMap[uId].count++;
       });
 
-      let report = `*RELATÓRIO GERAL DE ESTOQUE (CONSOLIDADO)*\n`;
+      let reportHeader = `*RELATÓRIO GERAL DE ESTOQUE (CONSOLIDADO)*\n`;
+      if (stockFilter === 'pulmao') {
+         reportHeader = `*RELATÓRIO GERAL - ESTOQUE PULMÃO*\n`;
+      } else if (stockFilter === 'giro') {
+         reportHeader = `*RELATÓRIO GERAL - ESTOQUE DE GIRO*\n`;
+      }
+
+      let report = reportHeader;
       report += `${separator}\n`;
       report += `*Data:* ${dateStr} às ${timeStr}\n`;
       report += `*Setores:* Todos\n`;
@@ -94,14 +109,28 @@ const generateReportText = (targetUsers: { id: string, userName: string }[], log
          const validLogs = userLogs.filter(l => {
             const isSystemAutomatic = l.previousQuantity === l.newQuantity && 
                (l.notes?.includes('[Pedido') || l.notes?.includes('[Aguardando'));
-            return !isSystemAutomatic;
+            if (isSystemAutomatic) return false;
+
+            const mat = materials?.find(m => m.id === l.materialId);
+            const isGiroItem = mat ? !!mat.isGiro : false;
+            if (stockFilter === 'pulmao' && isGiroItem) return false;
+            if (stockFilter === 'giro' && !isGiroItem) return false;
+
+            return true;
          });
 
          if (validLogs.length === 0) return;
 
          if (index > 0) report += `\n\n`;
 
-         report += `*RELATÓRIO DE CONTAGEM DE ESTOQUE*\n`;
+         let userReportTitle = `*RELATÓRIO DE CONTAGEM DE ESTOQUE*\n`;
+         if (stockFilter === 'pulmao') {
+            userReportTitle = `*RELATÓRIO DE CONTAGEM - ESTOQUE PULMÃO*\n`;
+         } else if (stockFilter === 'giro') {
+            userReportTitle = `*RELATÓRIO DE CONTAGEM - ESTOQUE DE GIRO*\n`;
+         }
+
+         report += userReportTitle;
          report += `${separator}\n`;
          report += `*Responsável:* ${user.userName}\n`;
          report += `*Data:* ${dateStr} às ${timeStr}\n`;
@@ -171,13 +200,40 @@ const copyToClipboard = async (text: string): Promise<boolean> => {
 interface ReportPreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
-  reportText: string;
+  reportText?: string;
   title: string;
+  logs?: StockCountLog[];
+  materials?: Material[];
+  targetUsers?: { id: string, userName: string }[];
+  isGlobal?: boolean;
 }
 
-export const ReportPreviewModal = ({ isOpen, onClose, reportText, title }: ReportPreviewModalProps) => {
+export const ReportPreviewModal = ({ 
+  isOpen, 
+  onClose, 
+  reportText: initialReportText, 
+  title: initialTitle,
+  logs,
+  materials,
+  targetUsers = [],
+  isGlobal = false
+}: ReportPreviewModalProps) => {
   const [copied, setCopied] = useState(false);
+  const [stockFilter, setStockFilter] = useState<'all' | 'pulmao' | 'giro'>('all');
   const isMobile = typeof window !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+  const reportText = useMemo(() => {
+    if (logs && materials) {
+      return generateReportText(targetUsers, logs, materials, isGlobal, stockFilter);
+    }
+    return initialReportText || '';
+  }, [logs, materials, targetUsers, isGlobal, stockFilter, initialReportText]);
+
+  const title = useMemo(() => {
+    if (stockFilter === 'all') return initialTitle;
+    if (stockFilter === 'pulmao') return `${initialTitle} (Estoque Pulmão)`;
+    return `${initialTitle} (Giro do Dia)`;
+  }, [initialTitle, stockFilter]);
 
   const handleCopy = async () => {
     const success = await copyToClipboard(reportText);
@@ -258,6 +314,12 @@ export const ReportPreviewModal = ({ isOpen, onClose, reportText, title }: Repor
     doc.save(fileName);
   };
 
+  useEffect(() => {
+    if (isOpen) {
+      setStockFilter('all');
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
@@ -282,6 +344,48 @@ export const ReportPreviewModal = ({ isOpen, onClose, reportText, title }: Repor
               <h3 className="text-xl font-bold text-foreground">{title}</h3>
               <p className="text-sm text-muted-foreground mt-1">Visualize, copie ou envie o relatório formatado abaixo.</p>
            </div>
+
+           {/* Opções de Filtro de Estoque */}
+           {(logs || materials) && (
+             <div className="mb-4 bg-secondary/50 p-1 rounded-xl border border-border flex gap-1 shadow-inner">
+               <button
+                 type="button"
+                 onClick={() => setStockFilter('all')}
+                 className={cn(
+                   "flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200",
+                   stockFilter === 'all'
+                     ? "bg-blue-600 text-white shadow-sm"
+                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/40"
+                 )}
+               >
+                 🌐 Todo Estoque
+               </button>
+               <button
+                 type="button"
+                 onClick={() => setStockFilter('pulmao')}
+                 className={cn(
+                   "flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200",
+                   stockFilter === 'pulmao'
+                     ? "bg-blue-600 text-white shadow-sm"
+                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/40"
+                 )}
+               >
+                 📦 Estoque Pulmão
+               </button>
+               <button
+                 type="button"
+                 onClick={() => setStockFilter('giro')}
+                 className={cn(
+                   "flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200",
+                   stockFilter === 'giro'
+                     ? "bg-amber-600 text-white shadow-sm"
+                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/40"
+                 )}
+               >
+                 ⚡ Estoque de Giro
+               </button>
+             </div>
+           )}
 
            <div className="flex-1 overflow-y-auto mb-6 bg-secondary/30 p-4 rounded-xl border border-border/80 font-mono text-sm text-foreground whitespace-pre-wrap select-all max-h-[40vh] shadow-inner">
               {reportText}
@@ -567,7 +671,31 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
     return Object.values(usersData).sort((a, b) => b.counts - a.counts);
   }, [logs, timeLogs]);
 
+  const giroStats = useMemo(() => {
+    const giroMaterials = materials.filter(m => m.isGiro);
+    const todayStr = new Date().toLocaleDateString('pt-BR');
+    
+    const countedIdsToday = new Set(
+      logs
+        .filter(l => {
+          const logDate = new Date(l.timestamp).toLocaleDateString('pt-BR');
+          const isSystemAutomatic = l.previousQuantity === l.newQuantity && 
+             (l.notes?.includes('[Pedido') || l.notes?.includes('[Aguardando'));
+          return logDate === todayStr && !isSystemAutomatic;
+        })
+        .map(l => l.materialId)
+    );
 
+    const completed = giroMaterials.filter(m => countedIdsToday.has(m.id)).length;
+    const pending = giroMaterials.length - completed;
+
+    return {
+      total: giroMaterials.length,
+      completed,
+      pending,
+      percentage: giroMaterials.length > 0 ? Math.round((completed / giroMaterials.length) * 100) : 0
+    };
+  }, [materials, logs]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -630,12 +758,54 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
         <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-sm">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 rounded-xl">
-              <CheckCircle2 className="w-6 h-6" />
+               <CheckCircle2 className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Finalizado / Reposto</p>
-              <h3 className="text-2xl font-bold text-foreground">{completed}</h3>
+               <p className="text-sm font-medium text-muted-foreground">Finalizado / Reposto</p>
+               <h3 className="text-2xl font-bold text-foreground">{completed}</h3>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Setor de Giro KPI Widget */}
+      <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-sm overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none" />
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-amber-500/10 text-amber-500 dark:text-amber-400 rounded-xl shrink-0">
+               <span className="text-xl font-bold">⚡</span>
+            </div>
+            <div>
+               <h4 className="font-bold text-foreground text-base">Giro do Dia (Uso Rápido)</h4>
+               <p className="text-sm text-muted-foreground mt-0.5">
+                  Materiais de alto movimento e consumo diário constante que devem ser auditados todos os dias.
+               </p>
+               <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-3 text-xs font-semibold">
+                  <span className="text-emerald-500 flex items-center gap-1">
+                     ● {giroStats.completed} Concluídos Hoje
+                  </span>
+                  <span className="text-amber-500 flex items-center gap-1">
+                     ● {giroStats.pending} Pendentes Hoje
+                  </span>
+                  <span className="text-muted-foreground">
+                     Total em Giro: {giroStats.total} itens cadastrados
+                  </span>
+               </div>
+            </div>
+          </div>
+          
+          <div className="w-full md:w-64 flex flex-col gap-1.5 shrink-0">
+             <div className="flex justify-between items-center text-xs">
+                <span className="font-semibold text-muted-foreground">Conclusão das Contagens</span>
+                <span className="font-bold text-amber-500">{giroStats.percentage}%</span>
+             </div>
+             <div className="w-full h-3 bg-secondary rounded-full overflow-hidden border border-border/40">
+                <div 
+                   className="h-full bg-gradient-to-r from-amber-500 to-amber-600 transition-all duration-500 rounded-full" 
+                   style={{ width: `${giroStats.percentage}%` }}
+                />
+             </div>
           </div>
         </div>
       </div>
@@ -937,8 +1107,6 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
             <div className="flex items-center gap-2">
                <button 
                   onClick={() => {
-                     const report = generateReportText([], logs, materials, true);
-                     setReportText(report);
                      setIsReportOpen(true);
                   }}
                   className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-colors shadow-sm"
@@ -1213,8 +1381,10 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
       <ReportPreviewModal 
         isOpen={isReportOpen} 
         onClose={() => setIsReportOpen(false)} 
-        reportText={reportText} 
-        title="Relatório Geral de Estoque" 
+        title="Relatório Geral de Estoque"
+        logs={logs}
+        materials={materials}
+        isGlobal={true}
       />
 
       <ProductImageModal 
@@ -1242,6 +1412,32 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
   
   const [reportText, setReportText] = useState<string>('');
   const [isReportOpen, setIsReportOpen] = useState<boolean>(false);
+
+  const giroStats = useMemo(() => {
+    const giroMaterials = materials.filter(m => m.isGiro);
+    const todayStr = new Date().toLocaleDateString('pt-BR');
+    
+    const countedIdsToday = new Set(
+      logs
+        .filter(l => {
+          const logDate = new Date(l.timestamp).toLocaleDateString('pt-BR');
+          const isSystemAutomatic = l.previousQuantity === l.newQuantity && 
+             (l.notes?.includes('[Pedido') || l.notes?.includes('[Aguardando'));
+          return logDate === todayStr && !isSystemAutomatic;
+        })
+        .map(l => l.materialId)
+    );
+
+    const completed = giroMaterials.filter(m => countedIdsToday.has(m.id)).length;
+    const pending = giroMaterials.length - completed;
+
+    return {
+      total: giroMaterials.length,
+      completed,
+      pending,
+      percentage: giroMaterials.length > 0 ? Math.round((completed / giroMaterials.length) * 100) : 0
+    };
+  }, [materials, logs]);
 
   const filteredMaterials = useMemo(() => {
     const filtered = materials.filter(m => {
@@ -1309,6 +1505,47 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-500">
+      {/* Setor de Giro KPI Widget */}
+      <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-sm overflow-hidden relative animate-none">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none" />
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-amber-500/10 text-amber-500 dark:text-amber-400 rounded-xl shrink-0">
+               <span className="text-xl font-bold">⚡</span>
+            </div>
+            <div>
+               <h4 className="font-bold text-foreground text-base">Giro do Dia (Uso Rápido)</h4>
+               <p className="text-sm text-muted-foreground mt-0.5">
+                  Materiais de alto movimento e consumo diário constante que devem ser auditados todos os dias.
+               </p>
+               <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-3 text-xs font-semibold">
+                  <span className="text-emerald-500 flex items-center gap-1">
+                     ● {giroStats.completed} Concluídos Hoje
+                  </span>
+                  <span className="text-amber-500 flex items-center gap-1">
+                     ● {giroStats.pending} Pendentes Hoje
+                  </span>
+                  <span className="text-muted-foreground">
+                     Total em Giro: {giroStats.total} itens cadastrados
+                  </span>
+               </div>
+            </div>
+          </div>
+          
+          <div className="w-full md:w-64 flex flex-col gap-1.5 shrink-0">
+             <div className="flex justify-between items-center text-xs">
+                <span className="font-semibold text-muted-foreground">Conclusão das Contagens</span>
+                <span className="font-bold text-amber-500">{giroStats.percentage}%</span>
+             </div>
+             <div className="w-full h-3 bg-secondary rounded-full overflow-hidden border border-border/40">
+                <div 
+                   className="h-full bg-gradient-to-r from-amber-500 to-amber-600 transition-all duration-500 rounded-full" 
+                   style={{ width: `${giroStats.percentage}%` }}
+                />
+             </div>
+          </div>
+        </div>
+      </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
          {/* Seção de Contagem (Esquerda) */}
@@ -1564,9 +1801,6 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
                <div className="p-4 flex flex-col gap-2">
                   <button 
                      onClick={() => {
-                        const targetUsers = [{ id: user?.id || '', userName: user?.name || '' }];
-                        const report = generateReportText(targetUsers, logs, materials);
-                        setReportText(report);
                         setIsReportOpen(true);
                      }}
                      className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-all shadow-sm w-full"
@@ -1673,8 +1907,11 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
       <ReportPreviewModal 
         isOpen={isReportOpen} 
         onClose={() => setIsReportOpen(false)} 
-        reportText={reportText} 
         title="Meu Relatório de Contagens" 
+        logs={logs}
+        materials={materials}
+        targetUsers={[{ id: user?.id || '', userName: user?.name || '' }]}
+        isGlobal={false}
       />
 
       <ProductImageModal 

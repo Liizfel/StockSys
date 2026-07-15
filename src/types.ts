@@ -45,6 +45,7 @@ export interface Material {
   palete?: string;
   paleteQty?: number;
   additionalSectors?: string;
+  isGiro?: boolean;
 }
 
 export interface Supplier {

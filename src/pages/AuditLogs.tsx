@@ -39,9 +39,19 @@ interface ReportPreviewModalProps {
   reportText: string;
   title: string;
   onExportPDF: () => void;
+  stockFilter?: 'all' | 'pulmao' | 'giro';
+  onStockFilterChange?: (filter: 'all' | 'pulmao' | 'giro') => void;
 }
 
-export const ReportPreviewModal = ({ isOpen, onClose, reportText, title, onExportPDF }: ReportPreviewModalProps) => {
+export const ReportPreviewModal = ({ 
+  isOpen, 
+  onClose, 
+  reportText, 
+  title, 
+  onExportPDF,
+  stockFilter,
+  onStockFilterChange
+}: ReportPreviewModalProps) => {
   const [copied, setCopied] = useState(false);
   const isMobile = typeof window !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
@@ -67,6 +77,12 @@ export const ReportPreviewModal = ({ isOpen, onClose, reportText, title, onExpor
       alert("Erro ao copiar o texto. Por favor, copie manualmente.");
     }
   };
+
+  useEffect(() => {
+    if (isOpen && onStockFilterChange) {
+      onStockFilterChange('all');
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -97,6 +113,48 @@ export const ReportPreviewModal = ({ isOpen, onClose, reportText, title, onExpor
                  <X className="w-5 h-5" />
               </button>
            </div>
+
+           {/* Opções de Filtro de Estoque */}
+           {stockFilter !== undefined && onStockFilterChange !== undefined && (
+             <div className="mb-4 bg-secondary/50 p-1 rounded-xl border border-border flex gap-1 shadow-inner">
+               <button
+                 type="button"
+                 onClick={() => onStockFilterChange('all')}
+                 className={cn(
+                   "flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200",
+                   stockFilter === 'all'
+                     ? "bg-blue-600 text-white shadow-sm"
+                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/40"
+                 )}
+               >
+                 🌐 Geral
+               </button>
+               <button
+                 type="button"
+                 onClick={() => onStockFilterChange('pulmao')}
+                 className={cn(
+                   "flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200",
+                   stockFilter === 'pulmao'
+                     ? "bg-blue-600 text-white shadow-sm"
+                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/40"
+                 )}
+               >
+                 📦 Pulmão
+               </button>
+               <button
+                 type="button"
+                 onClick={() => onStockFilterChange('giro')}
+                 className={cn(
+                   "flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200",
+                   stockFilter === 'giro'
+                     ? "bg-amber-600 text-white shadow-sm"
+                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/40"
+                 )}
+               >
+                 ⚡ Giro
+               </button>
+             </div>
+           )}
 
            <div className="flex-1 overflow-y-auto mb-6 bg-secondary/30 p-4 rounded-xl border border-border/80 font-mono text-xs text-foreground whitespace-pre-wrap select-all max-h-[35vh] shadow-inner">
               {reportText}
@@ -173,7 +231,7 @@ export default function AuditLogs() {
 
   // Estado do Modal de Relatório
   const [isReportOpen, setIsReportOpen] = useState(false);
-  const [reportText, setReportText] = useState('');
+  const [stockReportFilter, setStockReportFilter] = useState<'all' | 'pulmao' | 'giro'>('all');
 
   // Buscar dados de auditoria ao montar
   useEffect(() => {
@@ -331,14 +389,30 @@ export default function AuditLogs() {
         .slice(0, 5);
   }, [materials]);
 
-  // Gerador de Relatório de Texto (Mesmo estilo do Dashboard mas adaptado para os filtros atuais)
-  const handleGenerateTextReport = () => {
+  const getLogsForReport = (filter: 'all' | 'pulmao' | 'giro') => {
+    return filteredLogs.filter(l => {
+      const mat = materials.find(m => m.id === l.materialId);
+      const isGiroItem = mat ? !!mat.isGiro : false;
+      if (filter === 'pulmao' && isGiroItem) return false;
+      if (filter === 'giro' && !isGiroItem) return false;
+      return true;
+    });
+  };
+
+  const reportText = useMemo(() => {
     const separator = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
     const now = new Date();
     const dateStr = now.toLocaleDateString('pt-BR');
     const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-    let report = `*RELATÓRIO DE AUDITORIA DE ESTOQUE*\n`;
+    let reportTitleText = "RELATÓRIO DE AUDITORIA DE ESTOQUE";
+    if (stockReportFilter === 'pulmao') {
+      reportTitleText = "RELATÓRIO DE AUDITORIA - ESTOQUE PULMÃO";
+    } else if (stockReportFilter === 'giro') {
+      reportTitleText = "RELATÓRIO DE AUDITORIA - ESTOQUE DE GIRO";
+    }
+
+    let report = `*${reportTitleText}*\n`;
     report += `${separator}\n`;
     report += `*Gerado em:* ${dateStr} às ${timeStr}\n`;
     
@@ -348,29 +422,39 @@ export default function AuditLogs() {
       dateFilter ? `Data: ${format(parseISO(dateFilter), 'dd/MM/yyyy')}` : '',
       (timeStart || timeEnd) ? `Horário: ${timeStart || '00:00'} - ${timeEnd || '23:59'}` : '',
       sectorFilter ? `Setor: ${sectorFilter}` : '',
-      productFilter ? `Produto: ${uniqueProducts.find(p => p.id === productFilter)?.name || 'Específico'}` : ''
+      productFilter ? `Produto: ${uniqueProducts.find(p => p.id === productFilter)?.name || 'Específico'}` : '',
+      stockReportFilter === 'pulmao' ? 'Tipo: Estoque Pulmão' : stockReportFilter === 'giro' ? 'Tipo: Estoque de Giro' : 'Tipo: Geral/Ambos'
     ].filter(Boolean);
 
+    const logsForReport = getLogsForReport(stockReportFilter);
+
     report += `*Filtros aplicados:* ${activeFilters.join(' | ') || 'Nenhum (Relatório Geral)'}\n`;
-    report += `*Total de contagens:* ${filteredLogs.length} registro(s)\n`;
+    report += `*Total de contagens:* ${logsForReport.length} registro(s)\n`;
     report += `${separator}\n\n`;
 
-    if (filteredLogs.length === 0) {
+    if (logsForReport.length === 0) {
       report += `Nenhum registro de contagem localizado sob os parâmetros selecionados.\n`;
-      setReportText(report);
-      setIsReportOpen(true);
-      return;
+      return report;
     }
 
+    // Calcular as estatísticas baseadas nos logs filtrados do relatório
+    const reportStats = logsForReport.reduce((acc, log) => {
+      const diff = log.newQuantity - log.previousQuantity;
+      if (diff > 0) acc.positive++;
+      else if (diff < 0) acc.negative++;
+      else acc.zero++;
+      return acc;
+    }, { positive: 0, negative: 0, zero: 0 });
+
     report += `*RESUMO ESTATÍSTICO:*\n`;
-    report += `- Sobras (+): ${stats.positive}\n`;
-    report += `- Faltas (-): ${stats.negative}\n`;
-    report += `- Sem divergência: ${stats.zero}\n\n`;
+    report += `- Sobras (+): ${reportStats.positive}\n`;
+    report += `- Faltas (-): ${reportStats.negative}\n`;
+    report += `- Sem divergência: ${reportStats.zero}\n\n`;
     report += `${separator}\n\n`;
 
     report += `*DETALHAMENTO DAS CONTAGENS:*\n\n`;
 
-    filteredLogs.forEach((l, idx) => {
+    logsForReport.forEach((l, idx) => {
       const mat = materials.find(m => m.id === l.materialId);
       const unit = formatUnit(mat?.unit);
       const skuText = l.materialCode ? ` (SKU: ${l.materialCode})` : '';
@@ -394,12 +478,16 @@ export default function AuditLogs() {
 
     report += `${separator}\n`;
     report += `*Relatório de Auditoria concluído.*`;
-    setReportText(report);
+    return report;
+  }, [stockReportFilter, filteredLogs, materials, userFilter, dateFilter, timeStart, timeEnd, sectorFilter, productFilter]);
+
+  const handleGenerateTextReport = () => {
+    setStockReportFilter('all');
     setIsReportOpen(true);
   };
 
   // Exportador PDF Profissional com quebra de página, layouts e estatísticas
-  const handleExportPDF = () => {
+  const handleExportPDF = (filter: 'all' | 'pulmao' | 'giro' = stockReportFilter) => {
     const doc = new jsPDF('p', 'mm', 'a4');
     
     doc.setProperties({
@@ -408,6 +496,8 @@ export default function AuditLogs() {
       author: 'Sistema de Estoque',
       creator: 'Estoque Manager'
     });
+
+    const logsForReport = getLogsForReport(filter);
 
     // Configurações de fonte
     doc.setFont("helvetica", "normal");
@@ -420,7 +510,15 @@ export default function AuditLogs() {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
-    doc.text("RELATÓRIO DE AUDITORIA DE ESTOQUE", 15, 16);
+    
+    let reportTitleText = "RELATÓRIO DE AUDITORIA DE ESTOQUE";
+    if (filter === 'pulmao') {
+      reportTitleText = "RELATÓRIO DE AUDITORIA - ESTOQUE PULMÃO";
+    } else if (filter === 'giro') {
+      reportTitleText = "RELATÓRIO DE AUDITORIA - ESTOQUE DE GIRO";
+    }
+
+    doc.text(reportTitleText, 15, 16);
     
     doc.setFontSize(8.5);
     doc.setFont("helvetica", "normal");
@@ -432,12 +530,22 @@ export default function AuditLogs() {
       dateFilter ? `Data: ${format(parseISO(dateFilter), 'dd/MM/yyyy')}` : '',
       (timeStart || timeEnd) ? `Horário: ${timeStart || '00:00'} - ${timeEnd || '23:59'}` : '',
       sectorFilter ? `Setor: ${sectorFilter}` : '',
-      productFilter ? `Produto: ${uniqueProducts.find(p => p.id === productFilter)?.name || 'Específico'}` : ''
+      productFilter ? `Produto: ${uniqueProducts.find(p => p.id === productFilter)?.name || 'Específico'}` : '',
+      filter === 'pulmao' ? 'Tipo: Estoque Pulmão' : filter === 'giro' ? 'Tipo: Estoque de Giro' : ''
     ].filter(Boolean).join(' | ') || 'Nenhum (Relatório Geral)';
     
     doc.text(`Filtros: ${filterDesc}`, 15, 30);
-    doc.text(`Total de registros: ${filteredLogs.length} contagem(ns)`, 15, 35);
+    doc.text(`Total de registros: ${logsForReport.length} contagem(ns)`, 15, 35);
     
+    // Calcular estatísticas específicas do relatório
+    const reportStats = logsForReport.reduce((acc, log) => {
+      const diff = log.newQuantity - log.previousQuantity;
+      if (diff > 0) acc.positive++;
+      else if (diff < 0) acc.negative++;
+      else acc.zero++;
+      return acc;
+    }, { positive: 0, negative: 0, zero: 0 });
+
     // Caixas de Resumo de Estatísticas
     doc.setTextColor(30, 41, 59); // slate-800
     doc.setFont("helvetica", "bold");
@@ -455,10 +563,10 @@ export default function AuditLogs() {
     doc.rect(150, 56, 45, 16, 'F');
     
     doc.setFont("helvetica", "bold");
-    doc.text(`${filteredLogs.length}`, 35, 68, { align: 'center' });
-    doc.text(`+${stats.positive}`, 80, 68, { align: 'center' });
-    doc.text(`-${stats.negative}`, 125, 68, { align: 'center' });
-    doc.text(`${stats.zero}`, 172.5, 68, { align: 'center' });
+    doc.text(`${logsForReport.length}`, 35, 68, { align: 'center' });
+    doc.text(`+${reportStats.positive}`, 80, 68, { align: 'center' });
+    doc.text(`-${reportStats.negative}`, 125, 68, { align: 'center' });
+    doc.text(`${reportStats.zero}`, 172.5, 68, { align: 'center' });
     
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
@@ -487,7 +595,7 @@ export default function AuditLogs() {
     currentY += 8;
     doc.setTextColor(30, 41, 59);
     
-    filteredLogs.forEach((log) => {
+    logsForReport.forEach((log) => {
       // Auto-paginação
       if (currentY > 270) {
         doc.addPage();
@@ -1008,8 +1116,10 @@ export default function AuditLogs() {
         onClose={() => setIsReportOpen(false)} 
         reportText={reportText} 
         title="Relatório de Auditoria Filtrado"
+        stockFilter={stockReportFilter}
+        onStockFilterChange={setStockReportFilter}
         onExportPDF={() => {
-          handleExportPDF();
+          handleExportPDF(stockReportFilter);
           setIsReportOpen(false);
         }}
       />
