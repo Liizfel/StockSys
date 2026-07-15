@@ -5,7 +5,6 @@ import path from 'path';
 import { PrismaClient } from '@prisma/client';
 import { execSync } from 'child_process';
 
-// Mapeia a melhor URL de conexão de banco de dados disponível para o DATABASE_URL exigido pelo Prisma
 let resolvedDatabaseUrl = process.env.POSTGRES_PRISMA_URL || 
                             process.env.POSTGRES_URL || 
                             process.env.DATABASE_URL || 
@@ -13,7 +12,6 @@ let resolvedDatabaseUrl = process.env.POSTGRES_PRISMA_URL ||
 
 process.env.DATABASE_URL = resolvedDatabaseUrl;
 
-// Executa migração automática do banco de dados na inicialização do servidor (apenas fora do Vercel)
 if (!process.env.VERCEL) {
   try {
     console.log(`Iniciando migração automática do banco de dados (${resolvedDatabaseUrl.startsWith('file:') ? 'SQLite' : 'PostgreSQL'})...`);
@@ -71,7 +69,6 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-// Rota pública de diagnóstico para verificar conexão e status do banco de dados
 app.get('/api/health', async (req: Request, res: Response) => {
   const envInfo = {
     NODE_ENV: process.env.NODE_ENV,
@@ -104,17 +101,12 @@ app.get('/api/health', async (req: Request, res: Response) => {
   }
 });
 
-// ============================================================================
-// AREA: MIDDLEWARES
-// ============================================================================
-
 const authMiddleware = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Token não fornecido' });
   try {
     const decoded = jwt.verify(token, SECRET_KEY) as any;
     
-    // Busca o usuário atualizado no Banco de Dados Postgres via Prisma
     const dbUser = await prisma.user.findUnique({ where: { id: decoded.id } });
     if (!dbUser) {
       return res.status(401).json({ error: 'Usuário não encontrado' });
@@ -138,14 +130,9 @@ const managerMiddleware = (req: AuthenticatedRequest, res: Response, next: NextF
   next();
 };
 
-// ============================================================================
-// AREA: ROUTES - AUTHENTICATION
-// ============================================================================
-
 app.post('/api/auth/login', async (req: Request, res: Response) => {
   const { email, password } = req.body;
   
-  // Garantir a existência do usuário administrador solicitado pelo usuário
   if (email === 'admin@estoque.com') {
     try {
       const client = getPrisma();
@@ -188,7 +175,6 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
     }
   });
 
-  // ATENÇÃO: Inclui o sectorId no token JWT e no retorno da API
   const token = jwt.sign({ id: user.id, role: user.role, name: user.name, sectorId: user.sectorId, additionalSectors: user.additionalSectors }, SECRET_KEY, { expiresIn: '8h' });
   res.json({ 
     token, 
@@ -242,19 +228,13 @@ app.post('/api/auth/logout', authMiddleware, async (req: AuthenticatedRequest, r
   res.json({ success: true });
 });
 
-// Retorna as informações do usuário atualizado a partir do Token
 app.get('/api/auth/me', authMiddleware, (req: AuthenticatedRequest, res: Response) => {
   res.json({ user: req.user });
 });
 
-// ============================================================================
-// AREA: ROUTES - MATERIALS (STOCK)
-// ============================================================================
-
 app.get('/api/materials', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   const whereClause: any = {};
   
-  // REGRA DE NEGÓCIO: Se for Atendente e tiver setor atribuído, filtra apenas materiais daquele setor ou setores adicionais
   if (req.user?.role !== 'MANAGER' && req.user?.sectorId) {
     const allowedSectors = [req.user.sectorId];
     if (req.user.additionalSectors) {
@@ -334,12 +314,12 @@ app.post('/api/materials', authMiddleware, managerMiddleware, async (req: Reques
         code,
         codigoBarras,
         name,
-        sectorId,
+        sector: { connect: { id: sectorId } },
         quantity: Number(quantity) || 0,
         estoqueMinimo: Number(estoqueMinimo) || 5,
         unit: unit || 'un',
         status: 'PENDING',
-        supplierId: supplierId || null,
+        supplier: supplierId ? { connect: { id: supplierId } } : undefined,
         supplierDeliveryDays: supplierDeliveryDays !== undefined && supplierDeliveryDays !== null ? Number(supplierDeliveryDays) : null,
         origin: origin || null,
         imageUrl: imageUrl || null,
@@ -437,10 +417,10 @@ app.put('/api/materials/:id', authMiddleware, managerMiddleware, async (req: Req
         quantity: quantity !== undefined ? Number(quantity) : undefined,
         estoqueMinimo: estoqueMinimo !== undefined ? Number(estoqueMinimo) : undefined,
         unit,
-        sectorId,
+        sector: sectorId ? { connect: { id: sectorId } } : undefined,
         status: finalStatus,
         repostedAt: finalRepostedAt,
-        supplierId: supplierId !== undefined ? supplierId : undefined,
+        supplier: supplierId !== undefined ? (supplierId ? { connect: { id: supplierId } } : { disconnect: true }) : undefined,
         supplierDeliveryDays: supplierDeliveryDays !== undefined ? (supplierDeliveryDays !== null ? Number(supplierDeliveryDays) : null) : undefined,
         origin: origin !== undefined ? origin : undefined,
         imageUrl: imageUrl !== undefined ? imageUrl : undefined,
@@ -566,10 +546,6 @@ app.post('/api/materials/:id/count', authMiddleware, async (req: AuthenticatedRe
   }
 });
 
-// ============================================================================
-// AREA: ROUTES - SUPPLIERS (REAL DATABASE)
-// ============================================================================
-
 app.get('/api/suppliers', authMiddleware, async (req: Request, res: Response) => {
   try {
     const allSuppliers = await prisma.supplier.findMany();
@@ -623,10 +599,6 @@ app.delete('/api/suppliers/:id', authMiddleware, managerMiddleware, async (req: 
   }
 });
 
-// ============================================================================
-// AREA: ROUTES - SECTORS
-// ============================================================================
-
 app.get('/api/sectors', authMiddleware, async (req: Request, res: Response) => {
   const allSectors = await prisma.sector.findMany();
   res.json(allSectors);
@@ -667,10 +639,6 @@ app.delete('/api/sectors/:id', authMiddleware, managerMiddleware, async (req: Re
     res.status(400).json({ error: 'Erro ao excluir setor' });
   }
 });
-
-// ============================================================================
-// AREA: ROUTES - USERS MANAGEMENT
-// ============================================================================
 
 app.get('/api/users', authMiddleware, managerMiddleware, async (req: Request, res: Response) => {
   try {
@@ -772,20 +740,14 @@ app.delete('/api/users/:id', authMiddleware, managerMiddleware, async (req: Requ
   }
 });
 
-// ============================================================================
-// AREA: ROUTES - NOTIFICATIONS
-// ============================================================================
-
 app.get('/api/notifications', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    // Se o usuário não for Gestor, retorna array vazio (atendentes não veem alertas de compras/estoque)
     if (req.user?.role !== 'MANAGER') {
       return res.json([]);
     }
 
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    // Deleta notificações mais antigas que 24 horas para limpar o banco de dados
     await prisma.notification.deleteMany({
       where: {
         createdAt: {
@@ -794,7 +756,6 @@ app.get('/api/notifications', authMiddleware, async (req: AuthenticatedRequest, 
       }
     });
 
-    // Busca materiais com estoque baixo ou com requisição de compra ativa
     const criticalMaterials = await prisma.material.findMany({
       where: {
         OR: [
@@ -809,12 +770,10 @@ app.get('/api/notifications', authMiddleware, async (req: AuthenticatedRequest, 
       include: { sector: true }
     });
 
-    // Sincroniza as notificações do banco de dados com o estado atual dos materiais críticos
     for (const material of criticalMaterials) {
       const isCritical = material.quantity <= material.estoqueMinimo;
       const type = isCritical ? 'CRITICAL_STOCK' : 'PURCHASE_ALERT';
       
-      // Verifica se já existe uma notificação ativa para este material e tipo
       const existing = await prisma.notification.findFirst({
         where: {
           materialId: material.id,
@@ -837,7 +796,6 @@ app.get('/api/notifications', authMiddleware, async (req: AuthenticatedRequest, 
       }
     }
 
-    // Remove as notificações do banco para materiais que não são mais críticos e não estão mais em PURCHASE_REQUESTED
     const allDbNotifications = await prisma.notification.findMany();
     for (const notif of allDbNotifications) {
       const isStillActive = criticalMaterials.some(material => {
@@ -853,7 +811,6 @@ app.get('/api/notifications', authMiddleware, async (req: AuthenticatedRequest, 
       }
     }
 
-    // Retorna apenas as notificações criadas nas últimas 24 horas que não foram lidas
     const dbNotifications = await prisma.notification.findMany({
       where: {
         read: false,
@@ -873,7 +830,7 @@ app.get('/api/notifications', authMiddleware, async (req: AuthenticatedRequest, 
       message: n.message,
       read: n.read,
       createdAt: n.createdAt,
-      timestamp: n.createdAt // Compatibilidade com frontend (timestamp)
+      timestamp: n.createdAt
     }));
 
     res.json(notifications);
@@ -883,7 +840,7 @@ app.get('/api/notifications', authMiddleware, async (req: AuthenticatedRequest, 
   }
 });
 
-app.patch('/api/notifications/:id/read', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+app.patch('/api/notifications/:id/read', authMiddleware, async (req: Request, res: Response) => {
   const { id } = req.params;
   try {
     const updated = await prisma.notification.update({
@@ -907,10 +864,6 @@ app.post('/api/notifications/read-all', authMiddleware, async (req: Authenticate
     res.status(500).json({ error: 'Erro ao marcar todas as notificações como lidas' });
   }
 });
-
-// ============================================================================
-// AREA: ROUTES - AUDIT LOGS
-// ============================================================================
 
 app.get('/api/logs/time', authMiddleware, managerMiddleware, async (req: Request, res: Response) => {
   const logs = await prisma.timeLog.findMany({
@@ -952,10 +905,6 @@ app.get('/api/logs/stock', authMiddleware, async (req: AuthenticatedRequest, res
 
   res.json(enriched);
 });
-
-// ============================================================================
-// AREA: VITE ENVIRONMENT / STATIC BUNDLE FALLBACK
-// ============================================================================
 
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
   import('vite').then(({ createServer }) => {
