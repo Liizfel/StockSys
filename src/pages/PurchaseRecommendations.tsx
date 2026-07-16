@@ -159,106 +159,112 @@ export default function PurchaseRecommendations() {
   }
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-2 sm:px-4 pb-12 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between bg-card border border-border p-6 rounded-2xl shadow-sm">
-         <div className="min-w-0 flex-1">
+    <div className="space-y-6 max-w-7xl mx-auto px-2 sm:px-4 pb-12 animate-in fade-in duration-500 w-full overflow-x-hidden">
+      {/* Cabeçalho */}
+      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between bg-card border border-border p-5 sm:p-6 rounded-2xl shadow-sm w-full">
+         <div className="min-w-0 flex-1 w-full">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
-               <ShoppingCart className="w-8 h-8 text-blue-500 shrink-0" />
-               Recomendações de Compra
+               <ShoppingCart className="w-7 h-7 sm:w-8 sm:h-8 text-blue-500 shrink-0" />
+               <span className="truncate">Recomendações de Compra</span>
             </h1>
-            <p className="text-sm text-muted-foreground mt-1 block truncate max-w-full">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1 block max-w-full leading-relaxed">
                Sugestões inteligentes baseadas no giro médio de estoque e tempo de entrega dos fornecedores.
             </p>
          </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-card border border-border p-5 rounded-2xl shadow-sm flex items-center gap-4">
+      {/* Grid de KPIs */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+        <div className="bg-card border border-border p-5 rounded-2xl shadow-sm flex items-center gap-4 w-full min-w-0">
            <div className="p-3 bg-blue-500/10 text-blue-500 rounded-xl shrink-0">
               <PackagePlus className="w-5 h-5" />
            </div>
            <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block truncate">Itens Críticos</p>
-              <h4 className="text-2xl font-black text-foreground mt-0.5">{recommendations.length}</h4>
+              <h4 className="text-xl sm:text-2xl font-black text-foreground mt-0.5 font-mono">{recommendations.length}</h4>
            </div>
         </div>
       </div>
 
+      {/* Listagem das Recomendações */}
       {recommendations.length === 0 ? (
-         <div className="bg-card border border-border rounded-2xl p-12 text-center flex flex-col items-center justify-center max-w-full">
-            <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mb-4 shrink-0">
-               <Package className="w-8 h-8" />
+         <div className="bg-card border border-border rounded-2xl p-8 sm:p-12 text-center flex flex-col items-center justify-center max-w-full">
+            <div className="w-14 h-16 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mb-4 shrink-0">
+               <Package className="w-7 h-7" />
             </div>
-            <h3 className="text-xl font-bold text-foreground mb-2">Estoque Saudável</h3>
-            <p className="text-muted-foreground max-w-md text-sm sm:text-base">Não há recomendações de compra no momento. Seus produtos estão acima do ponto de ressuprimento.</p>
+            <h3 className="text-lg sm:text-xl font-bold text-foreground mb-2">Estoque Saudável</h3>
+            <p className="text-muted-foreground max-w-md text-xs sm:text-sm leading-relaxed">Não há recomendações de compra no momento. Seus produtos estão acima do ponto de ressuprimento.</p>
          </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 w-full">
+        <div className="grid grid-cols-1 gap-4 w-full min-w-0">
           <AnimatePresence>
             {recommendations.map(item => (
               <motion.div
                 key={item.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`bg-card border rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col lg:flex-row gap-6 items-stretch lg:items-center justify-between w-full min-w-0 ${item.isAttendantPending ? 'border-amber-500/30 bg-amber-500/[0.01]' : 'border-red-500/30'}`}
+                className={`bg-card border rounded-2xl p-4 sm:p-5 lg:p-6 shadow-sm flex flex-col lg:flex-row gap-5 lg:gap-6 items-stretch lg:items-center justify-between w-full min-w-0 ${item.isAttendantPending ? 'border-amber-500/30 bg-amber-500/[0.01]' : 'border-red-500/30'}`}
               >
+                {/* Informações Técnicas do Item */}
                 <div className="flex-1 min-w-0 w-full flex flex-col justify-between">
-                  <div className="flex items-center gap-2.5 flex-wrap min-w-0 w-full">
-                    <h3 className="text-lg sm:text-xl font-black text-foreground truncate max-w-full" title={item.name}>{item.name}</h3>
-                    <span className="text-xs bg-secondary px-2 py-1 rounded-md font-mono text-muted-foreground shrink-0">{item.code}</span>
+                  <div className="flex items-center gap-2 flex-wrap min-w-0 w-full">
+                    <h3 className="text-base sm:text-lg font-bold text-foreground truncate max-w-full" title={item.name}>{item.name}</h3>
+                    <span className="text-xs bg-secondary px-2 py-0.5 rounded-md font-mono text-muted-foreground shrink-0">{item.code}</span>
                     {item.isAttendantPending && (
-                      <span className="text-[11px] bg-amber-500/10 text-amber-500 dark:text-amber-400 px-2.5 py-0.5 rounded-md font-semibold flex items-center gap-1 border border-amber-500/20 shrink-0 whitespace-nowrap">
+                      <span className="text-[10px] sm:text-[11px] bg-amber-500/10 text-amber-500 dark:text-amber-400 px-2 py-0.5 rounded-md font-semibold flex items-center gap-1 border border-amber-500/20 shrink-0 whitespace-nowrap">
                         <ShoppingCart className="w-3 h-3" />
                         Solicitado por Atendente
                       </span>
                     )}
                     {item.isCritical && (
-                      <span className="text-[11px] bg-red-500/10 text-red-500 dark:text-red-400 px-2.5 py-0.5 rounded-md font-semibold flex items-center gap-1 border border-red-500/20 shrink-0 whitespace-nowrap">
+                      <span className="text-[10px] sm:text-[11px] bg-red-500/10 text-red-500 dark:text-red-400 px-2 py-0.5 rounded-md font-semibold flex items-center gap-1 border border-red-500/20 shrink-0 whitespace-nowrap">
                         <AlertTriangle className="w-3 h-3" />
                         Crítico
                       </span>
                     )}
                   </div>
                   
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4 w-full min-w-0 text-sm">
+                  {/* Grid Interna de Dados Logísticos */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4 w-full min-w-0 text-xs sm:text-sm">
                      <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground mb-1 block truncate">Estoque Atual</p>
-                        <p className="font-semibold text-foreground truncate block">{item.quantity} {formatUnit(item.unit)}</p>
+                        <p className="text-[11px] sm:text-xs text-muted-foreground mb-0.5 block truncate">Estoque Atual</p>
+                        <p className="font-semibold text-foreground truncate block font-mono">{item.quantity} {formatUnit(item.unit)}</p>
                      </div>
                      <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground mb-1 block truncate">Cobertura</p>
+                        <p className="text-[11px] sm:text-xs text-muted-foreground mb-0.5 block truncate">Cobertura</p>
                         <p className={`font-semibold truncate block ${item.isCritical ? 'text-red-500 dark:text-red-400' : 'text-foreground'}`}>
                            {item.daysOfStock !== undefined ? `${item.daysOfStock} dias` : (item.isCritical ? 'Crítico' : 'Adequado')}
                         </p>
                      </div>
                      <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground mb-1 block truncate">Consumo Médio</p>
-                        <p className="font-semibold text-foreground truncate block">
+                        <p className="text-[11px] sm:text-xs text-muted-foreground mb-0.5 block truncate">Consumo Médio</p>
+                        <p className="font-semibold text-foreground truncate block font-mono">
                            {item.dailyUsage ? `${item.dailyUsage} ${formatUnit(item.unit)}/dia` : 'Sem giro'}
                         </p>
                      </div>
                      <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground mb-1 block truncate">Tempo de Entrega</p>
+                        <p className="text-[11px] sm:text-xs text-muted-foreground mb-0.5 block truncate">Tempo de Entrega</p>
                         <p className="font-semibold flex items-center gap-1 text-foreground truncate block">
-                           <CalendarClock className="w-3 h-3 text-blue-500 shrink-0" />
-                           <span>{item.supplierDeliveryDays ? `${item.supplierDeliveryDays} dias` : 'Imediato'}</span>
+                           <CalendarClock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                           <span className="truncate">{item.supplierDeliveryDays ? `${item.supplierDeliveryDays} dias` : 'Imediato'}</span>
                         </p>
                      </div>
                   </div>
                   
-                  <div className="mt-4 pt-4 border-t border-border/60 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between text-xs sm:text-sm text-muted-foreground min-w-0 w-full">
+                  <div className="mt-4 pt-3 border-t border-border/60 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between text-[11px] sm:text-xs text-muted-foreground min-w-0 w-full">
                      <p className="truncate max-w-full">
-                        Fornecedor: <span className="font-medium text-foreground">{item.supplierName || 'Geral (Não definido)'}</span>
+                        Fornecedor: <span className="font-medium text-foreground">{item.supplierName}</span>
                      </p>
                      <p className="truncate max-w-full">
-                        Ponto de Ressuprimento: <span className="font-medium text-foreground">{item.reorderPoint} {formatUnit(item.unit)}</span>
+                        Ponto de Ressuprimento: <span className="font-medium text-foreground font-mono">{item.reorderPoint} {formatUnit(item.unit)}</span>
                      </p>
                   </div>
                 </div>
                 
+                {/* Bloco de Sugestão de Compra e Ação */}
                 <div className={`w-full lg:w-52 rounded-xl p-4 flex flex-col items-center justify-center shrink-0 border min-w-0 ${item.isAttendantPending ? 'bg-amber-500/5 border-amber-500/20 shadow-sm' : 'bg-secondary/40 border-border shadow-sm'}`}>
                   <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mb-1 block text-center truncate w-full">Sugestão de Pedido</p>
-                  <p className={`text-2xl sm:text-3xl font-black block truncate max-w-full text-center ${item.isAttendantPending ? 'text-amber-500' : 'text-blue-500'}`}>{item.suggestion} {formatUnit(item.unit)}</p>
+                  <p className={`text-2xl sm:text-3xl font-black block truncate max-w-full text-center font-mono ${item.isAttendantPending ? 'text-amber-500' : 'text-blue-500'}`}>{item.suggestion} {formatUnit(item.unit)}</p>
                   <button 
                      onClick={() => {
                        setPendingOrder(item as Material);
@@ -267,7 +273,7 @@ export default function PurchaseRecommendations() {
                        setOrderPackageUnit('caixas');
                        setOrderNotes(item.isAttendantPending ? `Solicitação do atendente formalizada. Pedido sugerido de ${item.suggestion} ${formatUnit(item.unit)}.` : `Pedido sugerido de ${item.suggestion} ${formatUnit(item.unit)}.`);
                      }}
-                     className={`mt-4 w-full text-white px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-sm ${item.isAttendantPending ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-500/10' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/10'}`}
+                     className={`mt-3.5 w-full text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-sm h-[40px] flex items-center justify-center ${item.isAttendantPending ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-500/10' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/10'}`}
                   >
                      Gerar Pedido
                   </button>
@@ -278,6 +284,7 @@ export default function PurchaseRecommendations() {
         </div>
       )}
 
+      {/* Modal de Confirmação do Pedido */}
       <AnimatePresence>
         {pendingOrder && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -295,24 +302,24 @@ export default function PurchaseRecommendations() {
                className="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl relative z-10 overflow-hidden max-h-[calc(100vh-2rem)] overflow-y-auto"
             >
                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-emerald-500"></div>
-               <div className="p-6">
+               <div className="p-5 sm:p-6">
                   <div className="flex justify-between items-start gap-4 min-w-0">
                      <div className="min-w-0 flex-1">
-                        <h3 className="text-xl font-bold text-foreground truncate">Confirmar Pedido</h3>
-                        <p className="text-sm text-muted-foreground mt-1 truncate">{pendingOrder.name} ({pendingOrder.code})</p>
+                        <h3 className="text-lg sm:text-xl font-bold text-foreground truncate">Confirmar Pedido</h3>
+                        <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 truncate">{pendingOrder.name} ({pendingOrder.code})</p>
                      </div>
-                     <button type="button" onClick={() => setPendingOrder(null)} className="p-1 text-muted-foreground hover:bg-secondary rounded-lg transition-colors shrink-0">
+                     <button type="button" onClick={() => setPendingOrder(null)} className="p-1.5 text-muted-foreground hover:bg-secondary rounded-lg transition-colors shrink-0">
                         <X className="w-5 h-5" />
                      </button>
                   </div>
                   
-                  <form onSubmit={handleConfirmOrder} className="mt-6 space-y-5">
+                  <form onSubmit={handleConfirmOrder} className="mt-5 space-y-4">
                      <div className="w-full">
-                        <label className="block text-sm font-medium text-muted-foreground mb-1.5">Status do Pedido (Tag)</label>
+                        <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">Status do Pedido (Tag)</label>
                         <select
                            value={orderTag}
                            onChange={e => setOrderTag(e.target.value)}
-                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer h-[46px]"
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm cursor-pointer h-[42px]"
                            required
                         >
                            <option value="Pedido Feito">Pedido Feito</option>
@@ -325,22 +332,22 @@ export default function PurchaseRecommendations() {
 
                      <div className="grid grid-cols-2 gap-4 w-full">
                         <div>
-                           <label className="block text-sm font-medium text-muted-foreground mb-1.5">Qtd. Solicitada</label>
+                           <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">Qtd. Solicitada</label>
                            <input 
                               type="number" 
                               value={orderPackageQuantity}
                               onChange={e => setOrderPackageQuantity(Number(e.target.value))}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 text-base font-bold focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground h-[48px]"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2 text-base font-bold focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground h-[42px] font-mono"
                               min="1"
                               required
                            />
                         </div>
                         <div>
-                           <label className="block text-sm font-medium text-muted-foreground mb-1.5">Tipo Embalagem</label>
+                           <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">Tipo Embalagem</label>
                            <select
                               value={orderPackageUnit}
                               onChange={e => setOrderPackageUnit(e.target.value)}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer h-[48px]"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer h-[42px] text-sm"
                               required
                            >
                               <option value="caixas">caixas</option>
@@ -356,27 +363,27 @@ export default function PurchaseRecommendations() {
                      </div>
 
                      <div className="w-full">
-                        <label className="block text-sm font-medium text-muted-foreground mb-1.5">Observações da Compra</label>
+                        <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">Observações da Compra</label>
                         <textarea 
                            value={orderNotes}
                            onChange={e => setOrderNotes(e.target.value)}
-                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground min-h-[100px] resize-none text-sm"
-                           placeholder="Insira os detalhes, número do pedido, quantidade solicitada..."
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2 text-foreground focus:ring-2 focus:ring-blue-500/50 outline-none min-h-[90px] resize-none text-sm leading-relaxed"
+                           placeholder="Insira detalhes complementares sobre o faturamento ou cotação..."
                            required
                         ></textarea>
                      </div>
 
-                     <div className="flex gap-3 pt-4 border-t border-border mt-6 w-full">
+                     <div className="flex gap-3 pt-3 border-t border-border mt-5 w-full">
                         <button 
                            type="button" 
                            onClick={() => setPendingOrder(null)}
-                           className="flex-1 px-4 py-3 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm h-[44px]"
+                           className="flex-1 px-4 py-2 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm h-[40px]"
                         >
                            Cancelar
                         </button>
                         <button 
                            type="submit" 
-                           className="flex-1 px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25 text-sm h-[44px]"
+                           className="flex-1 px-4 py-2 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25 text-sm h-[40px]"
                         >
                            Registrar Pedido
                         </button>
