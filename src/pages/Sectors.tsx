@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { apiFetch } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Sector, Material, User, Supplier } from '../types';
-import { FolderTree, Plus, Trash2, Edit3, Package, Users, ChevronDown, ChevronUp, UserPlus, AlertTriangle, Truck, Upload, Eye, Camera } from 'lucide-react';
+import { FolderTree, Plus, Trash2, Edit3, Package, Users, ChevronDown, ChevronUp, UserPlus, AlertTriangle, Truck, Upload, Eye, Camera, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatUnit } from '../lib/utils';
 import { ProductImageModal } from '../components/ProductImageModal';
@@ -159,7 +159,7 @@ export default function Sectors() {
       setNewSectorName('');
       fetchData();
     } catch (err) {
-      alert('Erro ao criar sector');
+      alert('Erro ao criar setor');
     }
   };
 
@@ -178,7 +178,7 @@ export default function Sectors() {
       setEditingSector(null);
       fetchData();
     } catch (err) {
-      alert('Erro ao editar sector');
+      alert('Erro ao editar setor');
     } finally {
       isSavingRef.current = false;
     }
@@ -294,7 +294,8 @@ export default function Sectors() {
       const setForm = isEdit ? setEditProductForm : setNewProduct;
       const current = (form.additionalSectors || '').split(',').filter(Boolean);
       const updated = current.filter(id => id !== targetSector.id);
-      setForm((prev: any) => ({ ...prev, additionalSectors: updated.join(',') }));
+      const updatedSectorsStr = updated.length > 0 ? updated.join(',') : '';
+      setForm((prev: any) => ({ ...prev, additionalSectors: updatedSectorsStr }));
     }
   };
 
@@ -563,7 +564,7 @@ export default function Sectors() {
                              }
                              handleEditSector(sector, e.target.value);
                            }}
-                           on開KeyDown={(e) => {
+                           onKeyDown={(e) => {
                              if (e.key === 'Enter') {
                                e.currentTarget.blur();
                              } else if (e.key === 'Escape') {
@@ -634,8 +635,7 @@ export default function Sectors() {
                         className="overflow-hidden border-t border-border bg-secondary/10 w-full"
                      >
                         <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-2 gap-6 w-full items-start">
-                           {/* Lista de Produtos */}
-                           <div className="w-full min-w-0">
+                           <div>
                               <div className="flex items-center justify-between mb-3.5 gap-2 flex-wrap sm:flex-nowrap">
                                 <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 truncate">
                                    <Package className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> Produtos Atribuídos
@@ -659,7 +659,6 @@ export default function Sectors() {
                                              <div className="font-bold text-foreground text-sm truncate block" title={mat.name}>{mat.name}</div>
                                              <div className="text-xs text-muted-foreground font-mono truncate block mt-0.5">{mat.code}</div>
                                           </div>
-                                          {/* 💡 CORREÇÃO DE RESPONSIVIDADE EM HOVER PARA DISPOSITIVOS MÓVEIS (AÇÕES SEMPRE VISÍVEIS ABAIXO DE MD) */}
                                           <div className="flex items-center gap-1 sm:gap-2 shrink-0 md:opacity-0 md:group-hover:opacity-100 opacity-100 transition-opacity">
                                              <span className="font-bold text-xs px-2 py-1 bg-secondary text-foreground rounded-lg whitespace-nowrap font-mono mr-1">
                                                 {mat.quantity} {formatUnit(mat.unit)}
@@ -703,7 +702,6 @@ export default function Sectors() {
                               )}
                            </div>
                            
-                           {/* Lista de Usuários */}
                            <div className="w-full min-w-0">
                               <div className="flex items-center justify-between mb-3.5 gap-2 flex-wrap sm:flex-nowrap">
                                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 truncate">
@@ -762,7 +760,6 @@ export default function Sectors() {
       </div>
           </div>
 
-          {/* Painel de Fornecedores Lado Direito */}
           <div className="space-y-6 w-full shrink-0">
              <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm p-4 sm:p-6 w-full min-w-0">
                 <div className="flex items-center justify-between mb-3.5 gap-2 w-full">
@@ -825,7 +822,6 @@ export default function Sectors() {
           </div>
       </div>
 
-      {/* Modal Novo Produto no Setor */}
       <AnimatePresence>
         {showProductModal && targetSectorForProduct && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -844,7 +840,7 @@ export default function Sectors() {
             >
                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-emerald-400"></div>
                
-               <div className="mb-5 mt-2 flex justify-between items-start">
+               <div className="flex justify-between items-start mb-5 mt-2">
                   <div className="min-w-0 flex-1 pr-2">
                      <h3 className="text-xl font-bold text-foreground truncate">Cadastrar Novo Produto</h3>
                      <p className="text-sm text-muted-foreground mt-0.5 truncate">Setor Alvo: <span className="font-semibold text-foreground">{targetSectorForProduct.name}</span></p>
@@ -1333,7 +1329,6 @@ export default function Sectors() {
         )}
       </AnimatePresence>
 
-      {/* Modal Novo Usuário / Vincular Colaborador */}
       <AnimatePresence>
         {showUserModal && targetSectorForUser && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -1352,7 +1347,7 @@ export default function Sectors() {
             >
                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
                
-               <div className="mb-5 mt-2 flex justify-between items-start">
+               <div className="flex justify-between items-start mb-5 mt-2">
                   <div className="min-w-0 flex-1">
                      <h3 className="text-xl font-bold text-foreground">Alocar Colaborador</h3>
                      <p className="text-sm text-muted-foreground mt-0.5 truncate">Setor Alvo: <span className="font-semibold text-foreground">{targetSectorForUser.name}</span></p>
@@ -1492,7 +1487,7 @@ export default function Sectors() {
             >
                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
                
-               <div className="mb-5 mt-2 flex justify-between items-start w-full">
+               <div className="flex justify-between items-start mb-5 mt-2 w-full">
                   <div className="min-w-0 flex-1">
                      <h3 className="text-xl font-bold text-foreground truncate">{editingSupplier ? 'Editar Fornecedor' : 'Cadastrar Fornecedor'}</h3>
                      <p className="text-xs text-muted-foreground mt-0.5">Definição de canais de suprimentos</p>
@@ -1537,7 +1532,6 @@ export default function Sectors() {
         )}
       </AnimatePresence>
 
-      {/* Modal Confirmação de Exclusão Definitiva */}
       <AnimatePresence>
         {deleteModal.isOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -1579,7 +1573,6 @@ export default function Sectors() {
         )}
       </AnimatePresence>
 
-      {/* Modal Alerta: Código Duplicado */}
       <AnimatePresence>
         {duplicateModal && duplicateModal.isOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -1630,7 +1623,6 @@ export default function Sectors() {
         )}
       </AnimatePresence>
 
-      {/* Modal Alerta: Vínculo em Múltiplos Setores */}
       <AnimatePresence>
         {sectorWarningModal && sectorWarningModal.isOpen && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
@@ -1645,7 +1637,7 @@ export default function Sectors() {
                initial={{ scale: 0.95, y: 20 }}
                animate={{ scale: 1, y: 0 }}
                exit={{ scale: 0.95, y: 20 }}
-               className="bg-card border border-amber-500/30 rounded-2xl w-full max-w-md shadow-2xl p-6 relative z-10 font-sans max-h-[90vh] overflow-y-auto"
+               className="bg-card border border-amber-500/30 rounded-2xl w-full max-w-md shadow-2xl p-6 relative overflow-hidden z-10 font-sans max-h-[90vh] overflow-y-auto"
             >
                <div className="absolute top-0 left-0 w-full h-1 bg-amber-500"></div>
                
