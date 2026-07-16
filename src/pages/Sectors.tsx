@@ -575,6 +575,18 @@ export default function Sectors() {
             const sectorUsers = users.filter(u => u.sectorId === sector.id);
             const isExpanded = expandedSector === sector.id;
 
+            const query = (sectorProductSearches[sector.id] || '').toLowerCase().trim();
+            const filteredSectorMaterials = query
+              ? allSectorMaterials.filter(m => 
+                  (m.code || '').toLowerCase().includes(query) ||
+                  (m.name || '').toLowerCase().includes(query) ||
+                  (m.estante || '').toLowerCase().includes(query) ||
+                  (m.prateleira || '').toLowerCase().includes(query) ||
+                  (m.palete || '').toLowerCase().includes(query) ||
+                  (m.area || '').toLowerCase().includes(query)
+                )
+              : allSectorMaterials;
+
             return (
                <div key={sector.id} className="border border-border rounded-xl bg-card overflow-hidden shadow-sm transition-all">
                  <div className="p-4 px-5 flex items-center justify-between hover:bg-secondary/30 transition-colors cursor-pointer" onClick={() => toggleExpand(sector.id)}>
