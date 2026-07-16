@@ -707,50 +707,64 @@ export default function Sectors() {
                               </div>
 
                               {filteredSectorMaterials.length > 0 ? (
-                                 <ul className="space-y-2">
+                                 <ul className="space-y-3">
                                     {filteredSectorMaterials.map(mat => (
                                        <li 
                                           key={mat.id} 
                                           onClick={() => isManager && handleOpenEditProduct(mat)}
-                                          className={`text-sm flex items-center justify-between bg-background border border-border px-3 py-2 rounded-xl group hover:border-emerald-500/30 transition-colors ${isManager ? 'cursor-pointer hover:bg-secondary/20' : ''}`}
-                                       >
-                                          <div className="flex-1 min-w-0 pr-4">
-                                             <div className="font-medium text-foreground truncate">{mat.name}</div>
-                                             <div className="text-xs text-muted-foreground font-mono flex items-center gap-2 flex-wrap mt-0.5">
-                                            <span className="font-semibold">{mat.code}</span>
-                                            {(mat.estante || mat.prateleira || mat.palete || mat.area) && (
-                                              <span className="text-[10px] bg-secondary/80 px-1.5 py-0.5 rounded text-muted-foreground font-sans">
-                                                Loc: {[mat.area, mat.estante, mat.prateleira, mat.palete].filter(Boolean).join(' › ')}
-                                              </span>
-                                            )}
-                                          </div>
-                                          </div>
-                                          <div className="flex items-center gap-4 shrink-0">
-                                             <span className="font-semibold text-foreground bg-secondary px-2 py-1 rounded-md">{mat.quantity} {formatUnit(mat.unit)}</span>
-                                             <button 
-                                                type="button"
-                                                onClick={(e) => { e.stopPropagation(); setImageModalProduct(mat); }}
-                                                className="text-amber-500 hover:text-amber-400 p-1.5 rounded-lg hover:bg-amber-500/10 transition-colors inline-flex items-center"
-                                                title="Visualizar Foto"
-                                             >
-                                                <Eye className="w-4 h-4" />
-                                             </button>
-                                             {isManager && (
-                                                 <button 
-                                                    onClick={(e) => { e.stopPropagation(); handleOpenEditProduct(mat); }}
-                                                    className="text-muted-foreground hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    title="Editar Produto"
-                                                 >
-                                                    <Edit3 className="w-4 h-4" />
-                                                 </button>
-                                              )}
-                                             <button 
-                                                onClick={(e) => { e.stopPropagation(); handleDeleteProduct(mat); }}
-                                                className="text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                title="Excluir Produto"
-                                             >
-                                                <Trash2 className="w-4 h-4" />
-                                             </button>
+                                          className={`p-3 bg-background border border-border rounded-xl shadow-xs group hover:border-emerald-500/30 transition-all ${isManager ? 'cursor-pointer hover:bg-secondary/20' : ''}`}
+                                        >
+                                          <div className="flex flex-col gap-2">
+                                             {/* Primeira Linha: Nome e Informações Básicas */}
+                                             <div className="min-w-0">
+                                                <div className="font-semibold text-foreground text-sm leading-snug break-words">
+                                                   {mat.name}
+                                                </div>
+                                                <div className="text-xs text-muted-foreground font-mono flex items-center gap-2 flex-wrap mt-1.5">
+                                                   <span className="font-bold bg-secondary/80 px-1.5 py-0.5 rounded text-foreground text-[10px]">
+                                                      {mat.code}
+                                                   </span>
+                                                   {(mat.estante || mat.prateleira || mat.palete || mat.area) && (
+                                                      <span className="text-[10px] bg-blue-500/10 text-blue-600 px-1.5 py-0.5 rounded font-sans font-medium">
+                                                         📍 {[mat.area, mat.estante, mat.prateleira, mat.palete].filter(Boolean).join(' › ')}
+                                                      </span>
+                                                   )}
+                                                </div>
+                                             </div>
+
+                                             {/* Segunda Linha: Estoque e Botões de Ação */}
+                                             <div className="flex items-center justify-between border-t border-border/50 pt-2 mt-1">
+                                                <span className="font-bold text-foreground bg-secondary px-2.5 py-1 rounded-lg text-xs tracking-wide">
+                                                   {mat.quantity} {formatUnit(mat.unit)}
+                                                </span>
+                                                
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                   <button 
+                                                      type="button"
+                                                      onClick={(e) => { e.stopPropagation(); setImageModalProduct(mat); }}
+                                                      className="text-amber-500 hover:text-amber-400 p-1.5 rounded-lg hover:bg-amber-500/10 transition-colors inline-flex items-center"
+                                                      title="Visualizar Foto"
+                                                   >
+                                                      <Eye className="w-4 h-4" />
+                                                   </button>
+                                                   {isManager && (
+                                                      <button 
+                                                         onClick={(e) => { e.stopPropagation(); handleOpenEditProduct(mat); }}
+                                                         className="text-muted-foreground hover:text-blue-500 p-1.5 rounded-lg hover:bg-blue-500/10 transition-colors inline-flex items-center"
+                                                         title="Editar Produto"
+                                                      >
+                                                         <Edit3 className="w-4 h-4" />
+                                                      </button>
+                                                   )}
+                                                   <button 
+                                                      onClick={(e) => { e.stopPropagation(); handleDeleteProduct(mat); }}
+                                                      className="text-muted-foreground hover:text-red-500 p-1.5 rounded-lg hover:bg-red-500/10 transition-colors inline-flex items-center"
+                                                      title="Excluir Produto"
+                                                   >
+                                                      <Trash2 className="w-4 h-4" />
+                                                   </button>
+                                                </div>
+                                             </div>
                                           </div>
                                        </li>
                                     ))}
@@ -790,7 +804,7 @@ export default function Sectors() {
                                           </div>
                                           <button 
                                              onClick={() => handleRemoveUserFromSector(usr, sector)}
-                                             className="text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                             className="text-muted-foreground hover:text-red-500 p-1.5 rounded-lg hover:bg-red-500/10 transition-colors shrink-0"
                                              title="Remover do Setor"
                                           >
                                              <Trash2 className="w-4 h-4" />

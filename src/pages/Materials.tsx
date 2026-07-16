@@ -828,12 +828,12 @@ export default function Materials() {
         <div className="overflow-x-auto hidden md:block">
           <table className="table-fixed w-full min-w-[850px] divide-y divide-border">
             <colgroup>
-              {visibleCols.includes('code') && <col className="w-[15%]" />}
-              {visibleCols.includes('material') && <col className="w-[30%]" />}
-              {visibleCols.includes('sector') && <col className="w-[15%]" />}
-              {visibleCols.includes('stock') && <col className="w-[15%]" />}
-              {visibleCols.includes('status') && <col className="w-[15%]" />}
-              {visibleCols.includes('actions') && <col className="w-[10%]" />}
+              {visibleCols.includes('code') && <col className="w-[12%]" />}
+              {visibleCols.includes('material') && <col className="w-[28%]" />}
+              {visibleCols.includes('sector') && <col className="w-[14%]" />}
+              {visibleCols.includes('stock') && <col className="w-[12%]" />}
+              {visibleCols.includes('status') && <col className="w-[16%]" />}
+              {visibleCols.includes('actions') && <col className="w-[18%]" />}
             </colgroup>
             <thead className="bg-secondary/50">
               <tr>
