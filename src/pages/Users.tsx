@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Users, Plus, Edit3, Trash2, Shield, User as UserIcon, ShieldAlert, BarChart3, X } from 'lucide-react';
+import { Users, Plus, Edit3, Trash2, Shield, User as UserIcon, ShieldAlert, BarChart3, AlertTriangle, X } from 'lucide-react';
 import { User, Sector } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from 'recharts';
-import { cn } from '../lib/utils';
+import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
 
 export default function UsersPage() {
   const { token, user: currentUser } = useAuth();
@@ -14,6 +13,7 @@ export default function UsersPage() {
   
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [deletingUser, setDeletingUser] = useState<User | null>(null);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -42,19 +42,25 @@ export default function UsersPage() {
     }
   };
 
-  useEffect(() => { fetchData(); }, [token]);
+  useEffect(() => {
+    fetchData();
+  }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const url = editingUser ? `/api/users/${editingUser.id}` : '/api/users';
       const method = editingUser ? 'PUT' : 'POST';
+      
       const payload = { ...formData };
-      if (editingUser) delete (payload as any).password;
+      if (editingUser) delete (payload as any).password; // Não atualiza a senha se estiver editando aqui
 
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(payload)
       });
       
@@ -72,13 +78,32 @@ export default function UsersPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (id === currentUser?.id) { alert("Você não pode excluir seu próprio usuário."); return; }
-    if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
+  const requestDelete = (user: User) => {
+    if (user.id === currentUser?.id) {
+       alert("Você não pode excluir seu próprio usuário.");
+       return;
+    }
+    setDeletingUser(user);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingUser) return;
     try {
-      await fetch(`/api/users/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-      fetchData();
-    } catch (err) { console.error(err); }
+      const res = await fetch(`/api/users/${deletingUser.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        fetchData();
+      } else {
+        const errorData = await res.json();
+        alert(errorData.error || 'Erro ao excluir usuário');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setDeletingUser(null);
+    }
   };
 
   const openEditModal = (user: User) => {
@@ -102,199 +127,381 @@ export default function UsersPage() {
 
   const chartData = useMemo(() => {
      const counts = sectors.map(sector => ({
-       name: sector.name,
-       value: users.filter(u => u.sectorId === sector.id).length
+        name: sector.name,
+        value: users.filter(u => u.sectorId === sector.id).length
      }));
      const unassigned = users.filter(u => !u.sectorId && u.role !== 'MANAGER').length;
-     if (unassigned > 0) counts.push({ name: 'Sem Setor', value: unassigned });
+     if (unassigned > 0) {
+        counts.push({ name: 'Sem Setor', value: unassigned });
+     }
+     const managers = users.filter(u => u.role === 'MANAGER').length;
+     if (managers > 0) {
+        counts.push({ name: 'Gestores Gerais', value: managers });
+     }
      return counts.filter(c => c.value > 0);
   }, [users, sectors]);
 
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#64748b'];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-2 sm:px-4 pb-12 animate-in fade-in duration-500">
-      <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-bold text-foreground flex items-center gap-3">
-               <Users className="w-8 h-8 text-blue-500" /> Gestão de Equipe
+    <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-500">
+      {/* Header */}
+      <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+         <div>
+            <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+               <Users className="w-6 h-6 text-blue-500" /> Gestão de Equipe
             </h2>
             <p className="text-sm text-muted-foreground mt-1">Gerencie acessos e delegue responsáveis por setor.</p>
-          </div>
-          <button 
-            onClick={openNewModal}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all shadow-lg shadow-blue-500/25 shrink-0"
-          >
-            <Plus className="w-4 h-4" /> Novo Usuário
-          </button>
+         </div>
+         <button 
+           onClick={openNewModal}
+           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all shadow-lg shadow-blue-500/25 shrink-0"
+         >
+           <Plus className="w-4 h-4" /> Novo Usuário
+         </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-sm flex flex-col">
-              <h3 className="text-lg font-semibold text-foreground flex items-center gap-2 mb-6">
+         {/* Chart Section */}
+         <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-sm flex flex-col">
+             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2 mb-6">
                 <BarChart3 className="w-5 h-5 text-emerald-500" /> Distribuição de Equipe
-              </h3>
-              <div className="h-[250px] w-full">
-                {users.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                     <PieChart>
-                        <Pie data={chartData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                           {chartData.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                        </Pie>
-                        <RechartsTooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '0.5rem' }} />
-                     </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="h-full flex items-center justify-center text-muted-foreground text-sm">Nenhum dado</div>
-                )}
-              </div>
-          </div>
+             </h3>
+             <div className="flex-1 min-h-[250px] relative">
+               {users.length > 0 ? (
+                 <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                       <Pie
+                          data={chartData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                       >
+                          {chartData.map((entry, index) => (
+                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                       </Pie>
+                       <RechartsTooltip 
+                          contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '0.5rem', color: 'hsl(var(--foreground))' }}
+                          itemStyle={{ color: 'hsl(var(--foreground))' }}
+                       />
+                       <Legend wrapperStyle={{ fontSize: '12px', color: 'hsl(var(--foreground))' }} />
+                    </PieChart>
+                 </ResponsiveContainer>
+               ) : (
+                 <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm">
+                    Nenhum dado
+                 </div>
+               )}
+             </div>
+         </div>
 
-          <div className="lg:col-span-2 bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm flex flex-col min-w-0">
+         {/* List Section */}
+         <div className="lg:col-span-2 bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm overflow-hidden flex flex-col">
              <div className="p-6 border-b border-border">
                 <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
                    <UserIcon className="w-5 h-5 text-blue-500" /> Lista de Usuários
                 </h3>
              </div>
              
-             {loading ? (
-                <div className="p-8 text-center text-muted-foreground">Carregando...</div>
-             ) : users.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground">Nenhum usuário cadastrado.</div>
-             ) : (
-               <div className="overflow-hidden w-full">
-                  {/* Tabela para Desktops */}
-                  <div className="hidden md:block w-full overflow-x-auto">
-                    <table className="w-full text-left border-collapse table-fixed">
-                      <thead>
-                        <tr className="bg-secondary/30 border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
-                          <th className="px-6 py-4 font-medium w-[40%]">Nome / Email</th>
-                          <th className="px-6 py-4 font-medium w-[20%]">Cargo</th>
-                          <th className="px-6 py-4 font-medium w-[25%]">Setores</th>
-                          <th className="px-6 py-4 font-medium text-right w-[15%]">Ações</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {users.map(user => (
-                          <tr key={user.id} className="hover:bg-secondary/30 transition-colors">
-                            <td className="px-6 py-4 truncate">
-                               <div className="flex items-center gap-3">
-                                 <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-600 font-bold text-xs shrink-0">{user.name.charAt(0)}</div>
-                                 <div className="min-w-0">
-                                    <div className="text-sm font-medium text-foreground truncate">{user.name}</div>
-                                    <div className="text-xs text-muted-foreground truncate">{user.email}</div>
-                                 </div>
-                               </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border", user.role === 'MANAGER' ? 'bg-purple-500/10 text-purple-500 border-purple-500/20' : 'bg-blue-500/10 text-blue-500 border-blue-500/20')}>
-                                 {user.role === 'MANAGER' ? <ShieldAlert className="w-3 h-3" /> : <Shield className="w-3 h-3" />}
-                                 {user.role === 'MANAGER' ? 'Gestor' : 'Atendente'}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-sm truncate">
-                              {user.role === 'MANAGER' ? 'Acesso Global' : (
-                                <div className="flex flex-wrap gap-1">
-                                  {user.sectorId && <span className="bg-blue-500/10 text-blue-600 px-1.5 py-0.5 rounded text-[10px] font-bold">{sectors.find(s => s.id === user.sectorId)?.name}</span>}
-                                  {user.additionalSectors?.split(',').filter(Boolean).map(id => (
-                                     <span key={id} className="bg-secondary text-muted-foreground px-1.5 py-0.5 rounded text-[10px] font-bold">{sectors.find(s => s.id === id)?.name}</span>
-                                  ))}
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                 <button onClick={() => openEditModal(user)} className="p-2 text-muted-foreground hover:text-blue-500 transition-colors"><Edit3 className="w-4 h-4" /></button>
-                                 {user.id !== currentUser?.id && (
-                                   <button onClick={() => handleDelete(user.id)} className="p-2 text-muted-foreground hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
-                                 )}
+             <div className="overflow-x-auto">
+               {loading ? (
+                 <div className="p-8 text-center text-muted-foreground">Carregando...</div>
+               ) : users.length === 0 ? (
+                 <div className="p-8 text-center text-muted-foreground">Nenhum usuário cadastrado.</div>
+               ) : (
+                 <table className="w-full text-left border-collapse min-w-[700px]">
+                   <thead>
+                     <tr className="bg-secondary/50 border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
+                       <th className="px-6 py-4 font-medium">Nome / Email</th>
+                       <th className="px-6 py-4 font-medium">Cargo</th>
+                       <th className="px-6 py-4 font-medium">Setor Delegado</th>
+                       <th className="px-6 py-4 font-medium text-right">Ações</th>
+                     </tr>
+                   </thead>
+                   <tbody className="divide-y divide-border">
+                     {users.map(user => (
+                       <tr key={user.id} className="hover:bg-secondary/30 transition-colors">
+                         <td className="px-6 py-4 whitespace-nowrap">
+                           <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center text-white font-bold shadow-sm text-xs">
+                                 {user.name.charAt(0)}
                               </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Lista de Cartões para Mobile */}
-                  <div className="md:hidden block divide-y divide-border">
-                    {users.map(user => (
-                       <div key={user.id} className="p-4 space-y-3">
-                          <div className="flex items-center gap-3">
-                             <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0">{user.name.charAt(0)}</div>
-                             <div className="min-w-0 flex-1">
-                                <p className="text-sm font-bold text-foreground truncate">{user.name}</p>
-                                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                             </div>
-                             <div className="flex gap-1">
-                                <button onClick={() => openEditModal(user)} className="p-2 text-blue-500"><Edit3 className="w-4 h-4" /></button>
-                                {user.id !== currentUser?.id && (
-                                   <button onClick={() => handleDelete(user.id)} className="p-2 text-red-500"><Trash2 className="w-4 h-4" /></button>
-                                )}
-                             </div>
-                          </div>
-                          <div className="flex flex-wrap gap-2 text-xs">
-                             <span className={cn("px-2 py-0.5 rounded-md font-semibold border", user.role === 'MANAGER' ? 'bg-purple-500/10 text-purple-500' : 'bg-blue-500/10 text-blue-500')}>
-                                {user.role === 'MANAGER' ? 'Gestor' : 'Atendente'}
+                              <div>
+                                 <div className="text-sm font-medium text-foreground">{user.name}</div>
+                                 <div className="text-xs text-muted-foreground">{user.email}</div>
+                              </div>
+                           </div>
+                         </td>
+                         <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+                               user.role === 'MANAGER' 
+                               ? 'bg-purple-500/10 text-purple-500 border border-purple-500/20' 
+                               : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
+                            }`}>
+                               {user.role === 'MANAGER' ? <ShieldAlert className="w-3 h-3" /> : <Shield className="w-3 h-3" />}
+                               {user.role === 'MANAGER' ? 'Gestor' : 'Atendente'}
+                            </span>
+                         </td>
+                         <td className="px-6 py-4 whitespace-nowrap">
+                           {user.role === 'MANAGER' ? (
+                             <span className="text-xs text-muted-foreground italic">Acesso Global</span>
+                           ) : (
+                             <span className="text-sm font-medium text-foreground">
+                               <>
+                                  <span>{user.sectorName || <span className="text-muted-foreground italic">Não atribuído</span>}</span>
+                                  {user.additionalSectors && (
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {user.additionalSectors.split(',').map(id => {
+                                        const sec = sectors.find(s => s.id === id);
+                                        return sec ? <span key={id} className="text-[10px] bg-secondary text-secondary-foreground border border-border px-1.5 py-0.5 rounded font-semibold">{sec.name}</span> : null;
+                                      })}
+                                    </div>
+                                  )}
+                                </>
                              </span>
-                             <span className="bg-secondary px-2 py-0.5 rounded-md font-medium text-muted-foreground">
-                                {user.role === 'MANAGER' ? 'Acesso Global' : (user.sectorId ? sectors.find(s => s.id === user.sectorId)?.name : 'Sem setor')}
-                             </span>
-                          </div>
-                       </div>
-                    ))}
-                  </div>
-               </div>
-             )}
-          </div>
+                           )}
+                         </td>
+                         <td className="px-6 py-4 whitespace-nowrap text-right">
+                           <div className="flex items-center justify-end gap-2">
+                             <button 
+                               onClick={() => openEditModal(user)}
+                               className="p-2 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors"
+                             >
+                               <Edit3 className="w-4 h-4" />
+                             </button>
+                             {user.id !== currentUser?.id && (
+                               <button 
+                                 onClick={() => requestDelete(user)}
+                                 className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                                 title="Excluir Usuário"
+                               >
+                                 <Trash2 className="w-4 h-4" />
+                               </button>
+                             )}
+                           </div>
+                         </td>
+                       </tr>
+                     ))}
+                   </tbody>
+                 </table>
+               )}
+             </div>
+         </div>
       </div>
 
+      {/* Modal */}
       <AnimatePresence>
         {showModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 relative z-10 max-h-[90vh] overflow-y-auto">
+            <motion.div 
+               initial={{ opacity: 0 }} 
+               animate={{ opacity: 1 }} 
+               exit={{ opacity: 0 }}
+               className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+               onClick={() => setShowModal(false)}
+            />
+            <motion.div 
+               initial={{ scale: 0.95, y: 20 }}
+               animate={{ scale: 1, y: 0 }}
+               exit={{ scale: 0.95, y: 20 }}
+               className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 relative overflow-hidden z-10"
+            >
                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-emerald-500"></div>
-               <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-xl font-bold text-foreground">{editingUser ? 'Editar Usuário' : 'Novo Usuário'}</h3>
-                  <button onClick={() => setShowModal(false)} className="p-1 hover:bg-secondary rounded-lg"><X className="w-5 h-5" /></button>
+               
+               <div className="mb-6 mt-2">
+                  <h3 className="text-xl font-bold text-foreground">
+                    {editingUser ? 'Editar Usuário' : 'Novo Usuário'}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">Preencha os dados de acesso.</p>
                </div>
+
                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
+                 <div>
                     <label className="block text-sm font-medium text-muted-foreground mb-1.5">Nome Completo</label>
-                    <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 outline-none text-foreground" required />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-muted-foreground mb-1.5">E-mail</label>
-                    <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 outline-none text-foreground" required />
-                  </div>
-                  {!editingUser && (
-                     <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1.5">Senha</label>
-                        <input type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 outline-none text-foreground" required />
-                     </div>
-                  )}
-                  <div>
-                    <label className="block text-sm font-medium text-muted-foreground mb-1.5">Cargo</label>
-                    <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 outline-none text-foreground">
-                        <option value="ATTENDANT">Atendente</option>
-                        <option value="MANAGER">Gestor</option>
-                    </select>
-                  </div>
-                  {formData.role === 'ATTENDANT' && (
-                     <div>
-                        <label className="block text-sm font-medium text-muted-foreground mb-1.5">Setor Principal</label>
-                        <select value={formData.sectorId} onChange={e => setFormData({...formData, sectorId: e.target.value})} className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 outline-none text-foreground">
-                            <option value="">Nenhum</option>
-                            {sectors.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                        </select>
-                     </div>
-                  )}
-                  <div className="pt-4 flex gap-3">
-                     <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-3 border border-border rounded-xl font-medium">Cancelar</button>
-                     <button type="submit" className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl font-medium shadow-lg shadow-blue-500/25">Salvar</button>
-                  </div>
+                    <input 
+                       type="text" 
+                       value={formData.name}
+                       onChange={e => setFormData({...formData, name: e.target.value})}
+                       className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
+                       required
+                    />
+                 </div>
+                 
+                 <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1.5">E-mail de Acesso</label>
+                    <input 
+                       type="email" 
+                       value={formData.email}
+                       onChange={e => setFormData({...formData, email: e.target.value})}
+                       className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
+                       required
+                    />
+                 </div>
+
+                 {!editingUser && (
+                   <div>
+                      <label className="block text-sm font-medium text-muted-foreground mb-1.5">Senha Provisória</label>
+                      <input 
+                         type="password" 
+                         value={formData.password}
+                         onChange={e => setFormData({...formData, password: e.target.value})}
+                         className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
+                         required
+                      />
+                   </div>
+                 )}
+
+                 <div className="grid grid-cols-2 gap-4">
+                    <div>
+                       <label className="block text-sm font-medium text-muted-foreground mb-1.5">Cargo (Nível de Acesso)</label>
+                       <select 
+                          value={formData.role}
+                          onChange={e => setFormData({...formData, role: e.target.value})}
+                          className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
+                       >
+                          <option value="ATTENDANT">Atendente</option>
+                          <option value="MANAGER">Gestor</option>
+                       </select>
+                    </div>
+                    <div>
+                       <label className="block text-sm font-medium text-muted-foreground mb-1.5">Setor (Opcional)</label>
+                       <select 
+                          value={formData.sectorId}
+                          onChange={e => setFormData({...formData, sectorId: e.target.value})}
+                          
+                          className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground disabled:opacity-50"
+                       >
+                          <option value="">Nenhum</option>
+                          {sectors.map(s => (
+                             <option key={s.id} value={s.id}>{s.name}</option>
+                          ))}
+                       </select>
+                    </div>
+                 </div>
+
+                 {true && (
+                    <div className="space-y-2 col-span-2 mt-1">
+                       <label className="block text-sm font-medium text-muted-foreground mb-1">Setores Adicionais sob Responsabilidade</label>
+                       <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 bg-secondary/20 rounded-xl border border-border/50">
+                          {sectors
+                             .filter(s => s.id !== formData.sectorId)
+                             .map(s => {
+                                const isChecked = (formData.additionalSectors || '')
+                                  .split(',')
+                                  .filter(Boolean)
+                                  .includes(s.id);
+                                return (
+                                  <label key={s.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-secondary/50 rounded-lg cursor-pointer text-xs text-foreground">
+                                     <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={e => {
+                                           const current = (formData.additionalSectors || '').split(',').filter(Boolean);
+                                           let updated;
+                                           if (e.target.checked) {
+                                              updated = [...current, s.id];
+                                           } else {
+                                              updated = current.filter(id => id !== s.id);
+                                           }
+                                           setFormData({ ...formData, additionalSectors: updated.join(',') });
+                                        }}
+                                        className="rounded text-blue-500 bg-secondary/50 border-border focus:ring-blue-500 w-3.5 h-3.5"
+                                     />
+                                     <span className="truncate">{s.name}</span>
+                                  </label>
+                                );
+                             })}
+                          {sectors.filter(s => s.id !== formData.sectorId).length === 0 && (
+                             <p className="text-xs text-muted-foreground italic p-2 col-span-2">Nenhum outro setor disponível</p>
+                          )}
+                       </div>
+                    </div>
+                 )}
+
+                 <div className="flex gap-3 pt-4">
+                    <button 
+                       type="button" 
+                       onClick={() => setShowModal(false)}
+                       className="flex-1 px-4 py-3 text-muted-foreground font-medium rounded-xl hover:bg-secondary transition-colors"
+                    >
+                       Cancelar
+                    </button>
+                    <button 
+                       type="submit" 
+                       className="flex-1 px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25"
+                    >
+                       {editingUser ? 'Salvar' : 'Cadastrar'}
+                    </button>
+                 </div>
                </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal de Exclusão de Usuário */}
+      <AnimatePresence>
+        {deletingUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+               initial={{ opacity: 0 }} 
+               animate={{ opacity: 1 }} 
+               exit={{ opacity: 0 }}
+               className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+               onClick={() => setDeletingUser(null)}
+            />
+            <motion.div 
+               initial={{ scale: 0.95, y: 20 }}
+               animate={{ scale: 1, y: 0 }}
+               exit={{ scale: 0.95, y: 20 }}
+               className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl p-6 relative overflow-hidden z-10"
+            >
+               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-orange-500"></div>
+               
+               <div className="mb-5 mt-2 flex justify-between items-start gap-4">
+                  <div className="min-w-0 flex-1">
+                     <h3 className="text-xl font-bold text-foreground flex items-center gap-1.5">
+                        <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" /> Excluir Usuário
+                     </h3>
+                     <p className="text-sm text-muted-foreground mt-1">Tem certeza que deseja excluir permanentemente este usuário?</p>
+                  </div>
+                  <button type="button" onClick={() => setDeletingUser(null)} className="p-1 text-muted-foreground hover:bg-secondary rounded-lg shrink-0 transition-colors">
+                     <X className="w-5 h-5" />
+                  </button>
+               </div>
+
+               <div className="bg-secondary/40 p-4 rounded-xl border border-border mb-5">
+                  <div className="flex items-center gap-3">
+                     <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                        {deletingUser.name.charAt(0).toUpperCase()}
+                     </div>
+                     <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-foreground truncate">{deletingUser.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{deletingUser.email}</p>
+                     </div>
+                  </div>
+               </div>
+
+               <div className="flex gap-3 w-full">
+                  <button 
+                     type="button" 
+                     onClick={() => setDeletingUser(null)}
+                     className="flex-1 px-4 py-3 text-muted-foreground font-medium rounded-xl hover:bg-secondary border border-border/50 transition-colors text-sm h-[44px]"
+                  >
+                     Cancelar
+                  </button>
+                  <button 
+                     type="button"
+                     onClick={confirmDelete}
+                     className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors shadow-lg shadow-red-500/25 text-sm h-[44px] flex items-center justify-center gap-1.5"
+                  >
+                     <Trash2 className="w-4 h-4" /> Excluir
+                  </button>
+               </div>
             </motion.div>
           </div>
         )}
