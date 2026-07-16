@@ -1,8 +1,18 @@
 {
+  "version": 2,
   "rewrites": [
-    { 
-      "source": "/(.*)", 
-      "destination": "/index.html" 
+    {
+      "source": "/api/:path*",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/((?!api).*\\..*)",
+      "destination": "/$1"
+    },
+    {
+      "source": "/((?!api).*)",
+      "destination": "/index.html"
     }
-  ]
+  ],
+  "cleanUrls": true
 }

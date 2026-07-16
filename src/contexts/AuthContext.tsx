@@ -22,7 +22,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
     if (storedToken) {
-      // Obtenha informações de usuários em tempo real do servidor para garantir que estejam sincronizadas.
+      // Buscar informações do usuário em tempo real do servidor para garantir sincronia
       fetch('/api/auth/me', {
         headers: { 'Authorization': `Bearer ${storedToken}` }
       })
@@ -41,7 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       })
       .catch(err => {
         console.warn('Sessão expirada ou inválida:', err.message || err);
-        // Limpar sessão em caso de falha na autenticação
+        // Limpar sessão em caso de falha de autenticação
         setToken(null);
         setUser(null);
         localStorage.removeItem('token');
