@@ -80,7 +80,7 @@ const SortableItem = React.memo(({ id, material, onClick, focusGiro }: { id: str
       ref={setNodeRef}
       style={style}
       className={cn(
-        "p-4 mb-3 bg-card border rounded-xl shadow-sm cursor-grab active:cursor-grabbing flex items-start gap-3 transition-colors hover:border-blue-500/30",
+        "p-4 mb-3 bg-card border rounded-xl shadow-sm cursor-grab active:cursor-grabbing flex items-start gap-3 transition-colors hover:border-blue-500/30 touch-none select-none",
         isDragging ? "opacity-50 border-blue-500/50 shadow-lg" : "border-border",
         material.highDiscrepancy && !isDragging && "animate-[pulse_2s_ease-in-out_infinite] border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.2)] bg-red-500/5"
       )}
@@ -90,23 +90,28 @@ const SortableItem = React.memo(({ id, material, onClick, focusGiro }: { id: str
     >
        <GripVertical className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between">
-             <h4 className="font-semibold text-foreground truncate flex items-center gap-1.5">{material.name}{material.repostedAt && (new Date().getTime() - new Date(material.repostedAt).getTime() < 24 * 60 * 60 * 1000) && (<span className="shrink-0 inline-flex items-center px-1 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 animate-pulse">Novo</span>)}</h4>
-             <span className="text-xs font-mono text-muted-foreground ml-2">{material.code}</span>
+          <div className="flex items-start justify-between gap-2">
+             <h4 className="font-semibold text-foreground truncate flex items-center gap-1.5 min-w-0 flex-1">
+                <span className="truncate">{material.name}</span>
+                {material.repostedAt && (new Date().getTime() - new Date(material.repostedAt).getTime() < 24 * 60 * 60 * 1000) && (
+                   <span className="shrink-0 inline-flex items-center px-1 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 animate-pulse">Novo</span>
+                )}
+             </h4>
+             <span className="text-xs font-mono text-muted-foreground shrink-0">{material.code}</span>
           </div>
           <p className="text-sm text-muted-foreground mt-1 truncate">Setor: {material.sector}</p>
           
-          <div className="mt-3 flex items-center justify-between">
+          <div className="mt-3 flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
              {material.status === 'PURCHASE_REQUESTED' && material.requestedQuantity ? (
-                 <>
-                   <span className="text-xs px-2 py-1 bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded font-semibold whitespace-nowrap">Solicitado: {material.requestedQuantity} {formatUnit(material.unit)}</span>
-                   <span className="text-xs px-2 py-1 bg-secondary rounded text-muted-foreground whitespace-nowrap">Estoque: {currentQty} {formatUnit(material.unit)}</span>
-                 </>
+                 <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                   <span className="text-xs px-2 py-1 bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded font-semibold whitespace-nowrap truncate">Solicitado: {material.requestedQuantity} {formatUnit(material.unit)}</span>
+                   <span className="text-xs px-2 py-1 bg-secondary rounded text-muted-foreground whitespace-nowrap truncate">Estoque: {currentQty} {formatUnit(material.unit)}</span>
+                 </div>
               ) : (
-                 <span className="text-xs px-2 py-1 bg-secondary rounded text-muted-foreground">Estoque: <strong className="text-foreground">{currentQty} {formatUnit(material.unit)}</strong></span>
+                 <span className="text-xs px-2 py-1 bg-secondary rounded text-muted-foreground truncate">Estoque: <strong className="text-foreground">{currentQty} {formatUnit(material.unit)}</strong></span>
               )}
              {material.lastCountedBy && (
-                 <span className="text-[10px] text-muted-foreground">por {material.lastCountedBy.split(' ')[0]}</span>
+                 <span className="text-[10px] text-muted-foreground truncate">por {material.lastCountedBy.split(' ')[0]}</span>
              )}
           </div>
           {material.notes && (
@@ -133,24 +138,24 @@ const KanbanColumn = ({ col, colMaterials, handleCardClick, focusGiro }: { col: 
   const Icon = col.icon;
   
   return (
-    <div ref={setNodeRef} className="w-80 flex flex-col h-full bg-secondary/30 rounded-2xl border border-border overflow-hidden">
-       <div className="p-4 border-b border-border bg-card/50 backdrop-blur-md sticky top-0 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-             <div className={cn("p-1.5 rounded-md", col.bg)}>
+    <div ref={setNodeRef} className="w-[290px] sm:w-80 flex flex-col h-full bg-secondary/30 rounded-2xl border border-border overflow-hidden flex-shrink-0 select-none">
+       <div className="p-4 border-b border-border bg-card/50 backdrop-blur-md sticky top-0 flex items-center justify-between z-10 shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+             <div className={cn("p-1.5 rounded-md shrink-0", col.bg)}>
                 <Icon className={cn("w-4 h-4", col.color)} />
              </div>
-             <h3 className="font-semibold">{col.title}</h3>
+             <h3 className="font-semibold text-sm sm:text-base truncate">{col.title}</h3>
           </div>
-          <span className="text-xs font-bold text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">{colMaterials.length}</span>
+          <span className="text-xs font-bold text-muted-foreground bg-secondary px-2 py-0.5 rounded-full shrink-0 ml-2">{colMaterials.length}</span>
        </div>
        
-       <div className="flex-1 p-4 overflow-y-auto">
+       <div className="flex-1 p-3 overflow-y-auto min-h-0 custom-scrollbar">
            <SortableContext 
              id={col.id}
              items={colMaterials.map(m => m.id)}
              strategy={verticalListSortingStrategy}
            >
-              <div className="min-h-[200px] space-y-3" style={{ height: '100%' }}>
+              <div className="min-h-[150px] space-y-3 h-full">
                  <AnimatePresence>
                     {colMaterials.map(material => (
                        <SortableItem key={material.id} id={material.id} material={material} onClick={handleCardClick} focusGiro={focusGiro} />
@@ -489,26 +494,26 @@ export default function Kanban() {
   }, [filteredMaterials, kanbanMode, focusGiro]);
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="mb-6 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
-         <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full xl:w-auto">
-            <div>
-               <h2 className="text-xl font-bold flex items-center gap-2">
-                  <Container className="w-6 h-6 text-blue-500" /> Fluxo de Reposição (Kanban)
+    <div className="h-full flex flex-col max-w-7xl mx-auto px-2 sm:px-4">
+      <div className="mb-6 flex flex-col lg:flex-row items-stretch lg:items-end justify-between gap-5 bg-card/50 backdrop-blur-md p-4 rounded-2xl border border-border">
+         <div className="flex flex-col sm:flex-row sm:items-end gap-4 flex-1 min-w-0">
+            <div className="min-w-0 flex-1">
+               <h2 className="text-xl font-bold flex items-center gap-2 text-foreground truncate">
+                  <Container className="w-6 h-6 text-blue-500 shrink-0" /> Fluxo de Reposição (Kanban)
                </h2>
-               <p className="text-sm text-muted-foreground mt-1">
+               <p className="text-sm text-muted-foreground mt-1 truncate">
                   {isManager ? 'Acompanhe e movimente o status de reposições e pedidos.' : 'Visualização do fluxo de materiais. Apenas gestores podem alterar status aqui.'}
                </p>
             </div>
             
             {isManager && (
-               <div className="flex bg-secondary/50 p-1 rounded-xl border border-border self-start sm:self-auto shrink-0">
+               <div className="flex bg-secondary/50 p-1 rounded-xl border border-border shrink-0 h-[40px] items-center self-start sm:self-auto">
                   <button
                      onClick={() => setKanbanMode('PEDIDOS')}
                      className={cn(
-                        "px-4 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                        "px-4 py-1.5 rounded-lg text-xs font-semibold transition-all h-full whitespace-nowrap",
                         kanbanMode === 'PEDIDOS' 
-                           ? "bg-blue-600 text-white shadow" 
+                           ? "bg-blue-600 text-white shadow-sm" 
                            : "text-muted-foreground hover:text-foreground"
                      )}
                   >
@@ -517,9 +522,9 @@ export default function Kanban() {
                   <button
                      onClick={() => setKanbanMode('ESTOQUE')}
                      className={cn(
-                        "px-4 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                        "px-4 py-1.5 rounded-lg text-xs font-semibold transition-all h-full whitespace-nowrap",
                         kanbanMode === 'ESTOQUE' 
-                           ? "bg-blue-600 text-white shadow" 
+                           ? "bg-blue-600 text-white shadow-sm" 
                            : "text-muted-foreground hover:text-foreground"
                      )}
                   >
@@ -529,14 +534,14 @@ export default function Kanban() {
             )}
          </div>
 
-         <div className="w-full xl:w-[650px] shrink-0 flex gap-2 items-center">
+         <div className="flex flex-wrap sm:flex-nowrap gap-2 items-center shrink-0 w-full lg:w-auto lg:max-w-xl">
              <button
                type="button"
                onClick={() => setFocusGiro(!focusGiro)}
                className={cn(
-                 "px-4 py-2 rounded-xl text-xs font-bold border transition-all duration-200 flex items-center gap-1.5 shrink-0 select-none",
+                 "px-4 py-2 rounded-xl text-xs font-bold border transition-all duration-200 flex items-center gap-1.5 shrink-0 select-none h-[40px] whitespace-nowrap",
                  focusGiro
-                   ? "bg-amber-500/15 border-amber-500/30 text-amber-500 shadow-sm animate-none"
+                   ? "bg-amber-500/15 border-amber-500/30 text-amber-500 shadow-sm"
                    : "bg-secondary text-muted-foreground hover:text-foreground border-border/80 hover:bg-secondary/80"
                )}
                title="Focar em Itens de Giro ⚡"
@@ -544,11 +549,11 @@ export default function Kanban() {
                <span>⚡ Giro do Dia</span>
              </button>
              
-             <div className="relative flex-1">
+             <div className="relative flex-1 min-w-[150px]">
                <input 
                   type="text" 
                   placeholder="Buscar por nome, código, usuário, dia, hora..." 
-                  className="w-full px-4 py-2 bg-secondary/50 border border-border rounded-xl text-sm focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
+                  className="w-full px-4 py-2 bg-secondary/50 border border-border rounded-xl text-sm focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground h-[40px]"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                />
@@ -558,7 +563,7 @@ export default function Kanban() {
                    setSearch('');
                    setShowScanner(true);
                 }}
-                className="p-2 bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 border border-blue-500/20 rounded-xl transition-colors flex items-center justify-center shrink-0"
+                className="w-[40px] h-[40px] bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 border border-blue-500/20 rounded-xl transition-colors flex items-center justify-center shrink-0"
                 title="Ler Código do Produto ou QR Code"
              >
                 <Camera className="w-5 h-5" />
@@ -566,7 +571,7 @@ export default function Kanban() {
              {isManager && kanbanMode === 'ESTOQUE' && (
                 <button 
                    onClick={() => setShowColumnsModal(true)}
-                   className="px-3 bg-secondary text-foreground hover:bg-secondary/80 border border-border rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2 shrink-0"
+                   className="px-3 bg-secondary text-foreground hover:bg-secondary/80 border border-border rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2 shrink-0 h-[40px]"
                    title="Personalizar Colunas"
                 >
                    <Settings2 className="w-4 h-4" /> Colunas
@@ -575,26 +580,26 @@ export default function Kanban() {
          </div>
       </div>
 
-      <div className="flex-1 overflow-x-auto pb-4 scrollbar-hide">
+      <div className="flex-1 overflow-x-auto pb-4 scrollbar-thin select-none touch-pan-x -mx-4 px-4 sm:mx-0 sm:px-0">
          <DndContext 
            sensors={sensors}
            collisionDetection={closestCorners}
            onDragStart={handleDragStart}
            onDragEnd={handleDragEnd}
          >
-           <div className="flex h-full gap-6 min-w-max">
+           <div className="flex h-[calc(100vh-14rem)] gap-5 min-w-max items-start pb-2">
              {(kanbanMode === 'PEDIDOS' ? purchaseColumns : columns.filter(c => visibleCols.includes(c.id))).map(col => {
                 const colMaterials = groupedMaterials[col.id] || [];
                 return <KanbanColumn key={col.id} col={col} colMaterials={colMaterials} handleCardClick={handleCardClick} focusGiro={focusGiro} />;
              })}
            </div>
 
-           <DragOverlay>
+           <DragOverlay dropAnimation={null}>
              {activeMaterial ? (
-               <div className="p-4 bg-card border-2 border-blue-500/50 rounded-xl shadow-2xl opacity-90 scale-105 flex items-start gap-3 w-80">
+               <div className="p-4 bg-card border-2 border-blue-500/50 rounded-xl shadow-2xl opacity-95 flex items-start gap-3 w-[290px] sm:w-80 pointer-events-none select-none">
                   <GripVertical className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
-                     <h4 className="font-semibold truncate">{activeMaterial.name}</h4>
+                     <h4 className="font-semibold truncate text-foreground text-sm sm:text-base">{activeMaterial.name}</h4>
                      <p className="text-sm text-muted-foreground mt-1 truncate">Setor: {activeMaterial.sector}</p>
                   </div>
                </div>
@@ -617,7 +622,7 @@ export default function Kanban() {
                initial={{ scale: 0.95, y: 20 }}
                animate={{ scale: 1, y: 0 }}
                exit={{ scale: 0.95, y: 20 }}
-               className="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl relative z-10 overflow-hidden"
+               className="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl relative z-10 overflow-hidden max-h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar"
             >
                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-emerald-500"></div>
                <div className="p-6">
@@ -625,12 +630,12 @@ export default function Kanban() {
                   <p className="text-sm text-muted-foreground mt-1">{pendingMove.material.name} ({pendingMove.material.code})</p>
                   
                   <form onSubmit={handleConfirmMove} className="mt-6 space-y-5">
-                     <div>
+                     <div className="w-full">
                         <label className="block text-sm font-medium text-muted-foreground mb-1.5">Tag de Verificação</label>
                         <select
                            value={moveTag}
                            onChange={e => setMoveTag(e.target.value)}
-                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer"
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer h-[46px]"
                            required
                         >
                            {kanbanMode === 'PEDIDOS' ? (
@@ -651,53 +656,53 @@ export default function Kanban() {
                         </select>
                      </div>
 
-                     <div>
+                     <div className="w-full">
                         <label className="block text-sm font-medium text-muted-foreground mb-1.5">Nova Quantidade ({formatUnit(pendingMove?.material.unit)})</label>
                         <input 
                            type="number" 
                            min="0"
                            value={moveQuantity}
                            onChange={e => setMoveQuantity(e.target.value ? parseInt(e.target.value) : '')}
-                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 text-lg font-bold focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 text-lg font-bold focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground h-[48px]"
                            required
                         />
                      </div>
                      {kanbanMode === 'PEDIDOS' && (
-                        <div>
+                        <div className="w-full">
                            <label className="block text-sm font-medium text-muted-foreground mb-1.5">Quantidade Solicitada / Pedida</label>
                            <input 
                               type="number" 
                               min="0"
                               value={moveRequestedQuantity}
                               onChange={e => setMoveRequestedQuantity(e.target.value ? parseInt(e.target.value) : '')}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 text-lg font-bold focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 text-lg font-bold focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground h-[48px]"
                               required
                            />
                         </div>
                      )}
 
-                     <div>
+                     <div className="w-full">
                         <label className="block text-sm font-medium text-muted-foreground mb-1.5">Observações (Obrigatório)</label>
                         <textarea 
                            value={moveNotes}
                            onChange={e => setMoveNotes(e.target.value)}
-                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground min-h-[100px] resize-none"
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground min-h-[100px] resize-none text-sm"
                            placeholder="Insira detalhes sobre a movimentação, como quantidade comprada..."
                            required
                         ></textarea>
                      </div>
 
-                     <div className="flex gap-3 pt-4 border-t border-border mt-6">
+                     <div className="flex gap-3 pt-4 border-t border-border mt-6 w-full">
                         <button 
                            type="button" 
                            onClick={handleCancelMove}
-                           className="flex-1 px-4 py-3 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors"
+                           className="flex-1 px-4 py-3 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm h-[44px]"
                         >
                            Cancelar
                         </button>
                         <button 
                            type="submit" 
-                           className="flex-1 px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25"
+                           className="flex-1 px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25 text-sm h-[44px]"
                         >
                            Salvar Movimentação
                         </button>
@@ -721,7 +726,7 @@ export default function Kanban() {
                initial={{ scale: 0.95, y: 20 }}
                animate={{ scale: 1, y: 0 }}
                exit={{ scale: 0.95, y: 20 }}
-               className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl p-6 relative overflow-hidden"
+               className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl p-6 relative overflow-hidden max-h-[calc(100vh-2rem)] overflow-y-auto"
             >
                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-emerald-500"></div>
                
@@ -734,21 +739,21 @@ export default function Kanban() {
                
                <div className="space-y-3 mb-6">
                   {columns.map(col => (
-                     <label key={col.id} className="flex items-center gap-3 p-3 rounded-xl border border-border bg-secondary/30 hover:bg-secondary cursor-pointer transition-colors">
+                     <label key={col.id} className="flex items-center gap-3 p-3 rounded-xl border border-border bg-secondary/30 hover:bg-secondary cursor-pointer transition-colors w-full min-w-0">
                         <input 
                            type="checkbox" 
                            checked={visibleCols.includes(col.id)}
                            onChange={() => toggleColumn(col.id)}
-                           className="w-4 h-4 text-blue-600 rounded border-border focus:ring-blue-500"
+                           className="w-4 h-4 text-blue-600 rounded border-border focus:ring-blue-500 shrink-0"
                         />
-                        <span className="text-sm font-medium text-foreground">{col.title}</span>
+                        <span className="text-sm font-medium text-foreground truncate">{col.title}</span>
                      </label>
                   ))}
                </div>
 
                <button 
                   onClick={() => setShowColumnsModal(false)}
-                  className="w-full px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25"
+                  className="w-full px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25 h-[44px] text-sm"
                >
                   Concluído
                </button>
@@ -771,20 +776,20 @@ export default function Kanban() {
                initial={{ scale: 0.95, y: 20 }}
                animate={{ scale: 1, y: 0 }}
                exit={{ scale: 0.95, y: 20 }}
-               className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 relative overflow-hidden z-10"
+               className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 relative overflow-hidden z-10 max-h-[calc(100vh-2rem)] overflow-y-auto"
             >
                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-emerald-500"></div>
                
                <div className="flex justify-between items-start mb-6 mt-2 gap-4">
                   <div className="min-w-0 flex-1">
-                     <h3 className="text-xl font-bold text-foreground">Nova Contagem</h3>
-                     <p className="text-sm text-muted-foreground mt-1 break-words">{countMaterial.name} ({countMaterial.code})</p>
+                     <h3 className="text-xl font-bold text-foreground truncate">Nova Contagem</h3>
+                     <p className="text-sm text-muted-foreground mt-1 break-words line-clamp-2">{countMaterial.name} ({countMaterial.code})</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                      <button
                         type="button"
                         onClick={() => setImageModalProduct(countMaterial)}
-                        className="p-2 text-blue-500 hover:text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded-xl transition-colors flex items-center justify-center"
+                        className="w-[36px] h-[36px] text-blue-500 hover:text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded-xl transition-colors flex items-center justify-center shrink-0"
                         title="Visualizar Foto do Produto"
                      >
                         <Eye className="w-5 h-5" />
@@ -792,7 +797,7 @@ export default function Kanban() {
                      <button 
                         type="button"
                         onClick={() => setShowCountModal(false)} 
-                        className="p-1.5 text-muted-foreground hover:bg-secondary rounded-lg transition-colors"
+                        className="p-1.5 text-muted-foreground hover:bg-secondary rounded-lg transition-colors shrink-0"
                      >
                         <X className="w-5 h-5" />
                      </button>
@@ -800,21 +805,21 @@ export default function Kanban() {
                </div>
 
                <form onSubmit={handleCountSubmit} className="space-y-5">
-                  <div>
+                  <div className="w-full">
                      <label className="block text-sm font-medium text-muted-foreground mb-1.5">Quantidade Encontrada Fisicamente ({formatUnit(countMaterial.unit)})</label>
-                     <div className="flex items-center gap-4">
+                     <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full">
                         <input 
                            type="number" 
                            min="0"
                            value={countQuantity}
                            onChange={e => setCountQuantity(e.target.value ? parseInt(e.target.value) : '')}
-                           className="w-32 bg-secondary/50 border border-border rounded-xl px-4 py-3 text-lg font-bold focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
+                           className="w-full sm:w-32 bg-secondary/50 border border-border rounded-xl px-4 py-3 text-lg font-bold focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground h-[48px]"
                            required
                         />
-                        <div className="text-sm text-muted-foreground flex flex-col">
-                           <span>Anterior: <strong className="text-foreground">{(focusGiro ? (countMaterial.quantityGiro || 0) : countMaterial.quantity)} {formatUnit(countMaterial.unit)}</strong></span>
+                        <div className="text-sm text-muted-foreground flex flex-col min-w-0 flex-1">
+                           <span className="truncate">Anterior: <strong className="text-foreground">{(focusGiro ? (countMaterial.quantityGiro || 0) : countMaterial.quantity)} {formatUnit(countMaterial.unit)}</strong></span>
                            <span className={cn(
-                              "font-medium mt-0.5",
+                              "font-medium mt-0.5 truncate",
                               Number(countQuantity) > (focusGiro ? (countMaterial.quantityGiro || 0) : countMaterial.quantity) ? "text-emerald-500" : 
                               Number(countQuantity) < (focusGiro ? (countMaterial.quantityGiro || 0) : countMaterial.quantity) ? "text-red-500" : "text-muted-foreground"
                            )}>
@@ -824,12 +829,12 @@ export default function Kanban() {
                      </div>
                   </div>
                   
-                  <div>
+                  <div className="w-full">
                      <label className="block text-sm font-medium text-muted-foreground mb-1.5">Ação de Kanban / Status</label>
                      <select
                         value={countStatus}
                         onChange={e => setCountStatus(e.target.value as Material['status'])}
-                        className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
+                        className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer h-[46px]"
                      >
                         <option value="PENDING">Pendente / Contagem Pendente</option>
                         <option value="COUNTED_RECENTLY">Recém Contado</option>
@@ -840,28 +845,28 @@ export default function Kanban() {
                      </select>
                   </div>
                   
-                  <div>
+                  <div className="w-full">
                      <label className="block text-sm font-medium text-muted-foreground mb-1.5">Observações (Opcional)</label>
                      <textarea 
                         value={countNotes}
                         onChange={e => setCountNotes(e.target.value)}
-                        className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground resize-none"
+                        className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground resize-none text-sm"
                         rows={3}
                         placeholder="Ex: Embalagem danificada, vencimento próximo..."
                      />
                   </div>
 
-                  <div className="flex gap-3 pt-2">
+                  <div className="flex gap-3 pt-2 w-full">
                      <button 
                         type="button" 
                         onClick={() => setShowCountModal(false)}
-                        className="flex-1 px-4 py-3 text-muted-foreground font-medium rounded-xl hover:bg-secondary transition-colors"
+                        className="flex-1 px-4 py-3 text-muted-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm h-[44px]"
                      >
                         Cancelar
                      </button>
                      <button 
                         type="submit" 
-                        className="flex-1 px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25"
+                        className="flex-1 px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25 text-sm h-[44px]"
                      >
                         Confirmar
                      </button>

@@ -847,6 +847,7 @@ export default function AuditLogs() {
          </div>
       </div>
 
+      {/* Research and Advanced Filter Console Panel */}
       <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
         <div className="p-4 border-b border-border bg-secondary/30 flex items-center gap-2">
           <SlidersHorizontal className="w-4 h-4 text-blue-500" />
@@ -973,6 +974,7 @@ export default function AuditLogs() {
         </div>
       </div>
 
+      {/* Main Logs Table / Records List */}
       <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-border bg-card flex justify-between items-center flex-wrap gap-2">
            <h3 className="font-bold text-foreground text-base flex items-center gap-2">

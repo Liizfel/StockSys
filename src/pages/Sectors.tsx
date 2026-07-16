@@ -22,7 +22,6 @@ export default function Sectors() {
   
   const [expandedSector, setExpandedSector] = useState<string | null>(null);
 
-  // Estados para Fornecedores
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [showSupplierModal, setShowSupplierModal] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
@@ -52,7 +51,6 @@ export default function Sectors() {
     quantityGiro: 0 as string | number
   });
 
-  // Estados para Edição de Produto
   const [showEditProductModal, setShowEditProductModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Material | null>(null);
   const [editProductForm, setEditProductForm] = useState({
@@ -161,7 +159,7 @@ export default function Sectors() {
       setNewSectorName('');
       fetchData();
     } catch (err) {
-      alert('Erro ao criar setor');
+      alert('Erro ao criar sector');
     }
   };
 
@@ -180,13 +178,12 @@ export default function Sectors() {
       setEditingSector(null);
       fetchData();
     } catch (err) {
-      alert('Erro ao editar setor');
+      alert('Erro ao editar sector');
     } finally {
       isSavingRef.current = false;
     }
   };
 
-  // Estados do Modal de Exclusão
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
     type: 'sector' | 'product';
@@ -412,7 +409,6 @@ export default function Sectors() {
     }
   };
 
-  // Manipuladores de Fornecedores
   const handleAddSupplier = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supplierForm.name.trim()) return;
@@ -514,49 +510,48 @@ export default function Sectors() {
   if (loading) return <div className="p-8 text-center text-muted-foreground">Carregando setores...</div>;
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-500">
+    <div className="space-y-6 max-w-7xl mx-auto px-2 sm:px-4 pb-12 animate-in fade-in duration-500">
       <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-         <div>
-            <h2 className="text-2xl font-bold text-foreground flex items-center gap-3">
-               <FolderTree className="w-8 h-8 text-blue-500" /> Gerenciamento de Setores
-            </h2>
-            <p className="text-sm text-muted-foreground mt-1">Organize categorias, visualize produtos e a equipe delegada.</p>
-         </div>
+          <div>
+             <h2 className="text-2xl font-bold text-foreground flex items-center gap-3">
+                <FolderTree className="w-8 h-8 text-blue-500 shrink-0" /> Gerenciamento de Setores
+             </h2>
+             <p className="text-sm text-muted-foreground mt-1">Organize categorias, visualize produtos e a equipe delegada.</p>
+          </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-         {/* Setores (takes 2 columns) */}
-         <div className="lg:col-span-2 space-y-6">
-            <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm overflow-hidden p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          <div className="lg:col-span-2 space-y-6 w-full min-w-0">
+             <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm overflow-hidden p-4 sm:p-6 w-full">
         {isManager && (
-          <form onSubmit={handleAddSector} className="flex gap-3 mb-6">
+          <form onSubmit={handleAddSector} className="flex gap-3 mb-6 w-full flex-wrap sm:flex-nowrap">
             <input 
               type="text" 
               placeholder="Nome do Novo Setor..." 
               value={newSectorName}
               onChange={e => setNewSectorName(e.target.value)}
-              className="flex-1 bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none transition-all placeholder:text-muted-foreground/50 text-foreground"
+              className="flex-1 bg-secondary/50 border border-border rounded-xl px-4 py-2.5 sm:py-3 focus:ring-2 focus:ring-blue-500/50 outline-none transition-all placeholder:text-muted-foreground/50 text-foreground text-sm min-w-0 h-[46px]"
               required
             />
             <button 
               type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-3 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-blue-500/25 shrink-0"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2.5 sm:py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/25 shrink-0 w-full sm:w-auto h-[46px] text-sm"
             >
-              <Plus className="w-5 h-5" /> <span className="hidden sm:inline">Adicionar Setor</span>
+              <Plus className="w-4 h-4" /> <span>Adicionar Setor</span>
             </button>
           </form>
         )}
 
-        <div className="space-y-4">
+        <div className="space-y-4 w-full">
           {sectors.map(sector => {
             const sectorMaterials = materials.filter(m => m.sectorId === sector.id);
             const sectorUsers = users.filter(u => u.sectorId === sector.id);
             const isExpanded = expandedSector === sector.id;
 
             return (
-               <div key={sector.id} className="border border-border rounded-xl bg-card overflow-hidden shadow-sm transition-all">
-                 <div className="p-4 px-5 flex items-center justify-between hover:bg-secondary/30 transition-colors cursor-pointer" onClick={() => toggleExpand(sector.id)}>
-                   <div className="flex items-center gap-4 flex-1 min-w-0">
+               <div key={sector.id} className="border border-border rounded-xl bg-card overflow-hidden shadow-sm transition-all w-full min-w-0">
+                 <div className="p-4 px-4 sm:px-5 flex items-center justify-between hover:bg-secondary/30 transition-colors cursor-pointer w-full" onClick={() => toggleExpand(sector.id)}>
+                   <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0 pr-2">
                       {editingSector?.id === sector.id ? (
                          <input 
                            autoFocus
@@ -568,7 +563,7 @@ export default function Sectors() {
                              }
                              handleEditSector(sector, e.target.value);
                            }}
-                           onKeyDown={(e) => {
+                           on開KeyDown={(e) => {
                              if (e.key === 'Enter') {
                                e.currentTarget.blur();
                              } else if (e.key === 'Escape') {
@@ -576,56 +571,56 @@ export default function Sectors() {
                                setEditingSector(null);
                              }
                            }}
-                           className="bg-background border border-blue-500 rounded px-3 py-1 outline-none font-medium text-foreground max-w-full"
+                           className="bg-background border border-blue-500 rounded-xl px-3 py-1.5 outline-none font-medium text-foreground w-full text-sm max-w-xs h-[36px]"
                            onClick={e => e.stopPropagation()}
                          />
                       ) : (
-                         <span className="font-semibold text-foreground text-lg truncate">{sector.name}</span>
+                         <span className="font-bold text-foreground text-base sm:text-lg truncate block flex-1 min-w-0">{sector.name}</span>
                       )}
                       
-                      <div className="flex gap-3 text-xs font-medium text-muted-foreground hidden md:flex">
-                         <span className="flex items-center gap-1.5 bg-secondary/50 px-2 py-1 rounded-md"><Package className="w-3.5 h-3.5" /> {sectorMaterials.length} Produtos</span>
-                         <span className="flex items-center gap-1.5 bg-secondary/50 px-2 py-1 rounded-md"><Users className="w-3.5 h-3.5" /> {sectorUsers.length} Usuários</span>
+                      <div className="flex gap-2 text-[10px] sm:text-xs font-semibold text-muted-foreground shrink-0 hidden sm:flex">
+                         <span className="flex items-center gap-1 bg-secondary px-2 py-1 rounded-md whitespace-nowrap"><Package className="w-3.5 h-3.5 text-blue-500" /> {sectorMaterials.length} Itens</span>
+                         <span className="flex items-center gap-1 bg-secondary px-2 py-1 rounded-md whitespace-nowrap"><Users className="w-3.5 h-3.5 text-blue-500" /> {sectorUsers.length} Equipe</span>
                       </div>
                    </div>
                    
-                   <div className="flex items-center gap-1 sm:gap-2 ml-4 shrink-0">
+                   <div className="flex items-center gap-1 shrink-0">
                      {isManager && (
                        <>
-                         <button 
-                            onClick={(e) => { e.stopPropagation(); setTargetSectorForUser(sector); setShowUserModal(true); }}
-                            className="p-2 text-muted-foreground hover:text-blue-500 transition-colors rounded-lg hover:bg-blue-500/10 hidden sm:block"
-                            title="Adicionar Usuário"
-                         >
-                           <UserPlus className="w-4 h-4" />
-                         </button>
-                         <button 
-                            onClick={(e) => { e.stopPropagation(); setTargetSectorForProduct(sector); setShowProductModal(true); }}
-                            className="p-2 text-muted-foreground hover:text-emerald-500 transition-colors rounded-lg hover:bg-emerald-500/10 hidden sm:block"
-                            title="Adicionar Produto"
-                         >
-                           <Plus className="w-4 h-4" />
-                         </button>
-                         <div className="w-px h-6 bg-border mx-1 hidden sm:block"></div>
-                         <button 
-                            onClick={(e) => { e.stopPropagation(); ignoreBlurRef.current = false; setEditingSector(sector); }}
-                            className="p-2 text-muted-foreground hover:text-blue-500 transition-colors rounded-lg hover:bg-blue-500/10"
-                            title="Editar Nome"
-                         >
-                           <Edit3 className="w-4 h-4" />
-                         </button>
-                         <button 
-                            onClick={(e) => { e.stopPropagation(); handleDeleteSector(sector); }}
-                            className="p-2 text-muted-foreground hover:text-red-500 transition-colors rounded-lg hover:bg-red-500/10"
-                            title="Excluir Setor"
-                         >
-                           <Trash2 className="w-4 h-4" />
-                         </button>
-                         <div className="w-px h-6 bg-border mx-1"></div>
+                          <button 
+                             onClick={(e) => { e.stopPropagation(); setTargetSectorForUser(sector); setShowUserModal(true); }}
+                             className="p-1.5 text-muted-foreground hover:text-blue-500 transition-colors rounded-lg hover:bg-blue-500/10 hidden sm:inline-block"
+                             title="Adicionar Usuário"
+                          >
+                             <UserPlus className="w-4 h-4" />
+                          </button>
+                          <button 
+                             onClick={(e) => { e.stopPropagation(); setTargetSectorForProduct(sector); setShowProductModal(true); }}
+                             className="p-1.5 text-muted-foreground hover:text-emerald-500 transition-colors rounded-lg hover:bg-emerald-500/10 hidden sm:inline-block"
+                             title="Adicionar Produto"
+                          >
+                             <Plus className="w-4 h-4" />
+                          </button>
+                          <div className="w-px h-5 bg-border mx-1 hidden sm:block"></div>
+                          <button 
+                             onClick={(e) => { e.stopPropagation(); ignoreBlurRef.current = false; setEditingSector(sector); }}
+                             className="p-1.5 text-muted-foreground hover:text-blue-500 transition-colors rounded-lg hover:bg-blue-500/10"
+                             title="Editar Nome"
+                          >
+                             <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button 
+                             onClick={(e) => { e.stopPropagation(); handleDeleteSector(sector); }}
+                             className="p-1.5 text-muted-foreground hover:text-red-500 transition-colors rounded-lg hover:bg-red-500/10"
+                             title="Excluir Setor"
+                          >
+                             <Trash2 className="w-4 h-4" />
+                          </button>
+                          <div className="w-px h-5 bg-border mx-1"></div>
                        </>
                      )}
-                     <button className="p-2 text-muted-foreground hover:bg-secondary rounded-lg transition-colors">
-                       {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                     <button className="p-1.5 text-muted-foreground hover:bg-secondary rounded-lg transition-colors shrink-0">
+                       {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                      </button>
                    </div>
                  </div>
@@ -636,98 +631,106 @@ export default function Sectors() {
                         initial={{ height: 0 }}
                         animate={{ height: 'auto' }}
                         exit={{ height: 0 }}
-                        className="overflow-hidden border-t border-border bg-secondary/10"
+                        className="overflow-hidden border-t border-border bg-secondary/10 w-full"
                      >
-                        <div className="p-5 grid grid-cols-1 lg:grid-cols-2 gap-8">
-                           {/* Produtos */}
-                           <div>
-                              <div className="flex items-center justify-between mb-4">
-                                <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                   <Package className="w-4 h-4 text-emerald-500" /> Produtos Neste Setor
+                        <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-2 gap-6 w-full items-start">
+                           {/* Lista de Produtos */}
+                           <div className="w-full min-w-0">
+                              <div className="flex items-center justify-between mb-3.5 gap-2 flex-wrap sm:flex-nowrap">
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 truncate">
+                                   <Package className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> Produtos Atribuídos
                                 </h4>
                                 <button 
                                   onClick={() => { setTargetSectorForProduct(sector); setShowProductModal(true); }}
-                                  className="text-xs text-blue-500 hover:text-blue-600 font-medium bg-blue-500/10 px-2 py-1 rounded-md transition-colors"
+                                  className="text-[11px] text-blue-500 hover:text-blue-600 font-semibold bg-blue-500/5 hover:bg-blue-500/10 px-2 py-1 rounded-md transition-colors border border-blue-500/10 whitespace-nowrap"
                                 >
-                                  + Novo Produto
+                                  + Vincular Produto
                                 </button>
                               </div>
                               {sectorMaterials.length > 0 ? (
-                                 <ul className="space-y-2">
+                                 <ul className="space-y-2 max-w-full">
                                     {sectorMaterials.map(mat => (
                                        <li 
                                           key={mat.id} 
                                           onClick={() => isManager && handleOpenEditProduct(mat)}
-                                          className={`text-sm flex items-center justify-between bg-background border border-border px-3 py-2 rounded-xl group hover:border-emerald-500/30 transition-colors ${isManager ? 'cursor-pointer hover:bg-secondary/20' : ''}`}
+                                          className={`text-sm flex items-center justify-between bg-card border border-border px-3 py-2.5 rounded-xl group hover:border-emerald-500/30 transition-colors w-full min-w-0 gap-2 ${isManager ? 'cursor-pointer hover:bg-secondary/20' : ''}`}
                                        >
-                                          <div className="flex-1 min-w-0 pr-4">
-                                             <div className="font-medium text-foreground truncate">{mat.name}</div>
-                                             <div className="text-xs text-muted-foreground font-mono">{mat.code}</div>
+                                          <div className="flex-1 min-w-0">
+                                             <div className="font-bold text-foreground text-sm truncate block" title={mat.name}>{mat.name}</div>
+                                             <div className="text-xs text-muted-foreground font-mono truncate block mt-0.5">{mat.code}</div>
                                           </div>
-                                          <div className="flex items-center gap-4 shrink-0">
-                                             <span className="font-semibold text-foreground bg-secondary px-2 py-1 rounded-md">{mat.quantity} {formatUnit(mat.unit)}</span>
+                                          {/* 💡 CORREÇÃO DE RESPONSIVIDADE EM HOVER PARA DISPOSITIVOS MÓVEIS (AÇÕES SEMPRE VISÍVEIS ABAIXO DE MD) */}
+                                          <div className="flex items-center gap-1 sm:gap-2 shrink-0 md:opacity-0 md:group-hover:opacity-100 opacity-100 transition-opacity">
+                                             <span className="font-bold text-xs px-2 py-1 bg-secondary text-foreground rounded-lg whitespace-nowrap font-mono mr-1">
+                                                {mat.quantity} {formatUnit(mat.unit)}
+                                             </span>
                                              <button 
                                                 type="button"
                                                 onClick={(e) => { e.stopPropagation(); setImageModalProduct(mat); }}
-                                                className="text-amber-500 hover:text-amber-400 p-1.5 rounded-lg hover:bg-amber-500/10 transition-colors inline-flex items-center"
+                                                className="text-amber-500 hover:text-amber-400 p-1.5 rounded-lg hover:bg-amber-500/10 transition-colors shrink-0"
                                                 title="Visualizar Foto"
                                              >
                                                 <Eye className="w-4 h-4" />
                                              </button>
                                              {isManager && (
                                                  <button 
+                                                    type="button"
                                                     onClick={(e) => { e.stopPropagation(); handleOpenEditProduct(mat); }}
-                                                    className="text-muted-foreground hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    className="text-blue-500 hover:text-blue-400 p-1.5 rounded-lg hover:bg-blue-500/10 transition-colors shrink-0"
                                                     title="Editar Produto"
                                                  >
                                                     <Edit3 className="w-4 h-4" />
                                                  </button>
                                               )}
-                                             <button 
-                                                onClick={(e) => { e.stopPropagation(); handleDeleteProduct(mat); }}
-                                                className="text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                title="Excluir Produto"
-                                             >
-                                                <Trash2 className="w-4 h-4" />
-                                             </button>
+                                             {isManager && (
+                                                <button 
+                                                   type="button"
+                                                   onClick={(e) => { e.stopPropagation(); handleDeleteProduct(mat); }}
+                                                   className="text-red-500 hover:text-red-400 p-1.5 rounded-lg hover:bg-red-500/10 transition-colors shrink-0"
+                                                   title="Excluir Produto"
+                                                >
+                                                   <Trash2 className="w-4 h-4" />
+                                                </button>
+                                             )}
                                           </div>
                                        </li>
                                     ))}
                                  </ul>
                               ) : (
-                                 <div className="bg-background border border-dashed border-border rounded-xl p-4 text-center">
-                                    <p className="text-sm text-muted-foreground">Nenhum produto vinculado.</p>
+                                 <div className="bg-card border border-dashed border-border rounded-xl p-4 text-center w-full">
+                                    <p className="text-xs text-muted-foreground">Nenhum produto vinculado a este setor.</p>
                                  </div>
                               )}
                            </div>
                            
-                           {/* Usuários */}
-                           <div>
-                              <div className="flex items-center justify-between mb-4">
-                                 <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                    <Users className="w-4 h-4 text-blue-500" /> Equipe Delegada
+                           {/* Lista de Usuários */}
+                           <div className="w-full min-w-0">
+                              <div className="flex items-center justify-between mb-3.5 gap-2 flex-wrap sm:flex-nowrap">
+                                 <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 truncate">
+                                    <Users className="w-3.5 h-3.5 text-blue-500 shrink-0" /> Equipe Delegada
                                  </h4>
                                  <button 
-                                   onClick={() => { setTargetSectorForUser(sector); setShowUserModal(true); }}
-                                   className="text-xs text-blue-500 hover:text-blue-600 font-medium bg-blue-500/10 px-2 py-1 rounded-md transition-colors"
+                                    onClick={() => { setTargetSectorForUser(sector); setShowUserModal(true); }}
+                                    className="text-[11px] text-blue-500 hover:text-blue-600 font-semibold bg-blue-500/5 hover:bg-blue-500/10 px-2 py-1 rounded-md transition-colors border border-blue-500/10 whitespace-nowrap"
                                  >
-                                   + Novo Usuário
+                                    + Alocar Membro
                                  </button>
                               </div>
                               {sectorUsers.length > 0 ? (
-                                 <ul className="space-y-2">
+                                 <ul className="space-y-2 max-w-full">
                                     {sectorUsers.map(usr => (
-                                       <li key={usr.id} className="text-sm flex items-center gap-3 bg-background border border-border px-3 py-2 rounded-xl group hover:border-blue-500/30 transition-colors">
-                                          <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center text-sm font-bold shrink-0">
+                                       <li key={usr.id} className="text-sm flex items-center bg-card border border-border px-3 py-2 rounded-xl group hover:border-blue-500/30 transition-colors w-full min-w-0 gap-3">
+                                          <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center text-xs font-black shrink-0">
                                              {usr.name.charAt(0).toUpperCase()}
                                           </div>
                                           <div className="flex-1 min-w-0">
-                                             <div className="font-medium text-foreground truncate">{usr.name}</div>
-                                             <div className="text-xs text-muted-foreground truncate">{usr.email}</div>
+                                             <div className="font-bold text-foreground truncate text-sm block" title={usr.name}>{usr.name}</div>
+                                             <div className="text-xs text-muted-foreground truncate block mt-0.5">{usr.email}</div>
                                           </div>
                                           <button 
+                                             type="button"
                                              onClick={() => handleRemoveUserFromSector(usr)}
-                                             className="text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                             className="text-muted-foreground hover:text-red-500 md:opacity-0 md:group-hover:opacity-100 opacity-100 transition-opacity shrink-0 p-1"
                                              title="Remover do Setor"
                                           >
                                              <Trash2 className="w-4 h-4" />
@@ -736,8 +739,8 @@ export default function Sectors() {
                                     ))}
                                  </ul>
                               ) : (
-                                 <div className="bg-background border border-dashed border-border rounded-xl p-4 text-center">
-                                    <p className="text-sm text-muted-foreground">Nenhum colaborador alocado.</p>
+                                 <div className="bg-card border border-dashed border-border rounded-xl p-4 text-center w-full">
+                                    <p className="text-xs text-muted-foreground">Nenhum colaborador alocado neste setor.</p>
                                  </div>
                               )}
                            </div>
@@ -749,55 +752,55 @@ export default function Sectors() {
             )
           })}
           {sectors.length === 0 && (
-            <div className="p-12 border-2 border-dashed border-border rounded-2xl text-center flex flex-col items-center">
-               <FolderTree className="w-12 h-12 text-muted-foreground mb-4 opacity-50" />
-               <h3 className="text-lg font-semibold text-foreground mb-1">Nenhum Setor Cadastrado</h3>
-               <p className="text-muted-foreground">Crie seu primeiro setor para começar a organizar produtos e equipes.</p>
+            <div className="p-12 border-2 border-dashed border-border rounded-2xl text-center flex flex-col items-center justify-center w-full">
+               <FolderTree className="w-12 h-12 text-muted-foreground mb-4 opacity-40 shrink-0" />
+               <h3 className="text-lg font-bold text-foreground mb-1">Nenhum Setor Cadastrado</h3>
+               <p className="text-muted-foreground text-sm max-w-xs">Crie seu primeiro setor no painel superior para organizar produtos e equipes.</p>
             </div>
           )}
         </div>
       </div>
-         </div>
+          </div>
 
-         {/* Painel de Fornecedores (takes 1 column) */}
-         <div className="space-y-6">
-            <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm p-6">
-               <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-foreground flex items-center gap-2 font-sans">
-                     <Truck className="w-5 h-5 text-blue-500" /> Fornecedores
-                  </h3>
-                  {isManager && (
-                     <button
+          {/* Painel de Fornecedores Lado Direito */}
+          <div className="space-y-6 w-full shrink-0">
+             <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm p-4 sm:p-6 w-full min-w-0">
+                <div className="flex items-center justify-between mb-3.5 gap-2 w-full">
+                   <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                      <Truck className="w-5 h-5 text-blue-500 shrink-0" /> Fornecedores
+                   </h3>
+                   {isManager && (
+                      <button
                         onClick={() => {
                            setEditingSupplier(null);
                            setSupplierForm({ name: '', deliveryDays: 0 });
                            setShowSupplierModal(true);
                         }}
-                        className="p-1.5 text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors flex items-center gap-1 text-xs font-semibold font-sans"
-                     >
-                        <Plus className="w-4 h-4" /> Novo
-                     </button>
-                  )}
-               </div>
+                        className="p-1.5 text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors flex items-center gap-1 text-xs font-bold border border-blue-500/10 bg-blue-500/5 whitespace-nowrap"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Novo
+                      </button>
+                   )}
+                </div>
 
-               <p className="text-xs text-muted-foreground mb-4 font-sans">
-                  Cadastre e gerencie fornecedores para associá-los aos materiais e monitorar prazos de entrega estimados.
-               </p>
+                <p className="text-xs text-muted-foreground mb-4">
+                   Gerencie prestadores para associar aos materiais e monitorar prazos de entrega estimados.
+                </p>
 
-               <div className="space-y-3">
+                <div className="space-y-3 w-full">
                   {suppliers.length === 0 ? (
-                     <div className="text-center py-8 text-sm text-muted-foreground bg-secondary/20 rounded-xl border border-dashed border-border font-sans">
+                     <div className="text-center py-8 text-xs text-muted-foreground bg-secondary/20 rounded-xl border border-dashed border-border w-full">
                         Nenhum fornecedor cadastrado.
                      </div>
                   ) : (
                      suppliers.map(sup => (
-                        <div key={sup.id} className="p-4 bg-card border border-border rounded-xl shadow-sm hover:shadow-md transition-all flex items-center justify-between font-sans">
-                           <div className="min-w-0 flex-1 pr-2">
-                              <h4 className="font-semibold text-sm text-foreground truncate">{sup.name}</h4>
-                              <p className="text-xs text-muted-foreground mt-0.5">Prazo: {sup.deliveryDays} {sup.deliveryDays === 1 ? 'dia útil' : 'dias úteis'}</p>
+                        <div key={sup.id} className="p-3.5 bg-card border border-border rounded-xl shadow-sm hover:shadow-md transition-all flex items-center justify-between gap-3 w-full min-w-0 group">
+                           <div className="min-w-0 flex-1">
+                              <h4 className="font-bold text-sm text-foreground truncate block" title={sup.name}>{sup.name}</h4>
+                              <p className="text-xs text-muted-foreground mt-0.5 truncate block">Prazo: {sup.deliveryDays} {sup.deliveryDays === 1 ? 'dia útil' : 'dias úteis'}</p>
                            </div>
                            {isManager && (
-                              <div className="flex items-center gap-1 shrink-0">
+                              <div className="flex items-center gap-1 shrink-0 md:opacity-0 md:group-hover:opacity-100 opacity-100 transition-opacity">
                                  <button
                                     onClick={() => handleOpenEditSupplier(sup)}
                                     className="p-1.5 text-muted-foreground hover:text-blue-500 rounded-lg hover:bg-secondary transition-colors"
@@ -817,9 +820,9 @@ export default function Sectors() {
                         </div>
                      ))
                   )}
-               </div>
-            </div>
-         </div>
+                </div>
+             </div>
+          </div>
       </div>
 
       {/* Modal Novo Produto no Setor */}
@@ -837,50 +840,56 @@ export default function Sectors() {
                initial={{ scale: 0.95, y: 20 }}
                animate={{ scale: 1, y: 0 }}
                exit={{ scale: 0.95, y: 20 }}
-               className="bg-card border border-border rounded-2xl w-full max-w-2xl shadow-2xl p-6 relative z-10 max-h-[calc(100vh-4rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent"
+               className="bg-card border border-border rounded-2xl w-full max-w-2xl shadow-2xl p-5 sm:p-6 relative z-10 max-h-[calc(100vh-2rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent"
             >
                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-emerald-400"></div>
                
-               <div className="mb-6 mt-2">
-                  <h3 className="text-xl font-bold text-foreground">Novo Produto</h3>
-                  <p className="text-sm text-muted-foreground mt-1">Adicionando ao setor: <span className="font-medium text-foreground">{targetSectorForProduct.name}</span></p>
+               <div className="mb-5 mt-2 flex justify-between items-start">
+                  <div className="min-w-0 flex-1 pr-2">
+                     <h3 className="text-xl font-bold text-foreground truncate">Cadastrar Novo Produto</h3>
+                     <p className="text-sm text-muted-foreground mt-0.5 truncate">Setor Alvo: <span className="font-semibold text-foreground">{targetSectorForProduct.name}</span></p>
+                  </div>
+                  <button type="button" onClick={() => setShowProductModal(false)} className="p-1 text-muted-foreground hover:bg-secondary rounded-lg shrink-0 transition-colors">
+                     <X className="w-5 h-5" />
+                  </button>
                </div>
 
-               <form onSubmit={handleAddProduct} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                     {/* Coluna Esquerda */}
+               <form onSubmit={handleAddProduct} className="space-y-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-4">
                      <div className="space-y-4">
                         <div>
-                           <label className="block text-sm font-medium text-muted-foreground mb-1.5">Código Único (SKU)</label>
+                           <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">Código Único (SKU)</label>
                            <input 
                               type="text" 
                               value={newProduct.code}
                               onChange={e => setNewProduct({...newProduct, code: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground font-mono text-sm"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground font-mono text-sm h-[40px]"
+                              placeholder="Ex: SKU-390"
                               required
                            />
                         </div>
                         
                         <div>
-                           <label className="block text-sm font-medium text-muted-foreground mb-1.5">Nome do Produto</label>
+                           <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">Nome do Produto</label>
                            <input 
                               type="text" 
                               value={newProduct.name}
                               onChange={e => setNewProduct({...newProduct, name: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm h-[40px]"
+                              placeholder="Ex: Graxa Azul de Lítio"
                               required
                            />
                         </div>
 
                         <div>
-                           <label className="block text-sm font-medium text-muted-foreground mb-1.5">Código de Barras</label>
-                           <div className="relative flex items-center">
+                           <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">Código de Barras</label>
+                           <div className="relative flex items-center w-full">
                               <input 
                                  type="text" 
                                  value={newProduct.codigoBarras || ''}
                                  onChange={e => setNewProduct({...newProduct, codigoBarras: e.target.value})}
-                                 className="w-full bg-secondary/50 border border-border rounded-xl pl-4 pr-12 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm font-mono"
-                                 placeholder="Ex: 7891234567890"
+                                 className="w-full bg-secondary/50 border border-border rounded-xl pl-4 pr-12 py-2 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm font-mono h-[40px]"
+                                 placeholder="EAN-13 opcional"
                               />
                               <button
                                  type="button"
@@ -888,8 +897,7 @@ export default function Sectors() {
                                     setScanTarget('newProduct');
                                     setShowScanner(true);
                                  }}
-                                 className="absolute right-3 p-1.5 hover:bg-secondary rounded-lg text-muted-foreground hover:text-foreground transition-colors"
-                                 title="Escanear Código de Barras com a câmera"
+                                 className="absolute right-3 p-1.5 hover:bg-secondary rounded-lg text-muted-foreground hover:text-foreground transition-colors shrink-0"
                               >
                                  <Camera className="w-5 h-5" />
                               </button>
@@ -897,11 +905,11 @@ export default function Sectors() {
                         </div>
 
                         <div>
-                           <label className="block text-sm font-medium text-muted-foreground mb-1.5 font-sans">Fornecedor (Opcional)</label>
+                           <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">Fornecedor Associado</label>
                            <select 
                               value={newProduct.supplierId}
                               onChange={e => setNewProduct({...newProduct, supplierId: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground cursor-pointer text-sm"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground cursor-pointer text-sm h-[40px] truncate"
                            >
                               <option value="">Nenhum fornecedor</option>
                               {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -909,43 +917,42 @@ export default function Sectors() {
                         </div>
                      </div>
 
-                     {/* Coluna Direita */}
                      <div className="space-y-4">
                         <div>
-                           <label className="block text-sm font-medium text-muted-foreground mb-1.5">Origem</label>
+                           <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">Origem do Material</label>
                            <input 
                               type="text" 
                               value={newProduct.origin || ''}
                               onChange={e => setNewProduct({...newProduct, origin: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm h-[40px]"
                               placeholder="Ex: Nacional / Importado"
                            />
                         </div>
 
                         <div>
-                           <label className="block text-sm font-medium text-muted-foreground mb-1.5 font-sans">Prazo de Entrega (Dias - Opcional)</label>
+                           <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">Prazo de Entrega (Dias Úteis)</label>
                            <input 
                               type="number" 
                               min="0"
                               placeholder="Ex: 5"
                               value={newProduct.supplierDeliveryDays}
                               onChange={e => setNewProduct({...newProduct, supplierDeliveryDays: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm h-[40px]"
                            />
                         </div>
 
                         <div>
-                           <label className="block text-sm font-medium text-muted-foreground mb-1.5">Imagem do Produto (URL ou upload local)</label>
-                           <div className="flex gap-2">
+                           <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">Foto do Produto (URL ou arquivo)</label>
+                           <div className="flex gap-2 w-full">
                               <input 
                                  type="text" 
                                  value={newProduct.imageUrl || ''}
                                  onChange={e => setNewProduct({...newProduct, imageUrl: e.target.value})}
-                                 className="flex-1 bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm"
-                                 placeholder="Ex: https://imagens.com/produto.jpg"
+                                 className="flex-1 bg-secondary/50 border border-border rounded-xl px-4 py-2 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm h-[40px] min-w-0"
+                                 placeholder="https://..."
                               />
-                              <label className="bg-secondary hover:bg-secondary/80 border border-border text-foreground p-2.5 rounded-xl cursor-pointer flex items-center justify-center shrink-0" title="Upload de Imagem Local">
-                                 <Upload className="w-5 h-5 text-muted-foreground" />
+                              <label className="bg-secondary hover:bg-secondary/80 border border-border text-foreground px-3 rounded-xl cursor-pointer flex items-center justify-center shrink-0 h-[40px]" title="Upload de Imagem Local">
+                                 <Upload className="w-4 h-4 text-muted-foreground" />
                                  <input 
                                     type="file" 
                                     accept="image/*" 
@@ -963,381 +970,113 @@ export default function Sectors() {
                                  />
                               </label>
                            </div>
-                           {newProduct.imageUrl && (
-                              <div className="mt-2 relative w-12 h-12 border border-border rounded-lg overflow-hidden bg-secondary">
-                                 <img src={newProduct.imageUrl} alt="Preview" className="w-full h-full object-cover" />
-                                 <button 
-                                    type="button" 
-                                    onClick={() => setNewProduct({...newProduct, imageUrl: ''})}
-                                    className="absolute inset-0 bg-black/50 flex items-center justify-center text-white opacity-0 hover:opacity-100 transition-opacity"
-                                 >
-                                    <Trash2 className="w-4 h-4 text-red-500" />
-                                 </button>
-                              </div>
-                           )}
                         </div>
                      </div>
                   </div>
 
-                  {/* Detalhes de Quantidade na base */}
-                  <div className="border-t border-border/50 pt-4 space-y-4">
-                     <div className="grid grid-cols-2 gap-4">
-                        <div>
-                           <label className="block text-sm font-medium text-muted-foreground mb-1.5">Unidade</label>
-                           <select 
-                              value={newProduct.unit}
-                              onChange={e => setNewProduct({...newProduct, unit: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground cursor-pointer text-sm"
-                           >
-                              <option value="unidade">un</option>
-                              <option value="pacote">pct</option>
-                              <option value="caixa">cx</option>
-                              <option value="palete">plt</option>
-                              <option value="kg">kg</option>
-                              <option value="l">l</option>
-                           </select>
-                        </div>
-                        <div>
-                           <label className="block text-sm font-medium text-muted-foreground mb-1.5">Mínimo</label>
+                  <div className="border-t border-border/50 pt-4 grid grid-cols-2 gap-4">
+                     <div>
+                        <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">Unidade Medida</label>
+                        <select 
+                           value={newProduct.unit}
+                           onChange={e => setNewProduct({...newProduct, unit: e.target.value})}
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground cursor-pointer text-sm h-[40px]"
+                        >
+                           <option value="unidade">un</option>
+                           <option value="pacote">pct</option>
+                           <option value="caixa">cx</option>
+                           <option value="palete">plt</option>
+                           <option value="kg">kg</option>
+                           <option value="l">l</option>
+                        </select>
+                     </div>
+                     <div>
+                        <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">Mínimo Crítico</label>
+                        <input 
+                           type="number" 
+                           min="0"
+                           value={newProduct.estoqueMinimo}
+                           onChange={e => setNewProduct({...newProduct, estoqueMinimo: e.target.value ? parseInt(e.target.value) : ''})}
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground font-bold text-sm h-[40px]"
+                           required
+                        />
+                     </div>
+                  </div>
+
+                  <div className="space-y-3 border-t border-border/50 pt-4">
+                     <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Alocação de Estoque Físico</span>
+                     <div className="flex flex-col sm:flex-row gap-4 bg-secondary/20 p-3 rounded-xl border border-border/50">
+                        <label className="flex items-start gap-2 cursor-pointer flex-1">
+                           <input
+                              type="checkbox"
+                              checked={newProduct.isPulmao !== false}
+                              onChange={e => setNewProduct(prev => ({ ...prev, isPulmao: e.target.checked }))}
+                              className="mt-1 rounded text-emerald-500 bg-secondary/50 border-border focus:ring-emerald-500 w-4 h-4 shrink-0"
+                           />
+                           <div className="flex flex-col">
+                              <span className="text-sm font-semibold text-foreground">📦 Estoque Pulmão</span>
+                              <span className="text-xxs text-muted-foreground">Volume estocado a granel.</span>
+                           </div>
+                        </label>
+                        <label className="flex items-start gap-2 cursor-pointer flex-1">
+                           <input
+                              type="checkbox"
+                              checked={newProduct.isGiro || false}
+                              onChange={e => setNewProduct(prev => ({ ...prev, isGiro: e.target.checked }))}
+                              className="mt-1 rounded text-emerald-500 bg-secondary/50 border-border focus:ring-emerald-500 w-4 h-4 shrink-0"
+                           />
+                           <div className="flex flex-col">
+                              <span className="text-sm font-semibold text-foreground">⚡ Giro do Dia</span>
+                              <span className="text-xxs text-muted-foreground">Gargalo operacional de uso rápido.</span>
+                           </div>
+                        </label>
+                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 min-w-0">
+                     {(newProduct.isPulmao !== false) && (
+                        <div className="min-w-0">
+                           <label className="block text-xs font-semibold text-muted-foreground mb-1">Quantidade no Pulmão</label>
                            <input 
                               type="number" 
                               min="0"
-                              value={newProduct.estoqueMinimo}
-                              onChange={e => setNewProduct({...newProduct, estoqueMinimo: e.target.value ? parseInt(e.target.value) : ''})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground font-bold text-sm"
+                              value={newProduct.quantity}
+                              onChange={e => setNewProduct({...newProduct, quantity: e.target.value ? parseInt(e.target.value) : 0})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground font-bold h-[40px]"
                               required
                            />
                         </div>
-                     </div>
-
-                     {/* Configuração de Destino de Estoque */}
-                     <div className="space-y-3">
-                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Destino de Estoque</span>
-                        <div className="flex flex-col sm:flex-row gap-4 bg-secondary/20 p-3 rounded-xl border border-border/50">
-                           <label className="flex items-start gap-2.5 cursor-pointer flex-1">
-                              <input
-                                 type="checkbox"
-                                 checked={newProduct.isPulmao !== false}
-                                 onChange={e => setNewProduct(prev => ({ ...prev, isPulmao: e.target.checked }))}
-                                 className="mt-1 rounded text-emerald-500 bg-secondary/50 border-border focus:ring-emerald-500 w-4 h-4 shrink-0"
-                              />
-                              <div className="flex flex-col">
-                                 <span className="text-sm font-medium text-foreground flex items-center gap-1">📦 Estoque Pulmão</span>
-                                 <span className="text-xxs text-muted-foreground">Armazenamento principal de reserva.</span>
-                              </div>
-                           </label>
-
-                           <label className="flex items-start gap-2.5 cursor-pointer flex-1">
-                              <input
-                                 type="checkbox"
-                                 checked={newProduct.isGiro || false}
-                                 onChange={e => setNewProduct(prev => ({ ...prev, isGiro: e.target.checked }))}
-                                 className="mt-1 rounded text-emerald-500 bg-secondary/50 border-border focus:ring-emerald-500 w-4 h-4 shrink-0"
-                              />
-                               <div className="flex flex-col">
-                                 <span className="text-sm font-medium text-foreground flex items-center gap-1">⚡ Giro do Dia</span>
-                                 <span className="text-xxs text-muted-foreground">Uso rápido para consumo diário.</span>
-                              </div>
-                           </label>
+                     )}
+                     {newProduct.isGiro && (
+                        <div className="min-w-0">
+                           <label className="block text-xs font-semibold text-muted-foreground mb-1">Quantidade no Giro</label>
+                           <input 
+                              type="number" 
+                              min="0"
+                              value={newProduct.quantityGiro}
+                              onChange={e => setNewProduct({...newProduct, quantityGiro: e.target.value ? parseInt(e.target.value) : 0})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground font-bold h-[40px]"
+                              required
+                           />
                         </div>
-                     </div>
+                     )}
+                  </div>
 
-                     <div className="grid grid-cols-2 gap-4">
-                        {(newProduct.isPulmao !== false) && (
-                           <div>
-                              <label className="block text-sm font-medium text-muted-foreground mb-1.5">Qtd. Estoque Pulmão 📦</label>
-                              <input 
-                                 type="number" 
-                                 min="0"
-                                 value={newProduct.quantity}
-                                 onChange={e => setNewProduct({...newProduct, quantity: e.target.value ? parseInt(e.target.value) : 0})}
-                                 className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground font-bold text-sm border-emerald-500/20 focus:border-emerald-500"
-                                 required
-                              />
-                           </div>
-                        )}
-                        {newProduct.isGiro && (
-                           <div>
-                               <label className="block text-sm font-medium text-muted-foreground mb-1.5">Qtd. Giro do Dia ⚡</label>
-                               <input 
-                                  type="number" 
-                                  min="0"
-                                  value={newProduct.quantityGiro}
-                                  onChange={e => setNewProduct({...newProduct, quantityGiro: e.target.value ? parseInt(e.target.value) : 0})}
-                                  className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground font-bold text-sm border-emerald-500/20 focus:border-emerald-500"
-                                  required
-                               />
-                           </div>
-                        )}
+                  <div className="border-t border-border/50 pt-4 space-y-3">
+                     <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Localização de Armazenagem (Opcional)</h4>
+                     <div className="grid grid-cols-2 gap-3.5 text-sm">
+                        <input type="text" placeholder="Área" value={newProduct.area} onChange={e => setNewProduct({...newProduct, area: e.target.value})} className="bg-secondary/50 border border-border rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500/50 text-foreground h-[40px]" />
+                        <input type="text" placeholder="Estante" value={newProduct.estante} onChange={e => setNewProduct({...newProduct, estante: e.target.value})} className="bg-secondary/50 border border-border rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500/50 text-foreground h-[40px]" />
+                        <input type="text" placeholder="Prateleira" value={newProduct.prateleira} onChange={e => setNewProduct({...newProduct, prateleira: e.target.value})} className="bg-secondary/50 border border-border rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500/50 text-foreground h-[40px]" />
+                        <input type="text" placeholder="Palete" value={newProduct.palete} onChange={e => setNewProduct({...newProduct, palete: e.target.value})} className="bg-secondary/50 border border-border rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500/50 text-foreground h-[40px]" />
                      </div>
                   </div>
 
-                  {/* Localização Física (Opcional) */}
-                  <div className="border-t border-border/50 pt-4 space-y-4">
-                     <h4 className="text-sm font-semibold text-foreground">Localização Física (Opcional)</h4>
-                     <div className="grid grid-cols-2 gap-4">
-                        <div>
-                           <label className="block text-xs font-medium text-muted-foreground mb-1">Área</label>
-                           <input 
-                              type="text" 
-                              value={newProduct.area}
-                              onChange={e => setNewProduct({...newProduct, area: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm"
-                              placeholder="Ex: Área A"
-                           />
-                        </div>
-                        <div>
-                           <label className="block text-xs font-medium text-muted-foreground mb-1">Estante</label>
-                           <input 
-                              type="text" 
-                              value={newProduct.estante}
-                              onChange={e => setNewProduct({...newProduct, estante: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm"
-                              placeholder="Ex: Estante 3"
-                           />
-                        </div>
-                        <div>
-                           <label className="block text-xs font-medium text-muted-foreground mb-1">Prateleira</label>
-                           <input 
-                              type="text" 
-                              value={newProduct.prateleira}
-                              onChange={e => setNewProduct({...newProduct, prateleira: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm"
-                              placeholder="Ex: Prateleira B"
-                           />
-                        </div>
-                        <div>
-                           <label className="block text-xs font-medium text-muted-foreground mb-1">Palete</label>
-                           <input 
-                              type="text" 
-                              value={newProduct.palete}
-                              onChange={e => setNewProduct({...newProduct, palete: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm"
-                              placeholder="Ex: Palete 12"
-                           />
-                        </div>
-                     </div>
-                     <AnimatePresence>
-                        {newProduct.palete && (
-                           <motion.div 
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: 'auto' }}
-                              exit={{ opacity: 0, height: 0 }}
-                              className="space-y-1.5"
-                           >
-                              <label className="block text-xs font-medium text-muted-foreground">Quantidade do Palete</label>
-                              <input 
-                                 type="number" 
-                                 min="0"
-                                 value={newProduct.paleteQty}
-                                 onChange={e => setNewProduct({...newProduct, paleteQty: e.target.value ? parseInt(e.target.value) : ''})}
-                                 className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground text-sm font-bold"
-                                 placeholder="Ex: 50"
-                              />
-                           </motion.div>
-                        )}
-                     </AnimatePresence>
-                  </div>
-
-                  {/* Vínculo de Setores Adicionais */}
-                  <div className="border-t border-border/50 pt-4 space-y-2">
-                     <label className="block text-sm font-semibold text-foreground">Vincular a Outros Setores (Opcional)</label>
-                     <p className="text-xs text-muted-foreground mb-2">Selecione setores adicionais nos quais este material também estará visível.</p>
-                     <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 bg-secondary/20 rounded-xl border border-border/50">
-                        {sectors
-                           .filter(s => s.id !== targetSectorForProduct?.id)
-                           .map(s => {
-                              const isChecked = (newProduct.additionalSectors || '')
-                                .split(',')
-                                .filter(Boolean)
-                                .includes(s.id);
-                              return (
-                                 <label key={s.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-secondary/50 rounded-lg cursor-pointer text-xs text-foreground">
-                                    <input
-                                       type="checkbox"
-                                       checked={isChecked}
-                                       onChange={e => handleSectorCheckboxChange(e.target.checked, s, false)}
-                                       className="rounded text-emerald-500 bg-secondary/50 border-border focus:ring-emerald-500 w-3.5 h-3.5"
-                                    />
-                                    <span className="truncate">{s.name}</span>
-                                 </label>
-                              );
-                           })}
-                        {sectors.filter(s => s.id !== targetSectorForProduct?.id).length === 0 && (
-                           <p className="text-xs text-muted-foreground italic p-2 col-span-2">Nenhum outro setor disponível</p>
-                        )}
-                     </div>
-                  </div>
-
-                  <div className="flex gap-3 pt-4 border-t border-border/50">
-                     <button 
-                        type="button" 
-                        onClick={() => setShowProductModal(false)}
-                        className="flex-1 px-4 py-3 text-muted-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm"
-                     >
-                        Cancelar
-                     </button>
-                     <button 
-                        type="submit" 
-                        className="flex-1 px-4 py-3 bg-emerald-600 text-white font-medium rounded-xl hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-500/25 text-sm"
-                     >
-                        Salvar Produto
-                     </button>
+                  <div className="border-t border-border/50 pt-4 flex gap-3">
+                     <button type="button" onClick={() => setShowProductModal(false)} className="flex-1 px-4 py-2.5 text-muted-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm border border-border h-[44px]">Cancelar</button>
+                     <button type="submit" className="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-colors shadow-md text-sm h-[44px]">Salvar Produto</button>
                   </div>
                </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Modal Novo Usuário no Setor */}
-      <AnimatePresence>
-        {showUserModal && targetSectorForUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
-               initial={{ opacity: 0 }} 
-               animate={{ opacity: 1 }} 
-               exit={{ opacity: 0 }}
-               className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-               onClick={() => { setShowUserModal(false); setUserModalTab('create'); setSelectedExistingUserId(''); }}
-            />
-            <motion.div 
-               initial={{ scale: 0.95, y: 20 }}
-               animate={{ scale: 1, y: 0 }}
-               exit={{ scale: 0.95, y: 20 }}
-               className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 relative z-10 max-h-[calc(100vh-2rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent"
-            >
-               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
-               
-               <div className="mb-6 mt-2">
-                  <h3 className="text-xl font-bold text-foreground font-sans">Novo Colaborador</h3>
-                  <p className="text-sm text-muted-foreground mt-1">Alocando ao setor: <span className="font-medium text-foreground">{targetSectorForUser.name}</span></p>
-               </div>
-
-               <div className="flex border-b border-border mb-6">
-                  <button
-                     type="button"
-                     className={`flex-1 pb-3 text-sm font-semibold transition-colors relative ${userModalTab === 'create' ? 'text-blue-500' : 'text-muted-foreground hover:text-foreground'}`}
-                     onClick={() => setUserModalTab('create')}
-                  >
-                     Cadastrar Novo
-                     {userModalTab === 'create' && <motion.div layoutId="userModalActiveTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />}
-                  </button>
-                  <button
-                     type="button"
-                     className={`flex-1 pb-3 text-sm font-semibold transition-colors relative ${userModalTab === 'link' ? 'text-blue-500' : 'text-muted-foreground hover:text-foreground'}`}
-                     onClick={() => setUserModalTab('link')}
-                  >
-                     Vincular Existente
-                     {userModalTab === 'link' && <motion.div layoutId="userModalActiveTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />}
-                  </button>
-               </div>
-
-               {userModalTab === 'create' ? (
-                  <form onSubmit={handleAddUser} className="space-y-4">
-                    <div>
-                       <label className="block text-sm font-medium text-muted-foreground mb-1.5">Nome Completo</label>
-                       <input 
-                          type="text" 
-                          value={newUser.name}
-                          onChange={e => setNewUser({...newUser, name: e.target.value})}
-                          className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
-                          required
-                       />
-                    </div>
-                    
-                    <div>
-                       <label className="block text-sm font-medium text-muted-foreground mb-1.5">E-mail de Acesso</label>
-                       <input 
-                          type="email" 
-                          value={newUser.email}
-                          onChange={e => setNewUser({...newUser, email: e.target.value})}
-                          className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
-                          required
-                       />
-                    </div>
-
-                    <div>
-                       <label className="block text-sm font-medium text-muted-foreground mb-1.5">Senha Provisória</label>
-                       <input 
-                          type="password" 
-                          value={newUser.password}
-                          onChange={e => setNewUser({...newUser, password: e.target.value})}
-                          className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
-                          placeholder="Padrão: 123"
-                       />
-                    </div>
-                    
-                    <div>
-                       <label className="block text-sm font-medium text-muted-foreground mb-1.5">Perfil de Acesso</label>
-                       <select
-                          value={newUser.role}
-                          onChange={e => setNewUser({...newUser, role: e.target.value as 'MANAGER' | 'USER'})}
-                          className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer"
-                       >
-                          <option value="USER">Atendente (Contagem)</option>
-                          <option value="MANAGER">Gestor (Acesso Total)</option>
-                       </select>
-                    </div>
-
-                    <div className="flex gap-3 pt-4">
-                       <button 
-                          type="button" 
-                          onClick={() => { setShowUserModal(false); setUserModalTab('create'); }}
-                          className="flex-1 px-4 py-3 text-muted-foreground font-medium rounded-xl hover:bg-secondary transition-colors"
-                       >
-                          Cancelar
-                       </button>
-                       <button 
-                          type="submit" 
-                          className="flex-1 px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25"
-                       >
-                          Adicionar Usuário
-                       </button>
-                    </div>
-                  </form>
-               ) : (
-                  <form onSubmit={handleLinkExistingUser} className="space-y-4">
-                    <div>
-                       <label className="block text-sm font-medium text-muted-foreground mb-1.5">Selecione o Colaborador</label>
-                       <select
-                          value={selectedExistingUserId}
-                          onChange={e => setSelectedExistingUserId(e.target.value)}
-                          className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer"
-                          required
-                       >
-                          <option value="">Selecione...</option>
-                          {users
-                            .filter(u => u.sectorId !== targetSectorForUser.id)
-                            .map(u => (
-                               <option key={u.id} value={u.id}>
-                                 {u.name} ({u.email}) {u.sectorName ? `[Setor: ${u.sectorName}]` : '[Sem Setor]'}
-                               </option>
-                            ))
-                          }
-                       </select>
-                       <p className="text-xs text-muted-foreground mt-2">
-                         O colaborador selecionado será transferido ou associado a este setor automaticamente.
-                       </p>
-                    </div>
-
-                    <div className="flex gap-3 pt-6">
-                       <button 
-                          type="button" 
-                          onClick={() => { setShowUserModal(false); setUserModalTab('create'); setSelectedExistingUserId(''); }}
-                          className="flex-1 px-4 py-3 text-muted-foreground font-medium rounded-xl hover:bg-secondary transition-colors"
-                       >
-                          Cancelar
-                       </button>
-                       <button 
-                          type="submit" 
-                          className="flex-1 px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25"
-                       >
-                          Vincular Colaborador
-                       </button>
-                    </div>
-                  </form>
-               )}
             </motion.div>
           </div>
         )}
@@ -1358,50 +1097,53 @@ export default function Sectors() {
                initial={{ scale: 0.95, y: 20 }}
                animate={{ scale: 1, y: 0 }}
                exit={{ scale: 0.95, y: 20 }}
-               className="bg-card border border-border rounded-2xl w-full max-w-2xl shadow-2xl p-6 relative z-10 max-h-[calc(100vh-4rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent"
+               className="bg-card border border-border rounded-2xl w-full max-w-2xl shadow-2xl p-5 sm:p-6 relative z-10 max-h-[calc(100vh-2rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent"
             >
                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
                
-               <div className="mb-6 mt-2">
-                  <h3 className="text-xl font-bold text-foreground">Editar Produto</h3>
-                  <p className="text-sm text-muted-foreground mt-1">Atualizando dados cadastrados</p>
+               <div className="flex justify-between items-start mb-5 mt-2">
+                  <div>
+                     <h3 className="text-xl font-bold text-foreground">Editar Ficha do Produto</h3>
+                     <p className="text-sm text-muted-foreground mt-0.5">Modificando dados cadastrais no sistema</p>
+                  </div>
+                  <button type="button" onClick={() => setShowEditProductModal(false)} className="p-1 text-muted-foreground hover:bg-secondary rounded-lg shrink-0 transition-colors">
+                     <X className="w-5 h-5" />
+                  </button>
                </div>
 
-               <form onSubmit={handleEditProductSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                     {/* Coluna Esquerda */}
+               <form onSubmit={handleEditProductSubmit} className="space-y-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-4">
                      <div className="space-y-4">
                         <div>
-                           <label className="block text-sm font-medium text-muted-foreground mb-1.5">Código Único (SKU)</label>
+                           <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">Código de Identificação (SKU)</label>
                            <input 
                               type="text" 
                               value={editProductForm.code}
                               onChange={e => setEditProductForm({...editProductForm, code: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-mono text-sm"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-mono text-sm h-[40px]"
                               required
                            />
                         </div>
                         
                         <div>
-                           <label className="block text-sm font-medium text-muted-foreground mb-1.5">Nome do Produto</label>
+                           <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">Nome Comercial</label>
                            <input 
                               type="text" 
                               value={editProductForm.name}
                               onChange={e => setEditProductForm({...editProductForm, name: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm h-[40px]"
                               required
                            />
                         </div>
 
                         <div>
-                           <label className="block text-sm font-medium text-muted-foreground mb-1.5">Código de Barras</label>
-                           <div className="relative flex items-center">
+                           <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">Código de Barras</label>
+                           <div className="relative flex items-center w-full">
                               <input 
                                  type="text" 
                                  value={editProductForm.codigoBarras || ''}
                                  onChange={e => setEditProductForm({...editProductForm, codigoBarras: e.target.value})}
-                                 className="w-full bg-secondary/50 border border-border rounded-xl pl-4 pr-12 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm font-mono"
-                                 placeholder="Ex: 7891234567890"
+                                 className="w-full bg-secondary/50 border border-border rounded-xl pl-4 pr-12 py-2 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm font-mono h-[40px]"
                               />
                               <button
                                  type="button"
@@ -1409,8 +1151,7 @@ export default function Sectors() {
                                     setScanTarget('editProduct');
                                     setShowScanner(true);
                                  }}
-                                 className="absolute right-3 p-1.5 hover:bg-secondary rounded-lg text-muted-foreground hover:text-foreground transition-colors"
-                                 title="Escanear Código de Barras com a câmera"
+                                 className="absolute right-3 p-1.5 hover:bg-secondary rounded-lg text-muted-foreground hover:text-foreground transition-colors shrink-0"
                               >
                                  <Camera className="w-5 h-5" />
                               </button>
@@ -1418,11 +1159,11 @@ export default function Sectors() {
                         </div>
 
                         <div>
-                           <label className="block text-sm font-medium text-muted-foreground mb-1.5">Setor Atribuído</label>
+                           <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">Setor Primário</label>
                            <select 
                               value={editProductForm.sectorId}
                               onChange={e => setEditProductForm({...editProductForm, sectorId: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer text-sm"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer text-sm h-[40px] truncate"
                            >
                               {sectors.map(s => (
                                  <option key={s.id} value={s.id}>{s.name}</option>
@@ -1431,25 +1172,23 @@ export default function Sectors() {
                         </div>
                      </div>
 
-                     {/* Coluna Direita */}
                      <div className="space-y-4">
                         <div>
-                           <label className="block text-sm font-medium text-muted-foreground mb-1.5">Origem</label>
+                           <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">Nacionalidade / Origem</label>
                            <input 
                               type="text" 
                               value={editProductForm.origin || ''}
                               onChange={e => setEditProductForm({...editProductForm, origin: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
-                              placeholder="Ex: Nacional / Importado"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm h-[40px]"
                            />
                         </div>
 
                         <div>
-                           <label className="block text-sm font-medium text-muted-foreground mb-1.5 font-sans">Fornecedor (Opcional)</label>
+                           <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">Fornecedor</label>
                            <select 
                               value={editProductForm.supplierId}
                               onChange={e => setEditProductForm({...editProductForm, supplierId: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer text-sm"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer text-sm h-[40px] truncate"
                            >
                               <option value="">Nenhum fornecedor</option>
                               {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -1457,29 +1196,27 @@ export default function Sectors() {
                         </div>
 
                         <div>
-                           <label className="block text-sm font-medium text-muted-foreground mb-1.5 font-sans">Prazo de Entrega (Dias - Opcional)</label>
+                           <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">Prazo de Entrega (Dias Úteis)</label>
                            <input 
                               type="number" 
                               min="0"
-                              placeholder="Ex: 5"
                               value={editProductForm.supplierDeliveryDays}
                               onChange={e => setEditProductForm({...editProductForm, supplierDeliveryDays: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm h-[40px]"
                            />
                         </div>
 
                         <div>
-                           <label className="block text-sm font-medium text-muted-foreground mb-1.5">Imagem do Produto (URL ou upload local)</label>
-                           <div className="flex gap-2">
+                           <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Mudar URL da Imagem</label>
+                           <div className="flex gap-2 w-full">
                               <input 
                                  type="text" 
                                  value={editProductForm.imageUrl || ''}
                                  onChange={e => setEditProductForm({...editProductForm, imageUrl: e.target.value})}
-                                 className="flex-1 bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
-                                 placeholder="Ex: https://imagens.com/produto.jpg"
+                                 className="flex-1 bg-secondary/50 border border-border rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm h-[40px] min-w-0"
                               />
-                              <label className="bg-secondary hover:bg-secondary/80 border border-border text-foreground p-2.5 rounded-xl cursor-pointer flex items-center justify-center shrink-0" title="Upload de Imagem Local">
-                                 <Upload className="w-5 h-5 text-muted-foreground" />
+                              <label className="bg-secondary hover:bg-secondary/80 border border-border text-foreground px-3 rounded-xl cursor-pointer flex items-center justify-center shrink-0 h-[40px]" title="Upload de Imagem Local">
+                                 <Upload className="w-4 h-4 text-muted-foreground" />
                                  <input 
                                     type="file" 
                                     accept="image/*" 
@@ -1497,226 +1234,98 @@ export default function Sectors() {
                                  />
                               </label>
                            </div>
-                           {editProductForm.imageUrl && (
-                              <div className="mt-2 relative w-12 h-12 border border-border rounded-lg overflow-hidden bg-secondary">
-                                 <img src={editProductForm.imageUrl} alt="Preview" className="w-full h-full object-cover" />
-                                 <button 
-                                    type="button" 
-                                    onClick={() => setEditProductForm({...editProductForm, imageUrl: ''})}
-                                    className="absolute inset-0 bg-black/50 flex items-center justify-center text-white opacity-0 hover:opacity-100 transition-opacity"
-                                 >
-                                    <Trash2 className="w-4 h-4 text-red-500" />
-                                 </button>
-                              </div>
-                           )}
                         </div>
+                  </div>
+                  </div>
+
+                  <div className="border-t border-border/50 pt-4 grid grid-cols-2 gap-4">
+                     <div>
+                        <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">Métrica de Unidade</label>
+                        <select 
+                           value={editProductForm.unit}
+                           onChange={e => setEditProductForm({...editProductForm, unit: e.target.value})}
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer text-sm h-[40px]"
+                        >
+                           <option value="unidade">un</option>
+                           <option value="pacote">pct</option>
+                           <option value="caixa">cx</option>
+                           <option value="palete">plt</option>
+                           <option value="kg">kg</option>
+                           <option value="l">l</option>
+                        </select>
+                     </div>
+                     <div>
+                        <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">Estoque Mínimo</label>
+                        <input 
+                           type="number" 
+                           min="0"
+                           value={editProductForm.estoqueMinimo}
+                           onChange={e => setEditProductForm({...editProductForm, estoqueMinimo: e.target.value ? parseInt(e.target.value) : ''})}
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-bold text-sm h-[40px]"
+                        />
                      </div>
                   </div>
 
-                  {/* Detalhes de Quantidade na base */}
-                  <div className="border-t border-border/50 pt-4 space-y-4">
-                     <div className="grid grid-cols-2 gap-4">
-                        <div>
-                           <label className="block text-sm font-medium text-muted-foreground mb-1.5">Unidade</label>
-                           <select 
-                              value={editProductForm.unit}
-                              onChange={e => setEditProductForm({...editProductForm, unit: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer text-sm"
-                           >
-                              <option value="unidade">un</option>
-                              <option value="pacote">pct</option>
-                              <option value="caixa">cx</option>
-                              <option value="palete">plt</option>
-                              <option value="kg">kg</option>
-                              <option value="l">l</option>
-                           </select>
-                        </div>
-                        <div>
-                           <label className="block text-sm font-medium text-muted-foreground mb-1.5">Mínimo</label>
+                  <div className="space-y-3 border-t border-border/50 pt-4">
+                     <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Canais de Estoques Habilitados</span>
+                     <div className="flex flex-col sm:flex-row gap-4 bg-secondary/20 p-3 rounded-xl border border-border/50">
+                        <label className="flex items-start gap-2 cursor-pointer flex-1">
+                           <input
+                              type="checkbox"
+                              checked={editProductForm.isPulmao}
+                              onChange={e => setEditProductForm(prev => ({ ...prev, isPulmao: e.target.checked }))}
+                              className="mt-1 rounded text-blue-500 bg-secondary/50 border-border focus:ring-blue-500 w-4 h-4 shrink-0"
+                           />
+                           <div className="flex flex-col">
+                              <span className="text-sm font-semibold text-foreground">📦 Estoque Pulmão</span>
+                              <span className="text-xxs text-muted-foreground">Habilitar canal pulmão estrutural.</span>
+                           </div>
+                        </label>
+                        <label className="flex items-start gap-2 cursor-pointer flex-1">
+                           <input
+                              type="checkbox"
+                              checked={editProductForm.isGiro}
+                              onChange={e => setEditProductForm(prev => ({ ...prev, isGiro: e.target.checked }))}
+                              className="mt-1 rounded text-amber-500 bg-secondary/50 border-border focus:ring-amber-500 w-4 h-4 shrink-0"
+                           />
+                           <div className="flex flex-col">
+                              <span className="text-sm font-semibold text-foreground">⚡ Giro do Dia</span>
+                              <span className="text-xxs text-muted-foreground">Habilitar canal de uso rotativo.</span>
+                           </div>
+                        </label>
+                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 min-w-0">
+                     {editProductForm.isPulmao && (
+                        <div className="min-w-0">
+                           <label className="block text-xs font-semibold text-muted-foreground mb-1">Quantidade Pulmão</label>
                            <input 
                               type="number" 
                               min="0"
-                              value={editProductForm.estoqueMinimo}
-                              onChange={e => setEditProductForm({...editProductForm, estoqueMinimo: e.target.value ? parseInt(e.target.value) : ''})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-bold text-sm"
-                              required
+                              value={editProductForm.quantity}
+                              onChange={e => setEditProductForm({...editProductForm, quantity: e.target.value ? parseInt(e.target.value) : 0})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-bold h-[40px]"
                            />
                         </div>
-                     </div>
-
-                     {/* Configuração de Destino de Estoque */}
-                     <div className="space-y-3">
-                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Destino de Estoque</span>
-                        <div className="flex flex-col sm:flex-row gap-4 bg-secondary/20 p-3 rounded-xl border border-border/50">
-                           <label className="flex items-start gap-2.5 cursor-pointer flex-1">
-                              <input
-                                 type="checkbox"
-                                 checked={editProductForm.isPulmao !== false}
-                                 onChange={e => setEditProductForm(prev => ({ ...prev, isPulmao: e.target.checked }))}
-                                 className="mt-1 rounded text-blue-500 bg-secondary/50 border-border focus:ring-blue-500 w-4 h-4 shrink-0"
-                              />
-                              <div className="flex flex-col">
-                                 <span className="text-sm font-medium text-foreground flex items-center gap-1">📦 Estoque Pulmão</span>
-                                 <span className="text-xxs text-muted-foreground">Armazenamento principal de reserva.</span>
-                              </div>
-                           </label>
-
-                           <label className="flex items-start gap-2.5 cursor-pointer flex-1">
-                              <input
-                                 type="checkbox"
-                                 checked={editProductForm.isGiro || false}
-                                 onChange={e => setEditProductForm(prev => ({ ...prev, isGiro: e.target.checked }))}
-                                 className="mt-1 rounded text-blue-500 bg-secondary/50 border-border focus:ring-blue-500 w-4 h-4 shrink-0"
-                              />
-                               <div className="flex flex-col">
-                                 <span className="text-sm font-medium text-foreground flex items-center gap-1">⚡ Giro do Dia</span>
-                                 <span className="text-xxs text-muted-foreground">Uso rápido para consumo diário.</span>
-                              </div>
-                           </label>
+                     )}
+                     {editProductForm.isGiro && (
+                        <div className="min-w-0">
+                           <label className="block text-xs font-semibold text-muted-foreground mb-1">Quantidade Giro</label>
+                           <input 
+                              type="number" 
+                              min="0"
+                              value={editProductForm.quantityGiro}
+                              onChange={e => setEditProductForm({...editProductForm, quantityGiro: e.target.value ? parseInt(e.target.value) : 0})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-bold h-[40px]"
+                           />
                         </div>
-                     </div>
-
-                     <div className="grid grid-cols-2 gap-4">
-                        {(editProductForm.isPulmao !== false) && (
-                           <div>
-                              <label className="block text-sm font-medium text-muted-foreground mb-1.5">Qtd. Estoque Pulmão 📦</label>
-                              <input 
-                                 type="number" 
-                                 min="0"
-                                 value={editProductForm.quantity}
-                                 onChange={e => setEditProductForm({...editProductForm, quantity: e.target.value ? parseInt(e.target.value) : 0})}
-                                 className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-bold text-sm border-blue-500/20 focus:border-blue-500"
-                                 required
-                              />
-                           </div>
-                        )}
-                        {editProductForm.isGiro && (
-                           <div>
-                               <label className="block text-sm font-medium text-muted-foreground mb-1.5">Qtd. Giro do Dia ⚡</label>
-                               <input 
-                                  type="number" 
-                                  min="0"
-                                  value={editProductForm.quantityGiro}
-                                  onChange={e => setEditProductForm({...editProductForm, quantityGiro: e.target.value ? parseInt(e.target.value) : 0})}
-                                  className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-bold text-sm border-blue-500/20 focus:border-blue-500"
-                                  required
-                               />
-                           </div>
-                        )}
-                     </div>
+                     )}
                   </div>
 
-                  {/* Localização Física (Opcional) */}
-                  <div className="border-t border-border/50 pt-4 space-y-4">
-                     <h4 className="text-sm font-semibold text-foreground">Localização Física (Opcional)</h4>
-                     <div className="grid grid-cols-2 gap-4">
-                        <div>
-                           <label className="block text-xs font-medium text-muted-foreground mb-1">Área</label>
-                           <input 
-                              type="text" 
-                              value={editProductForm.area}
-                              onChange={e => setEditProductForm({...editProductForm, area: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
-                              placeholder="Ex: Área A"
-                           />
-                        </div>
-                        <div>
-                           <label className="block text-xs font-medium text-muted-foreground mb-1">Estante</label>
-                           <input 
-                              type="text" 
-                              value={editProductForm.estante}
-                              onChange={e => setEditProductForm({...editProductForm, estante: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
-                              placeholder="Ex: Estante 3"
-                           />
-                        </div>
-                        <div>
-                           <label className="block text-xs font-medium text-muted-foreground mb-1">Prateleira</label>
-                           <input 
-                              type="text" 
-                              value={editProductForm.prateleira}
-                              onChange={e => setEditProductForm({...editProductForm, prateleira: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
-                              placeholder="Ex: Prateleira B"
-                           />
-                        </div>
-                        <div>
-                           <label className="block text-xs font-medium text-muted-foreground mb-1">Palete</label>
-                           <input 
-                              type="text" 
-                              value={editProductForm.palete}
-                              onChange={e => setEditProductForm({...editProductForm, palete: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
-                              placeholder="Ex: Palete 12"
-                           />
-                        </div>
-                     </div>
-                     <AnimatePresence>
-                        {editProductForm.palete && (
-                           <motion.div 
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: 'auto' }}
-                              exit={{ opacity: 0, height: 0 }}
-                              className="space-y-1.5"
-                           >
-                              <label className="block text-xs font-medium text-muted-foreground">Quantidade do Palete</label>
-                              <input 
-                                 type="number" 
-                                 min="0"
-                                 value={editProductForm.paleteQty}
-                                 onChange={e => setEditProductForm({...editProductForm, paleteQty: e.target.value ? parseInt(e.target.value) : ''})}
-                                 className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm font-bold"
-                                 placeholder="Ex: 50"
-                              />
-                           </motion.div>
-                        )}
-                     </AnimatePresence>
-                  </div>
-
-                  {/* Vínculo de Setores Adicionais */}
-                  <div className="border-t border-border/50 pt-4 space-y-2">
-                     <label className="block text-sm font-semibold text-foreground">Vincular a Outros Setores (Opcional)</label>
-                     <p className="text-xs text-muted-foreground mb-2">Selecione setores adicionais nos quais este material também estará visível.</p>
-                     <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 bg-secondary/20 rounded-xl border border-border/50">
-                        {sectors
-                           .filter(s => s.id !== editProductForm.sectorId)
-                           .map(s => {
-                              const isChecked = (editProductForm.additionalSectors || '')
-                                .split(',')
-                                .filter(Boolean)
-                                .includes(s.id);
-                              return (
-                                 <label key={s.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-secondary/50 rounded-lg cursor-pointer text-xs text-foreground">
-                                    <input
-                                       type="checkbox"
-                                       checked={isChecked}
-                                       onChange={e => handleSectorCheckboxChange(e.target.checked, s, true)}
-                                       className="rounded text-blue-500 bg-secondary/50 border-border focus:ring-blue-500 w-3.5 h-3.5"
-                                    />
-                                    <span className="truncate">{s.name}</span>
-                                 </label>
-                              );
-                           })}
-                        {sectors.filter(s => s.id !== editProductForm.sectorId).length === 0 && (
-                           <p className="text-xs text-muted-foreground italic p-2 col-span-2">Nenhum outro setor disponível</p>
-                        )}
-                     </div>
-                  </div>
-
-                  <div className="flex gap-3 pt-4 border-t border-border/50">
-                     <button 
-                        type="button" 
-                        onClick={() => setShowEditProductModal(false)}
-                        className="flex-1 px-4 py-3 text-muted-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm"
-                     >
-                        Cancelar
-                     </button>
-                     <button 
-                        type="submit" 
-                        className="flex-1 px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25 text-sm"
-                     >
-                        Salvar Alterações
-                     </button>
+                  <div className="border-t border-border/50 pt-4 flex gap-3">
+                     <button type="button" onClick={() => setShowEditProductModal(false)} className="flex-1 px-4 py-2.5 text-muted-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm border border-border h-[44px]">Cancelar</button>
+                     <button type="submit" className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors shadow-md text-sm h-[44px]">Salvar Modificações</button>
                   </div>
                </form>
             </motion.div>
@@ -1724,55 +1333,137 @@ export default function Sectors() {
         )}
       </AnimatePresence>
 
-      {/* Modal de Confirmação de Exclusão Definitiva */}
+      {/* Modal Novo Usuário / Vincular Colaborador */}
       <AnimatePresence>
-        {deleteModal.isOpen && (
+        {showUserModal && targetSectorForUser && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div 
                initial={{ opacity: 0 }} 
                animate={{ opacity: 1 }} 
                exit={{ opacity: 0 }}
                className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-               onClick={() => setDeleteModal(prev => ({ ...prev, isOpen: false }))}
+               onClick={() => { setShowUserModal(false); setUserModalTab('create'); setSelectedExistingUserId(''); }}
             />
             <motion.div 
                initial={{ scale: 0.95, y: 20 }}
                animate={{ scale: 1, y: 0 }}
                exit={{ scale: 0.95, y: 20 }}
-               className="bg-card border border-destructive/20 rounded-3xl w-full max-w-md shadow-2xl p-6 relative z-10 max-h-[calc(100vh-2rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent"
+               className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl p-5 sm:p-6 relative z-10 max-h-[95vh] overflow-y-auto custom-scrollbar"
             >
-               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-600 to-red-500"></div>
+               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
                
-               <div className="flex flex-col items-center text-center mt-4 mb-6">
-                  <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mb-4">
-                     <AlertTriangle className="w-8 h-8" />
+               <div className="mb-5 mt-2 flex justify-between items-start">
+                  <div className="min-w-0 flex-1">
+                     <h3 className="text-xl font-bold text-foreground">Alocar Colaborador</h3>
+                     <p className="text-sm text-muted-foreground mt-0.5 truncate">Setor Alvo: <span className="font-semibold text-foreground">{targetSectorForUser.name}</span></p>
                   </div>
-                  <h3 className="text-2xl font-bold text-foreground">Excluir Definitivamente?</h3>
-                  <p className="text-sm text-muted-foreground mt-2 px-2 text-center">
-                     Você está prestes a excluir o {deleteModal.type === 'sector' ? 'setor' : 'produto'}{' '}
-                     <span className="text-foreground font-semibold font-mono bg-secondary/50 px-2 py-0.5 rounded border border-border">"{deleteModal.name}"</span>.
-                  </p>
-                  <p className="text-xs text-red-500 bg-red-500/5 border border-red-500/10 rounded-xl p-3 mt-4 font-medium flex items-center gap-2 max-w-sm text-left leading-normal">
-                     <span>⚠️ Esta ação é 100% definitiva e irreversível. Todos os dados vinculados, históricos e registros associados serão removidos permanentemente do banco de dados e não poderão ser recuperados.</span>
-                  </p>
+                  <button type="button" onClick={() => { setShowUserModal(false); setUserModalTab('create'); setSelectedExistingUserId(''); }} className="p-1 text-muted-foreground hover:bg-secondary rounded-lg shrink-0 transition-colors">
+                     <X className="w-5 h-5" />
+                  </button>
                </div>
 
-               <div className="flex gap-3 mt-6">
-                  <button 
-                     type="button" 
-                     onClick={() => setDeleteModal(prev => ({ ...prev, isOpen: false }))}
-                     className="flex-1 px-4 py-3 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors"
+               <div className="flex border-b border-border mb-5 w-full">
+                  <button
+                     type="button"
+                     className={`flex-1 pb-2.5 text-sm font-semibold transition-colors relative ${userModalTab === 'create' ? 'text-blue-500' : 'text-muted-foreground hover:text-foreground'}`}
+                     onClick={() => setUserModalTab('create')}
                   >
-                     Cancelar
+                     Criar Novo Usuário
+                     {userModalTab === 'create' && <motion.div layoutId="userModalActiveTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />}
                   </button>
-                  <button 
-                     type="button" 
-                     onClick={executeDelete}
-                     className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors shadow-lg shadow-red-500/25 flex items-center justify-center gap-2"
+                  <button
+                     type="button"
+                     className={`flex-1 pb-2.5 text-sm font-semibold transition-colors relative ${userModalTab === 'link' ? 'text-blue-500' : 'text-muted-foreground hover:text-foreground'}`}
+                     onClick={() => setUserModalTab('link')}
                   >
-                     Excluir
+                     Vincular Existente
+                     {userModalTab === 'link' && <motion.div layoutId="userModalActiveTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />}
                   </button>
                </div>
+
+               {userModalTab === 'create' ? (
+                  <form onSubmit={handleAddUser} className="space-y-4">
+                    <div>
+                       <label className="block text-xs font-semibold text-muted-foreground mb-1">Nome Completo</label>
+                       <input 
+                          type="text" 
+                          value={newUser.name}
+                          onChange={e => setNewUser({...newUser, name: e.target.value})}
+                          className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground h-[40px] text-sm"
+                          required
+                       />
+                    </div>
+                    
+                    <div>
+                       <label className="block text-xs font-semibold text-muted-foreground mb-1">E-mail Corporativo</label>
+                       <input 
+                          type="email" 
+                          value={newUser.email}
+                          onChange={e => setNewUser({...newUser, email: e.target.value})}
+                          className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground h-[40px] text-sm"
+                          required
+                       />
+                    </div>
+
+                    <div>
+                       <label className="block text-xs font-semibold text-muted-foreground mb-1">Senha de Acesso</label>
+                       <input 
+                          type="password" 
+                          value={newUser.password}
+                          onChange={e => setNewUser({...newUser, password: e.target.value})}
+                          className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground h-[40px] text-sm"
+                          placeholder="Senha provisória (ex: 123)"
+                       />
+                    </div>
+                    
+                    <div>
+                       <label className="block text-xs font-semibold text-muted-foreground mb-1">Perfil de Permissão</label>
+                       <select
+                          value={newUser.role}
+                          onChange={e => setNewUser({...newUser, role: e.target.value as 'MANAGER' | 'USER'})}
+                          className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer h-[40px] text-sm"
+                       >
+                          <option value="USER">Atendente (Apenas contagem)</option>
+                          <option value="MANAGER">Gestor (Controle total)</option>
+                       </select>
+                    </div>
+
+                    <div className="flex gap-3 pt-3">
+                       <button type="button" onClick={() => { setShowUserModal(false); setUserModalTab('create'); }} className="flex-1 px-4 py-2 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm h-[40px]">Cancelar</button>
+                       <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-md text-sm h-[40px]">Cadastrar</button>
+                    </div>
+                  </form>
+               ) : (
+                  <form onSubmit={handleLinkExistingUser} className="space-y-4">
+                    <div>
+                       <label className="block text-sm font-medium text-muted-foreground mb-1.5">Selecione o Usuário</label>
+                       <select
+                          value={selectedExistingUserId}
+                          onChange={e => setSelectedExistingUserId(e.target.value)}
+                          className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer h-[46px] text-sm truncate"
+                          required
+                       >
+                          <option value="">Selecione um funcionário...</option>
+                          {users
+                            .filter(u => u.sectorId !== targetSectorForUser.id)
+                            .map(u => (
+                               <option key={u.id} value={u.id}>
+                                 {u.name} ({u.email}) {u.sectorName ? `[${u.sectorName}]` : '[Sem Setor]'}
+                               </option>
+                            ))
+                          }
+                       </select>
+                       <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
+                          O colaborador selecionado será desvinculado de sua lotação anterior e transferido para este setor de forma automática.
+                       </p>
+                    </div>
+
+                    <div className="flex gap-3 pt-4 border-t border-border/60">
+                       <button type="button" onClick={() => { setShowUserModal(false); setUserModalTab('create'); setSelectedExistingUserId(''); }} className="flex-1 px-4 py-2.5 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm h-[42px]">Cancelar</button>
+                       <button type="submit" className="flex-1 px-4 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-md text-sm h-[42px]">Transferir Equipe</button>
+                    </div>
+                  </form>
+               )}
             </motion.div>
           </div>
         )}
@@ -1797,59 +1488,48 @@ export default function Sectors() {
                initial={{ scale: 0.95, y: 20 }}
                animate={{ scale: 1, y: 0 }}
                exit={{ scale: 0.95, y: 20 }}
-               className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl p-6 relative z-10 max-h-[calc(100vh-2rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent"
+               className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl p-5 sm:p-6 relative z-10 max-h-[calc(100vh-2rem)] overflow-y-auto"
             >
                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
                
-               <div className="mb-6 mt-2">
-                  <h3 className="text-xl font-bold text-foreground font-sans">{editingSupplier ? 'Editar Fornecedor' : 'Novo Fornecedor'}</h3>
-                  <p className="text-xs text-muted-foreground mt-1 font-sans">
-                     {editingSupplier ? 'Atualize os dados do fornecedor' : 'Cadastre um novo fornecedor'}
-                  </p>
+               <div className="mb-5 mt-2 flex justify-between items-start w-full">
+                  <div className="min-w-0 flex-1">
+                     <h3 className="text-xl font-bold text-foreground truncate">{editingSupplier ? 'Editar Fornecedor' : 'Cadastrar Fornecedor'}</h3>
+                     <p className="text-xs text-muted-foreground mt-0.5">Definição de canais de suprimentos</p>
+                  </div>
+                  <button type="button" onClick={() => { setShowSupplierModal(false); setEditingSupplier(null); setSupplierForm({ name: '', deliveryDays: 0 }); }} className="p-1 text-muted-foreground hover:bg-secondary rounded-lg shrink-0 transition-colors">
+                     <X className="w-5 h-5" />
+                  </button>
                </div>
 
                <form onSubmit={handleAddSupplier} className="space-y-4">
                   <div>
-                     <label className="block text-sm font-medium text-muted-foreground mb-1.5 font-sans">Nome do Fornecedor</label>
+                     <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">Razão Social / Nome</label>
                      <input 
                         type="text" 
                         value={supplierForm.name}
                         onChange={e => setSupplierForm({...supplierForm, name: e.target.value})}
-                        className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-sans"
+                        className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm h-[40px]"
+                        placeholder="Ex: Distribuidora de Alumínio S/A"
                         required
                      />
                   </div>
 
                   <div>
-                     <label className="block text-sm font-medium text-muted-foreground mb-1.5 font-sans">Prazo de Entrega Estimado (Dias)</label>
+                     <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">Prazo de Entrega (Dias Úteis)</label>
                      <input 
                         type="number" 
                         min="0"
                         value={supplierForm.deliveryDays}
                         onChange={e => setSupplierForm({...supplierForm, deliveryDays: Number(e.target.value) || 0})}
-                        className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-bold font-sans"
+                        className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm font-bold h-[40px]"
                         required
                      />
                   </div>
 
-                  <div className="flex gap-3 pt-4">
-                     <button 
-                        type="button" 
-                        onClick={() => {
-                           setShowSupplierModal(false);
-                           setEditingSupplier(null);
-                           setSupplierForm({ name: '', deliveryDays: 0 });
-                        }}
-                        className="flex-1 px-4 py-3 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors font-sans"
-                     >
-                        Cancelar
-                     </button>
-                     <button 
-                        type="submit" 
-                        className="flex-1 px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25 font-sans"
-                     >
-                        Salvar
-                     </button>
+                  <div className="flex gap-3 pt-3 border-t border-border/60 mt-5">
+                     <button type="button" onClick={() => { setShowSupplierModal(false); setEditingSupplier(null); setSupplierForm({ name: '', deliveryDays: 0 }); }} className="flex-1 px-4 py-2 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm h-[40px]">Cancelar</button>
+                     <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors shadow-md text-sm h-[40px]">Salvar</button>
                   </div>
                </form>
             </motion.div>
@@ -1857,7 +1537,49 @@ export default function Sectors() {
         )}
       </AnimatePresence>
 
-      {/* Modal de Alerta: Código Duplicado */}
+      {/* Modal Confirmação de Exclusão Definitiva */}
+      <AnimatePresence>
+        {deleteModal.isOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+               initial={{ opacity: 0 }} 
+               animate={{ opacity: 1 }} 
+               exit={{ opacity: 0 }}
+               className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+               onClick={() => setDeleteModal(prev => ({ ...prev, isOpen: false }))}
+            />
+            <motion.div 
+               initial={{ scale: 0.95, y: 20 }}
+               animate={{ scale: 1, y: 0 }}
+               exit={{ scale: 0.95, y: 20 }}
+               className="bg-card border border-destructive/20 rounded-3xl w-full max-w-md shadow-2xl p-6 relative z-10 max-h-[calc(100vh-2rem)] overflow-y-auto"
+            >
+               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-600 to-red-500"></div>
+               
+               <div className="flex flex-col items-center text-center mt-4 mb-6 w-full">
+                  <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mb-4 shrink-0">
+                     <AlertTriangle className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-xl font-bold text-foreground">Excluir Definitivamente?</h3>
+                  <p className="text-sm text-muted-foreground mt-2 px-2 text-center leading-relaxed">
+                     Você está prestes a deletar o {deleteModal.type === 'sector' ? 'setor' : 'produto'}{' '}
+                     <span className="text-foreground font-semibold font-mono bg-secondary/60 px-2 py-0.5 rounded border border-border inline-block break-all">"{deleteModal.name}"</span>.
+                  </p>
+                  <div className="text-xs text-red-500 bg-red-500/5 border border-red-500/10 rounded-xl p-3 mt-4 font-medium flex items-start gap-2 max-w-sm text-left leading-relaxed">
+                     <span>⚠️ Esta operação apagará permanentemente o registro de dados e todos os históricos e contagens vinculados a ele na nuvem sem possibilidade de restauração.</span>
+                  </div>
+               </div>
+
+               <div className="flex gap-3 mt-6 w-full">
+                  <button type="button" onClick={() => setDeleteModal(prev => ({ ...prev, isOpen: false }))} className="flex-1 px-4 py-2.5 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm h-[42px]">Cancelar</button>
+                  <button type="button" onClick={executeDelete} className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors shadow-md text-sm h-[42px]">Excluir permanentemente</button>
+               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Alerta: Código Duplicado */}
       <AnimatePresence>
         {duplicateModal && duplicateModal.isOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -1872,50 +1594,79 @@ export default function Sectors() {
                initial={{ scale: 0.95, y: 20 }}
                animate={{ scale: 1, y: 0 }}
                exit={{ scale: 0.95, y: 20 }}
-               className="bg-card border border-rose-500/30 rounded-2xl w-full max-w-md shadow-2xl p-6 relative z-10 max-h-[calc(100vh-2rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent"
+               className="bg-card border border-rose-500/30 rounded-2xl w-full max-w-md shadow-2xl p-6 relative z-10 max-h-[calc(100vh-2rem)] overflow-y-auto"
             >
                <div className="absolute top-0 left-0 w-full h-1 bg-rose-500"></div>
                
                <div className="flex items-start gap-4 mt-2">
-                 <div className="p-3 bg-rose-500/10 rounded-xl text-rose-500">
+                 <div className="p-3 bg-rose-500/10 rounded-xl text-rose-500 shrink-0">
                    <AlertTriangle className="w-6 h-6" />
                  </div>
-                 <div className="flex-1">
-                   <h3 className="text-lg font-bold text-foreground font-sans">Código já Cadastrado</h3>
-                   <p className="text-sm text-muted-foreground mt-1">
-                     O código <span className="font-mono bg-rose-500/10 px-1.5 py-0.5 rounded text-rose-500 font-semibold">{duplicateModal.code}</span> já está sendo utilizado por outro produto no sistema.
+                 <div className="flex-1 min-w-0">
+                   <h3 className="text-lg font-bold text-foreground font-sans">Código SKU Duplicado</h3>
+                   <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                     O código <span className="font-mono bg-rose-500/10 px-1.5 py-0.5 rounded text-rose-500 font-semibold">{duplicateModal.code}</span> já está sendo utilizado em outro material.
                    </p>
                  </div>
                </div>
 
                {duplicateModal.existingProduct && (
-                 <div className="bg-rose-500/5 border border-rose-500/10 rounded-xl p-4 mt-4 space-y-2">
-                   <p className="text-xs font-semibold text-rose-500 uppercase tracking-wider">Produto Existente</p>
-                   <div className="grid grid-cols-2 gap-y-2 text-sm">
+                 <div className="bg-rose-500/5 border border-rose-500/10 rounded-xl p-4 mt-4 space-y-2 text-xs sm:text-sm">
+                   <p className="text-xs font-semibold text-rose-500 uppercase tracking-wider">Produto Localizado</p>
+                   <div className="grid grid-cols-2 gap-y-1.5">
                      <span className="text-muted-foreground">Nome:</span>
-                     <span className="font-semibold text-foreground text-right">{duplicateModal.existingProduct.name}</span>
-                     
-                     <span className="text-muted-foreground">Setor:</span>
-                     <span className="font-semibold text-foreground text-right">
-                       {sectors.find(s => s.id === duplicateModal.existingProduct?.sectorId)?.name || 'N/A'}
-                     </span>
-
-                     <span className="text-muted-foreground">Estoque Atual:</span>
-                     <span className="font-semibold text-foreground text-right">
-                       {duplicateModal.existingProduct.quantity} {duplicateModal.existingProduct.unit}
-                     </span>
+                     <span className="font-semibold text-foreground text-right truncate">{duplicateModal.existingProduct.name}</span>
+                     <span className="text-muted-foreground">Setor Original:</span>
+                     <span className="font-semibold text-foreground text-right truncate">{sectors.find(s => s.id === duplicateModal.existingProduct?.sectorId)?.name || 'N/A'}</span>
                    </div>
                  </div>
                )}
 
-               <div className="mt-6 flex justify-end">
-                 <button 
-                    type="button" 
-                    onClick={() => setDuplicateModal(null)}
-                    className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-medium rounded-xl transition-colors shadow-lg shadow-rose-500/20 font-sans w-full"
-                 >
-                    Entendido, vou alterar
-                 </button>
+               <div className="mt-6 w-full">
+                 <button type="button" onClick={() => setDuplicateModal(null)} className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-medium rounded-xl transition-colors shadow-lg font-sans w-full text-sm h-[42px]">Ajustar Código</button>
+               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Alerta: Vínculo em Múltiplos Setores */}
+      <AnimatePresence>
+        {sectorWarningModal && sectorWarningModal.isOpen && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div 
+               initial={{ opacity: 0 }} 
+               animate={{ opacity: 1 }} 
+               exit={{ opacity: 0 }}
+               className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+               onClick={() => setSectorWarningModal(null)}
+            />
+            <motion.div 
+               initial={{ scale: 0.95, y: 20 }}
+               animate={{ scale: 1, y: 0 }}
+               exit={{ scale: 0.95, y: 20 }}
+               className="bg-card border border-amber-500/30 rounded-2xl w-full max-w-md shadow-2xl p-6 relative z-10 font-sans max-h-[90vh] overflow-y-auto"
+            >
+               <div className="absolute top-0 left-0 w-full h-1 bg-amber-500"></div>
+               
+               <div className="flex items-start gap-4 mt-2 w-full">
+                 <div className="p-3 bg-amber-500/10 rounded-xl text-amber-500 shrink-0">
+                   <AlertTriangle className="w-6 h-6" />
+                 </div>
+                 <div className="flex-1 min-w-0">
+                   <h3 className="text-lg font-bold text-foreground">Habilitar Múltiplos Setores</h3>
+                   <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                     O material <span className="font-semibold text-foreground break-words">"{sectorWarningModal.productName}"</span> já possui o vínculo principal no setor <span className="font-semibold text-foreground">"{sectorWarningModal.currentSectorName}"</span>.
+                   </p>
+                   <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                     Deseja espelhar a visualização deste produto para que ele também conste e seja gerenciado sob o escopo do setor <span className="font-semibold text-foreground">"{sectorWarningModal.newSectorName}"</span>?
+                   </p>
+                 </div>
+               </div>
+
+               <div className="mt-6 flex gap-3 w-full">
+                 <button type="button" onClick={() => setSectorWarningModal(null)} className="flex-1 px-4 py-2.5 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm h-[42px]">Cancelar</button>
+                 <button type="button" onClick={confirmSectorAddition} className="flex-1 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-xl transition-colors shadow-sm text-sm h-[42px]">Vincular Compartilhamento</button>
                </div>
             </motion.div>
           </div>
@@ -1939,62 +1690,6 @@ export default function Sectors() {
           }}
         />
       )}
-
-      {/* Modal de Alerta: Vínculo em Múltiplos Setores */}
-      <AnimatePresence>
-        {sectorWarningModal && sectorWarningModal.isOpen && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-            <motion.div 
-               initial={{ opacity: 0 }} 
-               animate={{ opacity: 1 }} 
-               exit={{ opacity: 0 }}
-               className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-               onClick={() => setSectorWarningModal(null)}
-            />
-            <motion.div 
-               initial={{ scale: 0.95, y: 20 }}
-               animate={{ scale: 1, y: 0 }}
-               exit={{ scale: 0.95, y: 20 }}
-               className="bg-card border border-amber-500/30 rounded-2xl w-full max-w-md shadow-2xl p-6 relative overflow-hidden z-10 font-sans"
-            >
-               <div className="absolute top-0 left-0 w-full h-1 bg-amber-500"></div>
-               
-               <div className="flex items-start gap-4 mt-2">
-                 <div className="p-3 bg-amber-500/10 rounded-xl text-amber-500 shrink-0">
-                   <AlertTriangle className="w-6 h-6" />
-                 </div>
-                 <div className="flex-1 min-w-0">
-                   <h3 className="text-lg font-bold text-foreground">Produto já vinculado a outro setor</h3>
-                   <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                     O produto <span className="font-semibold text-foreground break-words">"{sectorWarningModal.productName}"</span> já está vinculado ao setor principal <span className="font-semibold text-foreground">"{sectorWarningModal.currentSectorName}"</span>.
-                   </p>
-                   <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                     Tem certeza de que deseja vincular este produto também ao setor <span className="font-semibold text-foreground">"{sectorWarningModal.newSectorName}"</span>? Ele ficará visível em ambos os setores.
-                   </p>
-                 </div>
-               </div>
-
-               <div className="mt-6 flex gap-3">
-                 <button 
-                    type="button" 
-                    onClick={() => setSectorWarningModal(null)}
-                    className="flex-1 px-4 py-2.5 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm"
-                 >
-                    Não, Cancelar
-                 </button>
-                 <button 
-                    type="button" 
-                    onClick={confirmSectorAddition}
-                    className="flex-1 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-xl transition-colors shadow-lg shadow-amber-500/20 text-sm"
-                 >
-                    Sim, Vincular Setor
-                 </button>
-               </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
-

@@ -20,7 +20,6 @@ const generateReportText = (targetUsers: { id: string, userName: string }[], log
    const separator = "=========================================";
 
    if (isGlobal) {
-      // Filtrar TODOS os logs de hoje
       const todayLogs = logs.filter(l => {
          const logDate = new Date(l.timestamp).toLocaleDateString('pt-BR');
          const isSystemAutomatic = l.previousQuantity === l.newQuantity && 
@@ -40,7 +39,6 @@ const generateReportText = (targetUsers: { id: string, userName: string }[], log
          return `Nenhuma contagem registrada hoje (${dateStr}).`;
       }
 
-      // Contagem de itens por colaborador
       const contributorsMap: Record<string, { name: string, count: number }> = {};
       todayLogs.forEach(l => {
          const uId = l.userId || 'unknown';
@@ -85,11 +83,11 @@ const generateReportText = (targetUsers: { id: string, userName: string }[], log
                ? ` _(Divergência: ${diff} ${unit})_` 
                : ` _(Sem divergência)_`;
 
-         report += `   - *Qtd Contada:* ${l.newQuantity} ${unit}${diffText}\n`;
-         report += `   - *Contador:* ${l.userName || 'Desconhecido'}\n`;
+         report += `    - *Qtd Contada:* ${l.newQuantity} ${unit}${diffText}\n`;
+         report += `    - *Contador:* ${l.userName || 'Desconhecido'}\n`;
          
          const noteContent = l.notes && l.notes.trim() ? l.notes.trim() : 'Sem observações';
-         report += `   - *Obs:* ${noteContent}\n\n`;
+         report += `    - *Obs:* ${noteContent}\n\n`;
       });
 
       report += `${separator}\n`;
@@ -99,13 +97,11 @@ const generateReportText = (targetUsers: { id: string, userName: string }[], log
       let report = '';
       
       targetUsers.forEach((user, index) => {
-         // Filtrar logs de hoje
          const userLogs = logs.filter(l => {
             const logDate = new Date(l.timestamp).toLocaleDateString('pt-BR');
             return l.userId === user.id && logDate === dateStr;
          });
          
-         // Filtrar logs automáticos do sistema onde nada mudou e é apenas uma tag de sistema (como aguardando contagem)
          const validLogs = userLogs.filter(l => {
             const isSystemAutomatic = l.previousQuantity === l.newQuantity && 
                (l.notes?.includes('[Pedido') || l.notes?.includes('[Aguardando'));
@@ -145,7 +141,6 @@ const generateReportText = (targetUsers: { id: string, userName: string }[], log
             const skuText = l.materialCode ? ` (SKU: ${l.materialCode})` : '';
             report += `*${idx + 1}. ${l.materialName}*${skuText}\n`;
             
-            // Calcular divergência se houver
             const diff = l.newQuantity - l.previousQuantity;
             const diffText = diff > 0 
                ? ` _(Divergência: +${diff} ${unit})_` 
@@ -153,11 +148,10 @@ const generateReportText = (targetUsers: { id: string, userName: string }[], log
                   ? ` _(Divergência: ${diff} ${unit})_` 
                   : ` _(Sem divergência)_`;
             
-            report += `   - *Qtd Contada:* ${l.newQuantity} ${unit}${diffText}\n`;
+            report += `    - *Qtd Contada:* ${l.newQuantity} ${unit}${diffText}\n`;
             
-            // Destacar e exibir as observações/comentários
             const noteContent = l.notes && l.notes.trim() ? l.notes.trim() : 'Sem observações';
-            report += `   - *Obs:* ${noteContent}\n\n`;
+            report += `    - *Obs:* ${noteContent}\n\n`;
          });
          
          report += `${separator}\n`;
@@ -257,7 +251,6 @@ export const ReportPreviewModal = ({
 
     doc.setFont("helvetica", "normal");
     
-    // Header elegante slate-900 (igual ao da Auditoria)
     doc.setFillColor(15, 23, 42);
     doc.rect(0, 0, 210, 40, 'F');
     
@@ -268,12 +261,12 @@ export const ReportPreviewModal = ({
     
     doc.setFontSize(8.5);
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(203, 213, 225); // slate-300
+    doc.setTextColor(203, 213, 225);
     doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`, 15, 25);
     doc.text("Sistema de Gestão de Estoque Inteligente", 15, 31);
 
     let currentY = 55;
-    doc.setTextColor(30, 41, 59); // slate-800
+    doc.setTextColor(30, 41, 59);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
 
@@ -284,7 +277,6 @@ export const ReportPreviewModal = ({
         currentY = 20;
       }
 
-      // Limpar formatação markdown do WhatsApp (* e _)
       const cleanLine = line.replace(/\*/g, '').replace(/_/g, '');
       
       if (line.startsWith('*') && line.endsWith('*')) {
@@ -293,7 +285,7 @@ export const ReportPreviewModal = ({
         doc.text(cleanLine, 15, currentY);
         currentY += 7;
       } else if (line.startsWith('===') || line.startsWith('---')) {
-        doc.setDrawColor(226, 232, 240); // border slate-200
+        doc.setDrawColor(226, 232, 240);
         doc.line(15, currentY - 2, 195, currentY - 2);
         currentY += 4;
       } else {
@@ -301,7 +293,7 @@ export const ReportPreviewModal = ({
         doc.setFontSize(9.5);
         if (line.trim().startsWith('-')) {
           doc.text(cleanLine, 20, currentY);
-        } else if (line.startsWith('   -')) {
+        } else if (line.startsWith('    -')) {
           doc.text(cleanLine, 25, currentY);
         } else {
           doc.text(cleanLine, 15, currentY);
@@ -340,19 +332,23 @@ export const ReportPreviewModal = ({
         >
            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-emerald-500"></div>
            
-           <div className="mb-4 mt-2">
-              <h3 className="text-xl font-bold text-foreground">{title}</h3>
-              <p className="text-sm text-muted-foreground mt-1">Visualize, copie ou envie o relatório formatado abaixo.</p>
+           <div className="mb-4 mt-2 flex justify-between items-start gap-4">
+              <div className="min-w-0 flex-1">
+                 <h3 className="text-xl font-bold text-foreground truncate">{title}</h3>
+                 <p className="text-sm text-muted-foreground mt-1 truncate">Visualize, copie ou envie o relatório formatado abaixo.</p>
+              </div>
+              <button onClick={onClose} className="p-1 hover:bg-secondary rounded-lg transition-colors text-muted-foreground hover:text-foreground shrink-0">
+                 <X className="w-5 h-5" />
+              </button>
            </div>
 
-           {/* Opções de Filtro de Estoque */}
            {(logs || materials) && (
-             <div className="mb-4 bg-secondary/50 p-1 rounded-xl border border-border flex gap-1 shadow-inner">
+             <div className="mb-4 bg-secondary/50 p-1 rounded-xl border border-border flex gap-1 shadow-inner shrink-0 overflow-x-auto">
                <button
                  type="button"
                  onClick={() => setStockFilter('all')}
                  className={cn(
-                   "flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200",
+                   "flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all duration-200 whitespace-nowrap",
                    stockFilter === 'all'
                      ? "bg-blue-600 text-white shadow-sm"
                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/40"
@@ -364,7 +360,7 @@ export const ReportPreviewModal = ({
                  type="button"
                  onClick={() => setStockFilter('pulmao')}
                  className={cn(
-                   "flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200",
+                   "flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all duration-200 whitespace-nowrap",
                    stockFilter === 'pulmao'
                      ? "bg-blue-600 text-white shadow-sm"
                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/40"
@@ -376,7 +372,7 @@ export const ReportPreviewModal = ({
                  type="button"
                  onClick={() => setStockFilter('giro')}
                  className={cn(
-                   "flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200",
+                   "flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 whitespace-nowrap",
                    stockFilter === 'giro'
                      ? "bg-amber-600 text-white shadow-sm"
                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/40"
@@ -387,56 +383,56 @@ export const ReportPreviewModal = ({
              </div>
            )}
 
-           <div className="flex-1 overflow-y-auto mb-6 bg-secondary/30 p-4 rounded-xl border border-border/80 font-mono text-sm text-foreground whitespace-pre-wrap select-all max-h-[40vh] shadow-inner">
+           <div className="flex-1 overflow-y-auto mb-6 bg-secondary/30 p-4 rounded-xl border border-border/80 font-mono text-sm text-foreground whitespace-pre-wrap select-all max-h-[40vh] shadow-inner custom-scrollbar">
               {reportText}
            </div>
 
-           <div className="flex flex-col gap-3 pt-4 border-t border-border">
-              <div className="grid grid-cols-3 gap-2">
+           <div className="flex flex-col gap-3 pt-4 border-t border-border shrink-0 w-full">
+              <div className="grid grid-cols-3 gap-2 w-full">
                  <button 
                     onClick={handleCopy}
                     className={cn(
-                      "flex items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold transition-all shadow-sm",
+                      "flex items-center justify-center gap-1.5 px-2 py-3 rounded-xl text-xs font-semibold transition-all shadow-sm truncate",
                       copied 
                         ? "bg-emerald-600 text-white hover:bg-emerald-700" 
                         : "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/10"
                     )}
                  >
                     {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                    {copied ? "Copiado!" : "Copiar"}
+                    <span>{copied ? "Copiado!" : "Copiar"}</span>
                  </button>
                  <button 
                     onClick={handleExportPDF}
-                    className="flex items-center justify-center gap-1.5 px-3 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold transition-all shadow-sm shadow-rose-500/10"
+                    className="flex items-center justify-center gap-1.5 px-2 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold transition-all shadow-sm shadow-rose-500/10 truncate"
                     title="Exportar como PDF profissional"
                  >
                     <FileText className="w-3.5 h-3.5" />
-                    PDF
+                    <span>PDF</span>
                  </button>
                  <a 
                     href={getWhatsAppShareUrl(reportText)}
                     target={isMobile ? undefined : "_blank"}
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-1.5 px-3 py-3 bg-[#25D366] hover:bg-[#1DA851] text-white rounded-xl text-xs font-semibold transition-colors shadow-sm"
+                    className="flex items-center justify-center gap-1.5 px-2 py-3 bg-[#25D366] hover:bg-[#1DA851] text-white rounded-xl text-xs font-semibold transition-colors shadow-sm truncate"
                  >
                     <MessageCircle className="w-3.5 h-3.5" />
-                    WhatsApp
+                    <span>WhatsApp</span>
                  </a>
               </div>
               
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 w-full">
                  <a 
                     href={getTelegramShareUrl(reportText)}
                     target={isMobile ? undefined : "_blank"}
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 px-4 py-3 bg-[#0088cc] hover:bg-[#0077b3] text-white rounded-xl text-sm font-medium transition-colors shadow-sm"
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0088cc] hover:bg-[#0077b3] text-white rounded-xl text-xs font-semibold transition-colors shadow-sm truncate"
                  >
                     <Share2 className="w-4 h-4" />
-                    Telegram
+                    <span>Telegram</span>
                  </a>
                  <button 
                     onClick={onClose}
-                    className="px-4 py-3 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm"
+                    className="px-4 py-2.5 border border-border text-foreground font-semibold rounded-xl hover:bg-secondary transition-colors text-xs h-[40px] truncate"
                  >
                     Fechar
                  </button>
@@ -448,7 +444,6 @@ export const ReportPreviewModal = ({
   );
 };
 
-// Componente de duração ao vivo para materiais na lista de conferência
 function ActiveDurationTimer({ startDate }: { startDate: string }) {
   const [elapsed, setElapsed] = useState('');
 
@@ -497,14 +492,12 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
   const [reportText, setReportText] = useState<string>('');
   const [isReportOpen, setIsReportOpen] = useState<boolean>(false);
 
-  // Estados para Modal de Fazer Pedido de Compra no Dashboard
   const [pendingOrder, setPendingOrder] = useState<Material | null>(null);
   const [orderTag, setOrderTag] = useState('Pedido Feito');
   const [orderNotes, setOrderNotes] = useState('');
   const [orderPackageQuantity, setOrderPackageQuantity] = useState<number>(1);
   const [orderPackageUnit, setOrderPackageUnit] = useState<string>('caixas');
 
-  // Estados para Modal de Contagem no ManagerDashboard
   const [showCountModal, setShowCountModal] = useState(false);
   const [activeMaterial, setActiveMaterial] = useState<Material | null>(null);
   const [countQuantity, setCountQuantity] = useState<number | string>('');
@@ -599,7 +592,6 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
     const now = Date.now();
 
     materials.forEach(m => {
-      // 1. Reposto / Entregue: status COMPLETED ou tem repostedAt ativo
       const isCompleted = m.status === 'COMPLETED';
       const hasActiveRepost = isCompleted || (m.repostedAt && (!m.lastCountedAt || new Date(m.lastCountedAt).getTime() < new Date(m.repostedAt).getTime()));
 
@@ -620,14 +612,13 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
           colorClass: 'emerald'
         });
       }
-      // 2. Contagem Pendente
       else if (m.status === 'PENDING') {
         const lastCountMs = m.lastCountedAt ? new Date(m.lastCountedAt).getTime() : 0;
         const updateMs = m.updatedAt ? new Date(m.updatedAt).getTime() : 0;
         const timeMs = Math.max(lastCountMs, updateMs) || now;
         const timestamp = new Date(timeMs).toISOString();
         const elapsedHours = (now - timeMs) / (1000 * 60 * 60);
-        const hasAlert = elapsedHours >= 168; // 1 semana = 168 horas
+        const hasAlert = elapsedHours >= 168;
 
         list.push({
           ...m,
@@ -641,7 +632,6 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
       }
     });
 
-    // Ordenar para colocar os que têm alerta primeiro, depois por tempo decorrido decrescente
     return list.sort((a, b) => {
       if (a.hasAlert && !b.hasAlert) return -1;
       if (!a.hasAlert && b.hasAlert) return 1;
@@ -727,87 +717,78 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
   }, [materials, logs]);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 max-w-7xl mx-auto px-2 sm:px-4 pb-12">
       {pendingRequests.length > 0 && (
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex items-center justify-between gap-4 shadow-sm"
         >
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-amber-500/20 text-amber-500 rounded-xl">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="p-2 bg-amber-500/20 text-amber-500 rounded-xl shrink-0">
               <ShoppingCart className="w-5 h-5 animate-pulse" />
             </div>
-            <div>
-              <p className="font-semibold text-foreground">Novas Solicitações de Compra!</p>
-              <p className="text-sm text-muted-foreground">Os atendentes registraram {pendingRequests.length} solicitações de compra pendentes durante as contagens de estoque.</p>
+            <div className="min-w-0 flex-1">
+              <p className="font-bold text-foreground text-sm sm:text-base truncate block">Novas Solicitações de Compra!</p>
+              <p className="text-xs sm:text-sm text-muted-foreground truncate block mt-0.5">Os atendentes registraram {pendingRequests.length} solicitações de compra pendentes durante as contagens de estoque.</p>
             </div>
           </div>
-          <div className="text-sm font-medium text-amber-500 hidden sm:block">Atenção Necessária</div>
+          <div className="text-xs font-semibold text-amber-500 hidden sm:block shrink-0 whitespace-nowrap">Atenção Necessária</div>
         </motion.div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-amber-500/10 text-amber-500 dark:text-amber-400 rounded-xl">
-              <ShoppingCart className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Solicitações Pendentes</p>
-              <h3 className="text-2xl font-bold text-foreground">{pendingRequests.length}</h3>
-            </div>
-          </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="bg-card/50 backdrop-blur-md p-5 sm:p-6 rounded-2xl border border-border shadow-sm flex items-center gap-4">
+           <div className="p-3 bg-amber-500/10 text-amber-500 dark:text-amber-400 rounded-xl shrink-0">
+              <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />
+           </div>
+           <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider block truncate">Solicitações Pendentes</p>
+              <h3 className="text-xl sm:text-2xl font-black text-foreground mt-0.5">{pendingRequests.length}</h3>
+           </div>
         </div>
 
-        <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-500/10 text-blue-500 dark:text-blue-400 rounded-xl">
-              <Package className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Pedidos em Andamento</p>
-              <h3 className="text-2xl font-bold text-foreground">{activeOrders.length}</h3>
-            </div>
-          </div>
+        <div className="bg-card/50 backdrop-blur-md p-5 sm:p-6 rounded-2xl border border-border shadow-sm flex items-center gap-4">
+           <div className="p-3 bg-blue-500/10 text-blue-500 dark:text-blue-400 rounded-xl shrink-0">
+              <Package className="w-5 h-5 sm:w-6 sm:h-6" />
+           </div>
+           <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider block truncate">Pedidos em Andamento</p>
+              <h3 className="text-xl sm:text-2xl font-black text-foreground mt-0.5">{activeOrders.length}</h3>
+           </div>
         </div>
 
-        <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-yellow-500/10 text-yellow-500 dark:text-yellow-400 rounded-xl">
-              <Clock className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Aguardando Conferência</p>
-              <h3 className="text-2xl font-bold text-foreground">{awaiting}</h3>
-            </div>
-          </div>
+        <div className="bg-card/50 backdrop-blur-md p-5 sm:p-6 rounded-2xl border border-border shadow-sm flex items-center gap-4">
+           <div className="p-3 bg-yellow-500/10 text-yellow-500 dark:text-yellow-400 rounded-xl shrink-0">
+              <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
+           </div>
+           <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider block truncate">Aguardando Conferência</p>
+              <h3 className="text-xl sm:text-2xl font-black text-foreground mt-0.5">{awaiting}</h3>
+           </div>
         </div>
 
-        <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 rounded-xl">
-               <CheckCircle2 className="w-6 h-6" />
-            </div>
-            <div>
-               <p className="text-sm font-medium text-muted-foreground">Finalizado / Reposto</p>
-               <h3 className="text-2xl font-bold text-foreground">{completed}</h3>
-            </div>
-          </div>
+        <div className="bg-card/50 backdrop-blur-md p-5 sm:p-6 rounded-2xl border border-border shadow-sm flex items-center gap-4">
+           <div className="p-3 bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 rounded-xl shrink-0">
+              <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6" />
+           </div>
+           <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider block truncate">Finalizado / Reposto</p>
+              <h3 className="text-xl sm:text-2xl font-black text-foreground mt-0.5">{completed}</h3>
+           </div>
         </div>
       </div>
 
-      {/* Setor de Giro KPI Widget */}
-      <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-sm overflow-hidden relative">
+      <div className="bg-card/50 backdrop-blur-md p-5 sm:p-6 rounded-2xl border border-border shadow-sm overflow-hidden relative">
         <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none" />
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-start gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 w-full">
+          <div className="flex items-start gap-4 min-w-0 flex-1">
             <div className="p-3 bg-amber-500/10 text-amber-500 dark:text-amber-400 rounded-xl shrink-0">
-               <span className="text-xl font-bold">⚡</span>
+               <span className="text-xl font-bold block leading-none">⚡</span>
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
                <h4 className="font-bold text-foreground text-base">Giro do Dia (Uso Rápido)</h4>
-               <p className="text-sm text-muted-foreground mt-0.5">
+               <p className="text-sm text-muted-foreground mt-0.5 max-w-2xl leading-relaxed">
                   Materiais de alto movimento e consumo diário constante que devem ser auditados todos os dias.
                </p>
                <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-3 text-xs font-semibold">
@@ -824,7 +805,7 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
             </div>
           </div>
           
-          <div className="w-full md:w-64 flex flex-col gap-1.5 shrink-0">
+          <div className="w-full md:w-64 flex flex-col gap-1.5 shrink-0 min-w-0">
              <div className="flex justify-between items-center text-xs">
                 <span className="font-semibold text-muted-foreground">Conclusão das Contagens</span>
                 <span className="font-bold text-amber-500">{giroStats.percentage}%</span>
@@ -839,19 +820,17 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 lg:grid-cols-12 gap-6">
-         <div className="xl:col-span-2 lg:col-span-8 bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm p-6">
-            <div className="flex items-center justify-between mb-6">
-               <div>
-                  <h3 className="font-semibold text-foreground flex items-center gap-2">
-                     <TrendingUp className="w-4 h-4 text-blue-500" /> Fluxo de Contagens (7 Dias)
-                  </h3>
-                  <p className="text-sm text-muted-foreground">Atividade de inventário físico registrada.</p>
-               </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+         <div className="lg:col-span-2 bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm p-5 sm:p-6 flex flex-col min-w-0">
+            <div className="mb-4">
+               <h3 className="font-bold text-foreground flex items-center gap-2 text-base">
+                  <TrendingUp className="w-4 h-4 text-blue-500" /> Fluxo de Contagens (7 Dias)
+               </h3>
+               <p className="text-xs text-muted-foreground mt-0.5">Atividade de inventário físico registrada.</p>
             </div>
-            <div className="h-[300px] w-full">
+            <div className="h-[280px] w-full relative">
                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                      <defs>
                         <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
                            <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
@@ -859,37 +838,36 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
                         </linearGradient>
                      </defs>
                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} dy={10} />
-                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
+                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} dy={10} />
+                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
                      <RechartsTooltip 
                         contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '0.5rem', color: 'hsl(var(--foreground))' }}
                         itemStyle={{ color: '#2563eb', fontWeight: 'bold' }}
                      />
-                     <Area type="monotone" dataKey="contagens" name="Contagens" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#colorCount)" />
+                     <Area type="monotone" dataKey="contagens" name="Contagens" stroke="#2563eb" strokeWidth={2.5} fillOpacity={1} fill="url(#colorCount)" />
                   </AreaChart>
                </ResponsiveContainer>
             </div>
          </div>
 
-         <div className="xl:col-span-1 lg:col-span-4 bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden">
-            <div className="px-6 py-5 border-b border-border bg-card/80 flex items-center justify-between">
-               <div>
-                  <h3 className="font-semibold text-foreground">Atenção Necessária (Conferência)</h3>
-                  <p className="text-[11px] text-muted-foreground">Acompanhamento de recebido/entregue e contagem pendente</p>
+         <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden w-full min-w-0">
+            <div className="px-5 py-4 border-b border-border bg-card/80 flex items-center justify-between gap-4 shrink-0">
+               <div className="min-w-0 flex-1">
+                  <h3 className="font-bold text-foreground text-sm sm:text-base truncate">Atenção Necessária (Conferência)</h3>
+                  <p className="text-[10px] text-muted-foreground truncate block mt-0.5">Acompanhamento de recebido/entregue e contagem pendente</p>
                </div>
                {needsAttentionConferencia.length > 0 && (
-                  <span className="text-xs bg-red-500/10 text-red-500 border border-red-500/20 px-2 py-0.5 rounded-full font-medium animate-pulse">
+                  <span className="text-[11px] bg-red-500/10 text-red-500 border border-red-500/20 px-2.5 py-0.5 rounded-full font-semibold animate-pulse shrink-0">
                      {needsAttentionConferencia.length} itens
                   </span>
                )}
             </div>
-            <div className="divide-y divide-border overflow-y-auto flex-1 h-[300px]">
+            <div className="divide-y divide-border overflow-y-auto flex-1 h-[280px] custom-scrollbar">
                {needsAttentionConferencia.map(mat => {
                   const stateDateObj = new Date(mat.stateTimestamp);
                   const formattedDate = stateDateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
                   const formattedTime = stateDateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-                  // Escolher estilo de cor do crachá baseado em attentionType
                   let badgeClass = "bg-blue-500/10 text-blue-500 border-blue-500/20";
                   let tagLabel = "Contagem Pendente";
                   if (mat.attentionType === 'REPLACED') {
@@ -904,65 +882,63 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
                      <div 
                         key={mat.id} 
                         className={cn(
-                           "p-4 px-6 hover:bg-secondary/40 transition-all border-l-4",
+                           "p-4 hover:bg-secondary/40 transition-all border-l-4 w-full min-w-0 flex flex-col gap-2",
                            mat.hasAlert 
                               ? "border-l-rose-500 bg-rose-500/[0.02]" 
                               : "border-l-transparent"
                         )}
                      >
-                        <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex items-start justify-between gap-3 w-full min-w-0">
                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2 flex-wrap min-w-0">
-                                 <span className="font-bold text-foreground text-sm truncate">{mat.name}</span>
-                                 <span className="text-xs text-muted-foreground font-mono bg-secondary px-1.5 py-0.5 rounded shrink-0">{mat.code}</span>
+                              <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                                 <span className="font-bold text-foreground text-xs sm:text-sm truncate block max-w-full">{mat.name}</span>
+                                 <span className="text-[10px] font-mono text-muted-foreground bg-secondary px-1.5 py-0.5 rounded shrink-0">{mat.code}</span>
                                  <button 
+                                    type="button"
                                     onClick={() => setImageModalMaterial(mat)}
                                     className="text-amber-500 hover:text-amber-400 p-1 rounded-lg hover:bg-amber-500/10 transition-colors shrink-0"
                                     title="Visualizar Foto"
                                  >
-                                    <Eye className="w-4 h-4" />
+                                    <Eye className="w-3.5 h-3.5" />
                                  </button>
                               </div>
-                              <p className="text-xs text-muted-foreground mt-1">Setor: <span className="text-foreground/80 font-medium">{mat.sector}</span></p>
+                              <p className="text-[11px] text-muted-foreground mt-0.5 truncate block">Setor: {mat.sector}</p>
                            </div>
 
                            {mat.hasAlert && (
                               <div className="p-1.5 bg-rose-500/10 text-rose-500 rounded-lg animate-bounce shrink-0" title="Alerta de Atraso">
-                                 <AlertTriangle className="w-4 h-4" />
+                                 <AlertTriangle className="w-3.5 h-3.5" />
                               </div>
                            )}
                         </div>
 
-                        <div className="flex flex-col gap-2 mt-2">
-                           {/* Row showing current stock level and the state badge */}
-                           <div className="flex items-center justify-between text-xs sm:text-sm">
-                              <span className="text-muted-foreground text-xs">
+                        <div className="flex flex-col gap-2 w-full min-w-0">
+                           <div className="flex items-center justify-between text-xs gap-4 w-full min-w-0">
+                              <span className="text-muted-foreground truncate block">
                                  Estoque: <strong className="text-foreground">{mat.quantity} {formatUnit(mat.unit)}</strong>
                               </span>
-                              <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border", badgeClass)}>
+                              <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 whitespace-nowrap", badgeClass)}>
                                  {tagLabel}
                               </span>
                            </div>
 
-                           {/* Row showing Date/Time and live ticking timer */}
-                           <div className="flex flex-wrap items-center justify-between gap-2 bg-secondary/20 p-2 rounded-xl border border-border/40">
-                              <div className="text-xs text-muted-foreground">
-                                 {mat.attentionType === 'REPLACED' ? 'Reposto em: ' : 'Pendente desde: '}
-                                 <span className="font-semibold text-foreground/90">{formattedDate} às {formattedTime}</span>
+                           <div className="flex flex-wrap items-center justify-between gap-2 bg-secondary/20 p-2 rounded-xl border border-border/40 w-full min-w-0 text-[11px]">
+                              <div className="text-muted-foreground truncate block">
+                                 {mat.attentionType === 'REPLACED' ? 'Reposto: ' : 'Pendente: '}
+                                 <span className="font-semibold text-foreground/90 font-mono">{formattedDate} - {formattedTime}</span>
                               </div>
                               <ActiveDurationTimer startDate={mat.stateTimestamp} />
                            </div>
 
-                           {/* Alert message or current action label */}
                            {mat.hasAlert ? (
-                              <div className="text-[11px] font-semibold text-rose-500 dark:text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5">
+                              <div className="text-[10px] font-bold text-rose-500 dark:text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2 py-1.5 rounded-lg flex items-center gap-1.5 w-full min-w-0">
                                  <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-ping shrink-0" />
-                                 <span className="font-bold">Alerta:</span> {mat.attentionReason}
+                                 <span className="truncate block flex-1">{mat.attentionReason}</span>
                               </div>
                            ) : (
-                              <div className="text-[11px] font-medium text-muted-foreground bg-secondary/10 px-2.5 py-1 rounded-lg italic flex items-center gap-1.5">
-                                 <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full shrink-0" />
-                                 {mat.attentionReason}
+                              <div className="text-[10px] font-medium text-muted-foreground bg-secondary/10 px-2 py-1 rounded-lg italic flex items-center gap-1.5 w-full min-w-0">
+                                 <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full shrink-0" />
+                                 <span className="truncate block flex-1">{mat.attentionReason}</span>
                               </div>
                            )}
                         </div>
@@ -971,28 +947,28 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
                })}
                {needsAttentionConferencia.length === 0 && (
                   <div className="p-8 text-center text-muted-foreground flex flex-col items-center justify-center h-full">
-                     <CheckCircle2 className="w-8 h-8 text-emerald-500 opacity-60 mb-2" />
-                     <span>Tudo conferido!</span>
+                     <CheckCircle2 className="w-8 h-8 text-emerald-500 opacity-60 mb-2 shrink-0" />
+                     <span className="text-sm font-medium">Tudo conferido de forma íntegra!</span>
                   </div>
                )}
             </div>
          </div>
       </div>
 
-      {/* Solicitações de Compra Pendentes (Atendentes) */}
-      <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden mt-6">
-         <div className="px-6 py-5 border-b border-border bg-card/80">
-            <h3 className="font-semibold text-foreground flex items-center gap-2">
+      {/* Solicitações de Compra Pendentes */}
+      <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden w-full min-w-0 mt-6">
+         <div className="px-5 py-4 border-b border-border bg-card/80">
+            <h3 className="font-bold text-foreground flex items-center gap-2 text-sm sm:text-base">
                <ShoppingCart className="w-4 h-4 text-amber-500" /> Solicitações de Compra Pendentes (Atendentes)
             </h3>
-            <p className="text-sm text-muted-foreground mt-1">Estas são as solicitações enviadas pelos atendentes durante a contagem de estoque. Clique para formalizar o pedido.</p>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Estas são as solicitações enviadas pelos atendentes durante a contagem de estoque. Clique para formalizar o pedido.</p>
          </div>
-         <div className="divide-y divide-border overflow-y-auto max-h-[400px]">
+         <div className="divide-y divide-border overflow-y-auto max-h-[350px] custom-scrollbar w-full">
             {pendingRequests.map(mat => (
-               <div key={mat.id} className="p-4 px-6 hover:bg-secondary/50 transition-colors flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+               <div key={mat.id} className="p-4 px-4 sm:px-6 hover:bg-secondary/50 transition-colors flex flex-col lg:flex-row lg:items-center justify-between gap-4 w-full min-w-0">
                   <div className="min-w-0 flex-1">
-                     <div className="flex items-center gap-2 flex-wrap min-w-0">
-                        <span className="font-bold text-foreground text-sm truncate">{mat.name}</span>
+                     <div className="flex items-center gap-2 flex-wrap min-w-0 w-full">
+                        <span className="font-black text-foreground text-sm truncate block max-w-full" title={mat.name}>{mat.name}</span>
                         <span className="text-xs text-muted-foreground font-mono bg-secondary px-1.5 py-0.5 rounded shrink-0">{mat.code}</span>
                         <button 
                            onClick={() => setImageModalMaterial(mat)}
@@ -1002,13 +978,13 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
                            <Eye className="w-4 h-4" />
                         </button>
                      </div>
-                     <p className="text-xs text-muted-foreground mt-1">Setor: {mat.sector} | Estoque Mínimo: <span className="font-semibold">{mat.estoqueMinimo} {formatUnit(mat.unit)}</span></p>
-                     <p className="text-xs text-amber-500 bg-amber-500/5 px-2.5 py-1 rounded-lg border border-amber-500/10 mt-1.5 inline-block italic font-medium max-w-full truncate">
+                     <p className="text-xs text-muted-foreground mt-1 truncate block">Setor: {mat.sector} | Estoque Mínimo: <span className="font-semibold text-foreground font-mono">{mat.estoqueMinimo} {formatUnit(mat.unit)}</span></p>
+                     <p className="text-xs text-amber-500 bg-amber-500/5 px-2.5 py-1.5 rounded-xl border border-amber-500/10 mt-2 block italic font-medium max-w-full truncate" title={mat.notes || ''}>
                         Observação da Contagem: "{mat.notes || 'Sem observações'}"
                      </p>
                   </div>
-                  <div className="flex flex-wrap items-center gap-3 shrink-0">
-                     <span className="text-xs bg-secondary px-3 py-1.5 rounded-full border border-border whitespace-nowrap">Estoque Atual: <strong className="text-foreground">{mat.quantity} {formatUnit(mat.unit)}</strong></span>
+                  <div className="flex flex-wrap items-center gap-3 shrink-0 self-end lg:self-auto min-w-0">
+                     <span className="text-xs bg-secondary px-3 py-1.5 rounded-xl border border-border whitespace-nowrap font-medium font-mono text-muted-foreground">Estoque Atual: <strong className="text-foreground font-bold">{mat.quantity} {formatUnit(mat.unit)}</strong></span>
                      <button
                         onClick={() => {
                            setPendingOrder(mat);
@@ -1016,36 +992,36 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
                            setOrderNotes(mat.notes || '');
                            setOrderPackageQuantity(1);
                         }}
-                        className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-medium transition-colors shadow-sm inline-flex items-center gap-1.5"
+                        className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs sm:text-sm font-semibold transition-colors shadow-sm inline-flex items-center gap-1.5 h-[36px] whitespace-nowrap"
                      >
-                        <ShoppingCart className="w-4 h-4" /> Fazer Pedido de Compra
+                        <ShoppingCart className="w-3.5 h-3.5" /> Fazer Pedido de Compra
                      </button>
                   </div>
                </div>
             ))}
             {pendingRequests.length === 0 && (
-               <div className="p-8 text-center text-muted-foreground flex flex-col items-center">
-                  <CheckCircle2 className="w-8 h-8 text-emerald-500 opacity-60 mb-2" />
-                  Nenhuma solicitação de compra pendente dos atendentes.
+               <div className="p-8 text-center text-muted-foreground flex flex-col items-center justify-center">
+                  <CheckCircle2 className="w-8 h-8 text-emerald-500 opacity-60 mb-2 shrink-0" />
+                  <span className="text-sm font-medium">Nenhuma solicitação de compra pendente dos atendentes.</span>
                </div>
             )}
          </div>
       </div>
 
       {/* Pedidos de Compra em Andamento */}
-      <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden mt-6">
-         <div className="px-6 py-5 border-b border-border bg-card/80">
-            <h3 className="font-semibold text-foreground flex items-center gap-2">
+      <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden w-full min-w-0 mt-6">
+         <div className="px-5 py-4 border-b border-border bg-card/80">
+            <h3 className="font-bold text-foreground flex items-center gap-2 text-sm sm:text-base">
                <ShoppingCart className="w-4 h-4 text-blue-500" /> Pedidos de Compra em Andamento
             </h3>
-            <p className="text-sm text-muted-foreground mt-1">Gerencie os pedidos formalizados e atualize o estoque quando forem entregues.</p>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Gerencie os pedidos formalizados e atualize o estoque quando forem entregues.</p>
          </div>
-         <div className="divide-y divide-border overflow-y-auto max-h-[400px]">
+         <div className="divide-y divide-border overflow-y-auto max-h-[350px] custom-scrollbar w-full">
             {activeOrders.map(mat => (
-               <div key={mat.id} className="p-4 px-6 hover:bg-secondary/50 transition-colors flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+               <div key={mat.id} className="p-4 px-4 sm:px-6 hover:bg-secondary/50 transition-colors flex flex-col lg:flex-row lg:items-center justify-between gap-4 w-full min-w-0">
                   <div className="min-w-0 flex-1">
-                     <div className="flex items-center gap-2 flex-wrap min-w-0">
-                        <span className="font-bold text-foreground text-sm truncate">{mat.name}</span>
+                     <div className="flex items-center gap-2 flex-wrap min-w-0 w-full">
+                        <span className="font-black text-foreground text-sm truncate block max-w-full" title={mat.name}>{mat.name}</span>
                         <span className="text-xs text-muted-foreground font-mono bg-secondary px-1.5 py-0.5 rounded shrink-0">{mat.code}</span>
                         <button 
                            onClick={() => setImageModalMaterial(mat)}
@@ -1055,17 +1031,17 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
                            <Eye className="w-4 h-4" />
                         </button>
                      </div>
-                     <p className="text-xs text-muted-foreground mt-1 truncate">Última atualização: {mat.notes || 'Sem observações'}</p>
+                     <p className="text-xs text-muted-foreground mt-1 truncate block" title={mat.notes || ''}>Última atualização: {mat.notes || 'Sem observações'}</p>
                   </div>
-                  <div className="flex flex-wrap items-center gap-3 shrink-0">
-                     <span className="text-xs bg-blue-500/10 text-blue-500 border border-blue-500/20 px-3 py-1.5 rounded-full whitespace-nowrap">Qtd Solicitada: <strong className="font-bold">{mat.requestedQuantity || 0} {formatUnit(mat.unit)}</strong></span>
-                     <span className="text-xs bg-secondary px-3 py-1.5 rounded-full border border-border whitespace-nowrap">Estoque Atual: <strong className="text-foreground">{mat.quantity} {formatUnit(mat.unit)}</strong></span>
+                  <div className="flex flex-wrap items-center gap-3 shrink-0 self-end lg:self-auto min-w-0 text-xs">
+                     <span className="bg-blue-500/10 text-blue-500 border border-blue-500/20 px-3 py-1.5 rounded-xl whitespace-nowrap font-mono">Qtd Solicitada: <strong className="font-bold">{mat.requestedQuantity || 0} {formatUnit(mat.unit)}</strong></span>
+                     <span className="bg-secondary px-3 py-1.5 rounded-xl border border-border whitespace-nowrap font-mono text-muted-foreground">Estoque Atual: <strong className="text-foreground font-bold">{mat.quantity} {formatUnit(mat.unit)}</strong></span>
                      <button
                         onClick={() => {
                            setPendingDelivery(mat);
                            setDeliveredQuantity(mat.requestedQuantity || 0);
                         }}
-                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-medium transition-colors shadow-sm"
+                        className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-semibold transition-colors shadow-sm h-[36px] whitespace-nowrap"
                      >
                         Marcar como Entregue
                      </button>
@@ -1073,30 +1049,30 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
                </div>
             ))}
             {activeOrders.length === 0 && (
-               <div className="p-8 text-center text-muted-foreground flex flex-col items-center">
-                  <Package className="w-8 h-8 opacity-20 mb-2" />
-                  Nenhum pedido de compra em andamento.
+               <div className="p-8 text-center text-muted-foreground flex flex-col items-center justify-center">
+                  <Package className="w-8 h-8 opacity-20 mb-2 shrink-0" />
+                  <span className="text-sm font-medium">Nenhum pedido de compra em andamento nas planilhas.</span>
                </div>
             )}
          </div>
       </div>
 
       {/* Produtos Recém Repostos / Entregues */}
-      <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden mt-6">
-         <div className="px-6 py-5 border-b border-border bg-card/80">
-            <h3 className="font-semibold text-foreground flex items-center gap-2">
+      <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden w-full min-w-0 mt-6">
+         <div className="px-5 py-4 border-b border-border bg-card/80">
+            <h3 className="font-bold text-foreground flex items-center gap-2 text-sm sm:text-base">
                <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Produtos Recém Repostos / Entregues
             </h3>
-            <p className="text-sm text-muted-foreground mt-1">Produtos cujas entregas foram confirmadas recentemente (últimas 24 horas).</p>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Produtos cujas entregas foram confirmadas recentemente (últimas 24 horas).</p>
          </div>
-         <div className="divide-y divide-border overflow-y-auto max-h-[300px]">
+         <div className="divide-y divide-border overflow-y-auto max-h-[300px] custom-scrollbar w-full">
             {materials.filter(m => m.repostedAt && (new Date().getTime() - new Date(m.repostedAt).getTime() < 24 * 60 * 60 * 1000))
                .sort((a, b) => new Date(b.repostedAt!).getTime() - new Date(a.repostedAt!).getTime())
                .map(mat => (
-               <div key={mat.id} className="p-4 px-6 hover:bg-secondary/50 transition-colors flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+               <div key={mat.id} className="p-4 px-4 sm:px-6 hover:bg-secondary/50 transition-colors flex flex-col lg:flex-row lg:items-center justify-between gap-4 w-full min-w-0">
                   <div className="min-w-0 flex-1">
-                     <div className="flex items-center gap-2 flex-wrap min-w-0">
-                        <span className="font-bold text-foreground text-sm truncate">{mat.name}</span>
+                     <div className="flex items-center gap-2 flex-wrap min-w-0 w-full">
+                        <span className="font-black text-foreground text-sm truncate block max-w-full" title={mat.name}>{mat.name}</span>
                         <span className="text-xs text-muted-foreground font-mono bg-secondary px-1.5 py-0.5 rounded shrink-0">{mat.code}</span>
                         <button 
                            onClick={() => setImageModalMaterial(mat)}
@@ -1105,39 +1081,40 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
                         >
                            <Eye className="w-4 h-4" />
                         </button>
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.15)] shrink-0 animate-pulse">Novo</span>
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 shrink-0 animate-pulse">Novo</span>
                      </div>
-                     <p className="text-xs text-muted-foreground mt-1 truncate">Última movimentação: {mat.notes || 'Estoque reabastecido recentemente.'}</p>
+                     <p className="text-xs text-muted-foreground mt-1 truncate block" title={mat.notes || ''}>Última movimentação: {mat.notes || 'Estoque reabastecido recentemente.'}</p>
                   </div>
-                  <div className="flex flex-wrap items-center gap-3 shrink-0">
-                     <span className="text-xs bg-secondary px-3 py-1.5 rounded-full border border-border whitespace-nowrap">Estoque Atual: <strong className="text-foreground">{mat.quantity} {formatUnit(mat.unit)}</strong></span>
-                     <span className="text-xs text-muted-foreground bg-emerald-500/10 px-2.5 py-1.5 rounded-xl border border-emerald-500/20 whitespace-nowrap">Reposto em: {new Date(mat.repostedAt!).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                  <div className="flex flex-wrap items-center gap-3 shrink-0 text-xs self-end lg:self-auto min-w-0">
+                     <span className="bg-secondary px-3 py-1.5 rounded-xl border border-border whitespace-nowrap font-mono text-muted-foreground">Estoque Atual: <strong className="text-foreground font-bold">{mat.quantity} {formatUnit(mat.unit)}</strong></span>
+                     <span className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2.5 py-1.5 rounded-xl whitespace-nowrap font-mono">Reposto em: {new Date(mat.repostedAt!).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                   </div>
                </div>
             ))}
             {materials.filter(m => m.repostedAt && (new Date().getTime() - new Date(m.repostedAt).getTime() < 24 * 60 * 60 * 1000)).length === 0 && (
-               <div className="p-8 text-center text-muted-foreground flex flex-col items-center">
-                  <Package className="w-8 h-8 opacity-20 mb-2" />
-                  Nenhum produto reposto nas últimas 24 horas.
+               <div className="p-8 text-center text-muted-foreground flex flex-col items-center justify-center">
+                  <Package className="w-8 h-8 opacity-20 mb-2 shrink-0" />
+                  <span className="text-sm font-medium">Nenhum produto reposto nas últimas 24 horas.</span>
                </div>
             )}
          </div>
       </div>
 
-      {/* Listagem de Estoque de Giro (Gestão) */}
-      <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden mt-6">
-         <div className="px-6 py-5 border-b border-border bg-card/80 flex items-center justify-between">
-            <div>
-               <h3 className="font-semibold text-foreground flex items-center gap-2">
-                  <span className="text-amber-500 text-lg">⚡</span> Listagem de Estoque de Giro (Gestão)
+      {/* Listagem de Estoque de Giro */}
+      <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden w-full min-w-0 mt-6">
+         <div className="px-5 py-4 border-b border-border bg-card/80 flex items-center justify-between gap-4 flex-wrap sm:flex-nowrap">
+            <div className="min-w-0 flex-1">
+               <h3 className="font-bold text-foreground flex items-center gap-2 text-sm sm:text-base">
+                  <span className="text-amber-500 text-lg shrink-0">⚡</span> Listagem de Estoque de Giro (Gestão)
                </h3>
-               <p className="text-sm text-muted-foreground mt-1">Produtos ativos configurados no Giro do Dia com as respectivas quantidades físicas.</p>
+               <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 truncate block">Produtos ativos configurados no Giro do Dia com as respectivas quantidades físicas.</p>
             </div>
-            <span className="text-xs bg-amber-500/10 text-amber-500 border border-amber-500/20 px-2.5 py-1 rounded-full font-bold">
+            <span className="text-xs bg-amber-500/10 text-amber-500 border border-amber-500/20 px-2.5 py-1 rounded-full font-bold shrink-0">
                {materials.filter(m => m.isGiro).length} Itens no Giro
             </span>
          </div>
-         <div className="overflow-x-auto">
+         
+         <div className="w-full">
             <div className="hidden md:block w-full overflow-x-auto">
                <table className="w-full text-left border-collapse table-fixed min-w-[750px]">
                   <thead>
@@ -1152,24 +1129,25 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
                   <tbody className="divide-y divide-border">
                      {materials.filter(m => m.isGiro).map(mat => (
                         <tr key={mat.id} className="hover:bg-secondary/20 transition-colors">
-                           <td className="px-6 py-4">
-                              <div className="font-semibold text-foreground flex items-center gap-2">
-                                 <span>{mat.name}</span>
+                           <td className="px-6 py-4 min-w-0">
+                              <div className="font-bold text-foreground flex items-center gap-2 max-w-full">
+                                 <span className="truncate block flex-1">{mat.name}</span>
                                  <button 
+                                    type="button"
                                     onClick={() => setImageModalMaterial(mat)}
-                                    className="text-amber-500 hover:text-amber-400 p-1 rounded hover:bg-amber-500/10 transition-colors"
+                                    className="text-amber-500 hover:text-amber-400 p-1 rounded hover:bg-amber-500/10 transition-colors shrink-0"
                                     title="Visualizar Foto"
                                  >
                                     <Eye className="w-4 h-4" />
                                  </button>
                               </div>
-                              <div className="text-xs text-muted-foreground font-mono mt-0.5">{mat.code}</div>
+                              <div className="text-xs text-muted-foreground font-mono mt-0.5 truncate block">{mat.code}</div>
                            </td>
-                           <td className="px-6 py-4 text-sm text-muted-foreground">{mat.sector}</td>
-                           <td className="px-6 py-4 font-bold text-amber-500">
+                           <td className="px-6 py-4 text-sm text-muted-foreground truncate">{mat.sector}</td>
+                           <td className="px-6 py-4 font-bold text-amber-500 truncate">
                               ⚡ {mat.quantityGiro || 0} {formatUnit(mat.unit)}
                            </td>
-                           <td className="px-6 py-4 font-medium text-blue-500">
+                           <td className="px-6 py-4 font-medium text-blue-500 truncate">
                               📦 {mat.quantity} {formatUnit(mat.unit)}
                            </td>
                            <td className="px-6 py-4 whitespace-nowrap text-right">
@@ -1183,7 +1161,7 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
                                     setCountStatus('COMPLETED');
                                     setShowCountModal(true);
                                  }}
-                                 className="px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ml-auto"
+                                 className="px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ml-auto"
                               >
                                  <Edit3 className="w-3.5 h-3.5" /> Ajustar
                               </button>
@@ -1192,7 +1170,7 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
                      ))}
                      {materials.filter(m => m.isGiro).length === 0 && (
                         <tr>
-                           <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                           <td colSpan={5} className="p-8 text-center text-muted-foreground text-sm font-medium">
                               Nenhum produto cadastrado no Giro do Dia.
                            </td>
                         </tr>
@@ -1201,33 +1179,34 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
                </table>
             </div>
 
-            {/* Mobile Cards for Giro (Gestão) */}
-            <div className="md:hidden divide-y divide-border">
+            <div className="md:hidden block divide-y divide-border w-full">
                {materials.filter(m => m.isGiro).map(mat => (
-                  <div key={mat.id} className="p-4 space-y-3">
-                     <div className="flex justify-between items-start gap-2">
-                        <div>
-                           <span className="font-bold text-foreground text-sm flex items-center gap-1.5">
-                              {mat.name}
+                  <div key={mat.id} className="p-4 space-y-3 w-full min-w-0">
+                     <div className="flex justify-between items-start gap-4 w-full min-w-0">
+                        <div className="min-w-0 flex-1">
+                           <span className="font-bold text-foreground text-sm flex items-center gap-1.5 max-w-full">
+                              <span className="truncate block flex-1">{mat.name}</span>
                               <button 
+                                 type="button"
                                  onClick={() => setImageModalMaterial(mat)}
-                                 className="text-amber-500 hover:text-amber-400 p-1 rounded hover:bg-amber-500/10 transition-colors"
+                                 className="text-amber-500 hover:text-amber-400 p-1 rounded hover:bg-amber-500/10 transition-colors shrink-0"
+                                 title="Visualizar Foto"
                               >
                                  <Eye className="w-4 h-4" />
                               </button>
                            </span>
-                           <span className="text-xs text-muted-foreground font-mono mt-0.5 block">{mat.code}</span>
+                           <span className="text-xs text-muted-foreground font-mono mt-0.5 block truncate">{mat.code}</span>
                         </div>
-                        <span className="text-xs bg-secondary/80 px-2 py-1 rounded border border-border">{mat.sector}</span>
+                        <span className="text-xs bg-secondary/80 px-2 py-0.5 rounded border border-border font-medium shrink-0 max-w-[120px] truncate">{mat.sector}</span>
                      </div>
-                     <div className="flex justify-between items-center text-xs">
-                        <div className="flex flex-col">
-                           <span className="text-muted-foreground">⚡ Giro:</span>
-                           <strong className="text-amber-500 font-bold">{mat.quantityGiro || 0} {formatUnit(mat.unit)}</strong>
+                     <div className="flex justify-between items-center text-xs w-full min-w-0 gap-4">
+                        <div className="flex flex-col min-w-0 flex-1">
+                           <span className="text-muted-foreground block text-[10px] uppercase font-medium">⚡ Giro:</span>
+                           <strong className="text-amber-500 font-bold text-sm truncate block">{mat.quantityGiro || 0} {formatUnit(mat.unit)}</strong>
                         </div>
-                        <div className="flex flex-col text-right">
-                           <span className="text-muted-foreground">📦 Pulmão:</span>
-                           <strong className="text-blue-500 font-semibold">{mat.quantity} {formatUnit(mat.unit)}</strong>
+                        <div className="flex flex-col text-right shrink-0 min-w-0 flex-1">
+                           <span className="text-muted-foreground block text-[10px] uppercase font-medium">📦 Pulmão:</span>
+                           <strong className="text-blue-500 font-semibold text-sm truncate block">{mat.quantity} {formatUnit(mat.unit)}</strong>
                         </div>
                      </div>
                      <button
@@ -1240,7 +1219,7 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
                            setCountStatus('COMPLETED');
                            setShowCountModal(true);
                         }}
-                        className="w-full bg-amber-500/15 hover:bg-amber-500/20 text-amber-500 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5"
+                        className="w-full bg-amber-500/15 hover:bg-amber-500/20 text-amber-500 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 h-[38px]"
                      >
                         <Edit3 className="w-4 h-4" /> Ajustar Estoque Giro
                      </button>
@@ -1250,125 +1229,119 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
          </div>
       </div>
 
-      <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm p-6 mt-6">
-         <div className="flex items-center justify-between mb-6">
-            <div>
-               <h3 className="font-semibold text-foreground flex items-center gap-2">
+      {/* Produtividade da Equipe */}
+      <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm p-4 sm:p-6 mt-6 w-full min-w-0">
+         <div className="flex items-center justify-between mb-5 gap-4 flex-wrap sm:flex-nowrap">
+            <div className="min-w-0 flex-1">
+               <h3 className="font-bold text-foreground flex items-center gap-2 text-sm sm:text-base">
                   <Users className="w-4 h-4 text-emerald-500" /> Produtividade da Equipe
                </h3>
-               <p className="text-sm text-muted-foreground">Baseado nos logs de ponto e contagens de estoque realizadas.</p>
+               <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Baseado nos logs de ponto e contagens de estoque realizadas.</p>
             </div>
-            
-            <div className="flex items-center gap-2">
-               <button 
-                  onClick={() => {
-                     setIsReportOpen(true);
-                  }}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-colors shadow-sm"
-               >
-                  <Share2 className="w-4 h-4" />
-                  Gerar Relatório Geral
-               </button>
-            </div>
+            <button 
+               onClick={() => setIsReportOpen(true)}
+               className="flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-sm shrink-0 w-full sm:w-auto h-[38px]"
+            >
+               <Share2 className="w-4 h-4" />
+               Gerar Relatório Geral
+            </button>
          </div>
-          <div className="overflow-x-auto">
-             {/* Desktop view: table */}
-             <div className="hidden md:block overflow-x-auto w-full">
-               <table className="w-full text-left border-collapse">
-                 <thead>
-                   <tr className="bg-secondary/50 border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
-                     <th className="px-6 py-4 font-medium">Colaborador</th>
-                     <th className="px-6 py-4 font-medium text-center">Contagens Realizadas</th>
-                     <th className="px-6 py-4 font-medium text-center">Horas de Turno</th>
-                     <th className="px-6 py-4 font-medium text-right">Eficiência</th>
-                   </tr>
-                 </thead>
-                 <tbody className="divide-y divide-border">
-                   {productivity.map((prod, index) => {
-                     const avgPerHour = prod.hoursLogged > 0 ? (prod.counts / prod.hoursLogged).toFixed(1) : prod.counts.toFixed(1);
-                     return (
-                       <tr key={prod.id} className="hover:bg-secondary/30 transition-colors">
-                         <td className="px-6 py-4 whitespace-nowrap">
-                           <div className="flex items-center gap-3">
-                             <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-sm">
-                               {prod.userName.charAt(0).toUpperCase()}
-                             </div>
-                             <div>
-                               <div className="font-semibold text-foreground flex items-center gap-1.5">
-                                 {prod.userName}
-                                 {index === 0 && prod.counts > 0 && (
-                                   <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/20 text-amber-500 border border-amber-500/30">Destaque</span>
-                                 )}
-                               </div>
-                             </div>
-                           </div>
-                         </td>
-                         <td className="px-6 py-4 whitespace-nowrap text-center font-medium text-foreground">
-                           {prod.counts} contagens
-                         </td>
-                         <td className="px-6 py-4 whitespace-nowrap text-center text-muted-foreground">
-                           {prod.hoursLogged > 0 ? `${prod.hoursLogged.toFixed(1)}h` : 'Sem registro'}
-                         </td>
-                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-emerald-500">
-                           {avgPerHour} / hora
-                         </td>
-                       </tr>
-                     );
-                   })}
-                   {productivity.length === 0 && (
-                     <tr>
-                       <td colSpan={4} className="px-6 py-10 text-center text-muted-foreground">
-                         Nenhum dado de produtividade disponível.
-                       </td>
-                     </tr>
-                   )}
-                 </tbody>
+         <div className="w-full">
+             <div className="hidden md:block w-full overflow-x-auto">
+               <table className="w-full text-left border-collapse table-fixed min-w-[700px]">
+                  <thead>
+                    <tr className="bg-secondary/50 border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
+                      <th className="px-6 py-4 font-medium w-[35%]">Colaborador</th>
+                      <th className="px-6 py-4 font-medium text-center w-[25%]">Contagens Realizadas</th>
+                      <th className="px-6 py-4 font-medium text-center w-[20%]">Horas de Turno</th>
+                      <th className="px-6 py-4 font-medium text-right w-[20%]">Eficiência</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {productivity.map((prod, index) => {
+                      const avgPerHour = prod.hoursLogged > 0 ? (prod.counts / prod.hoursLogged).toFixed(1) : prod.counts.toFixed(1);
+                      return (
+                        <tr key={prod.id} className="hover:bg-secondary/30 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap min-w-0">
+                            <div className="flex items-center gap-3 max-w-full">
+                              <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-sm shrink-0">
+                                {prod.userName.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="font-bold text-foreground text-sm flex items-center gap-1.5 max-w-full">
+                                  <span className="truncate block">{prod.userName}</span>
+                                  {index === 0 && prod.counts > 0 && (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/20 text-amber-500 border border-amber-500/30 shrink-0">Destaque</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-center font-semibold text-foreground text-sm">
+                            {prod.counts} contagens
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-center text-muted-foreground text-sm">
+                            {prod.hoursLogged > 0 ? `${prod.hoursLogged.toFixed(1)}h` : 'Sem registro'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-emerald-500 font-mono">
+                            {avgPerHour} / hora
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {productivity.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-10 text-center text-muted-foreground text-sm">
+                          Nenhum dado de produtividade disponível.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
                </table>
              </div>
 
-             {/* Mobile/Tablet view: Cards */}
-             <div className="md:hidden divide-y divide-border">
+             <div className="md:hidden block divide-y divide-border w-full">
                {productivity.map((prod, index) => {
-                 const avgPerHour = prod.hoursLogged > 0 ? (prod.counts / prod.hoursLogged).toFixed(1) : prod.counts.toFixed(1);
-                 return (
-                   <div key={prod.id} className="p-4 space-y-3">
-                     <div className="flex justify-between items-center">
-                       <div className="flex items-center gap-3">
-                         <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-sm">
-                           {prod.userName.charAt(0).toUpperCase()}
-                         </div>
-                         <div>
-                           <div className="font-bold text-foreground text-sm flex items-center gap-1.5">
-                             {prod.userName}
-                             {index === 0 && prod.counts > 0 && (
-                               <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-amber-500/20 text-emerald-500">Destaque</span>
-                             )}
-                           </div>
-                         </div>
-                       </div>
-                       <div className="text-right">
-                         <span className="text-xs font-semibold text-emerald-500">{avgPerHour} / hora</span>
-                       </div>
-                     </div>
-                     <div className="flex justify-between items-center text-xs text-muted-foreground">
-                       <div>
-                         <span className="font-medium text-foreground">Contagens:</span> {prod.counts}
-                       </div>
-                       <div>
-                         <span className="font-medium text-foreground">Horas:</span> {prod.hoursLogged > 0 ? `${prod.hoursLogged.toFixed(1)}h` : 'Sem registro'}
-                       </div>
-                     </div>
-                   </div>
-                 );
+                  const avgPerHour = prod.hoursLogged > 0 ? (prod.counts / prod.hoursLogged).toFixed(1) : prod.counts.toFixed(1);
+                  return (
+                    <div key={prod.id} className="p-4 space-y-3 w-full min-w-0">
+                      <div className="flex justify-between items-center gap-4 w-full min-w-0">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-sm shrink-0">
+                            {prod.userName.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-bold text-foreground text-sm flex items-center gap-1.5 max-w-full">
+                              <span className="truncate block">{prod.userName}</span>
+                              {index === 0 && prod.counts > 0 && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-amber-500/20 text-amber-500 shrink-0">Destaque</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0 min-w-0">
+                           <span className="text-xs font-bold text-emerald-500 font-mono">{avgPerHour} / h</span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center text-xs text-muted-foreground gap-4 w-full min-w-0">
+                        <div className="truncate block">
+                           <span className="font-medium text-foreground">Contagens:</span> {prod.counts}
+                        </div>
+                        <div className="text-right shrink-0">
+                           <span className="font-medium text-foreground">Horas:</span> {prod.hoursLogged > 0 ? `${prod.hoursLogged.toFixed(1)}h` : 'Sem registro'}
+                        </div>
+                      </div>
+                    </div>
+                  );
                })}
                {productivity.length === 0 && (
-                 <div className="p-8 text-center text-muted-foreground">
-                   Nenhum dado de produtividade disponível.
-                 </div>
+                  <div className="p-8 text-center text-muted-foreground text-xs font-medium">
+                    Nenhum dado de produtividade disponível.
+                  </div>
                )}
              </div>
           </div>
-         </div>
+      </div>
 
       <AnimatePresence>
         {pendingDelivery && (
@@ -1411,7 +1384,7 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
                            type="number" 
                            value={deliveredQuantity}
                            onChange={e => setDeliveredQuantity(Number(e.target.value))}
-                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground font-semibold text-lg"
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 text-lg font-bold focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground h-[48px]"
                            min="1"
                            required
                         />
@@ -1421,13 +1394,13 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
                         <button 
                            type="button" 
                            onClick={() => setPendingDelivery(null)}
-                           className="flex-1 px-4 py-3 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors"
+                           className="flex-1 px-4 py-3 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm h-[44px]"
                         >
                            Cancelar
                         </button>
                         <button 
                            type="submit" 
-                           className="flex-1 px-4 py-3 bg-emerald-600 text-white font-medium rounded-xl hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-500/25"
+                           className="flex-1 px-4 py-3 bg-emerald-600 text-white font-medium rounded-xl hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-500/25 text-sm h-[44px]"
                         >
                            Confirmar Entrega
                         </button>
@@ -1438,20 +1411,22 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
           </div>
         )}
       </AnimatePresence>
+
+      <AnimatePresence>
         {pendingOrder && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div 
                initial={{ opacity: 0 }} 
                animate={{ opacity: 1 }} 
                exit={{ opacity: 0 }}
-               className="absolute inset-0 bg-background/40 backdrop-blur-md"
+               className="absolute inset-0 bg-background/40 backdrop-blur-sm"
                onClick={() => setPendingOrder(null)}
             />
             <motion.div 
                initial={{ scale: 0.95, y: 20 }}
                animate={{ scale: 1, y: 0 }}
                exit={{ scale: 0.95, y: 20 }}
-               className="bg-card/70 backdrop-blur-md border border-border/50 w-full max-w-md rounded-2xl shadow-2xl relative z-10 overflow-hidden"
+               className="bg-card/70 backdrop-blur-md border border-border/50 w-full max-w-md rounded-2xl shadow-2xl relative z-10 overflow-hidden max-h-[calc(100vh-2rem)] overflow-y-auto"
             >
                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-orange-500"></div>
                <div className="p-6">
@@ -1466,7 +1441,7 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
                         <select 
                            value={orderTag} 
                            onChange={e => setOrderTag(e.target.value)}
-                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-foreground focus:ring-2 focus:ring-amber-500 outline-none"
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-foreground focus:ring-2 focus:ring-amber-500 outline-none text-sm h-[44px] cursor-pointer"
                         >
                            <option value="Pedido Feito">Pedido Feito</option>
                            <option value="Aguardando envio do produto">Aguardando Envio</option>
@@ -1476,26 +1451,26 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
                         </select>
                      </div>
 
-                     <div className="grid grid-cols-2 gap-4">
+                     <div className="grid grid-cols-2 gap-4 w-full">
                         <div>
-                           <label className="block text-sm font-medium text-muted-foreground mb-1">Quantidade</label>
+                           <label className="block text-sm font-medium text-muted-foreground mb-1 text-xs sm:text-sm">Quantidade</label>
                            <input 
                               type="number" 
                               value={orderPackageQuantity}
                               onChange={e => setOrderPackageQuantity(Math.max(1, Number(e.target.value)))}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-foreground focus:ring-2 focus:ring-amber-500 outline-none"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2 text-base font-bold focus:ring-2 focus:ring-amber-500 outline-none h-[44px]"
                               min="1"
                               required
                            />
                         </div>
                         <div>
-                           <label className="block text-sm font-medium text-muted-foreground mb-1">Unidade / Tipo</label>
+                           <label className="block text-sm font-medium text-muted-foreground mb-1 text-xs sm:text-sm">Unidade / Tipo</label>
                            <input 
                               type="text" 
                               value={orderPackageUnit}
                               onChange={e => setOrderPackageUnit(e.target.value)}
-                              placeholder="Ex: caixas, un, pacotes"
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-foreground focus:ring-2 focus:ring-amber-500 outline-none"
+                              placeholder="Ex: caixas, un"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2 text-foreground focus:ring-2 focus:ring-amber-500 outline-none h-[44px] text-sm"
                               required
                            />
                         </div>
@@ -1506,23 +1481,23 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
                         <textarea 
                            value={orderNotes}
                            onChange={e => setOrderNotes(e.target.value)}
-                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-foreground focus:ring-2 focus:ring-amber-500 outline-none resize-none"
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-foreground focus:ring-2 focus:ring-amber-500 outline-none resize-none text-sm"
                            rows={3}
-                           placeholder="Ex: Comprado com fornecedor X, entrega prevista para terça."
+                           placeholder="Ex: Comprado com fornecedor X..."
                         />
                      </div>
 
-                     <div className="flex gap-3 pt-4 border-t border-border">
+                     <div className="flex gap-3 pt-4 border-t border-border w-full">
                         <button 
                            type="button" 
                            onClick={() => setPendingOrder(null)}
-                           className="flex-1 px-4 py-3 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors"
+                           className="flex-1 px-4 py-3 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm h-[44px]"
                         >
                            Cancelar
                         </button>
                         <button 
                            type="submit" 
-                           className="flex-1 px-4 py-3 bg-amber-600 text-white font-medium rounded-xl hover:bg-amber-700 transition-colors shadow-lg shadow-amber-500/25"
+                           className="flex-1 px-4 py-3 bg-amber-600 text-white font-medium rounded-xl hover:bg-amber-700 transition-colors shadow-lg shadow-amber-500/25 text-sm h-[44px]"
                         >
                            Confirmar Pedido
                         </button>
@@ -1532,33 +1507,32 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
             </motion.div>
           </div>
         )}
+      </AnimatePresence>
 
-       {/* Modal de Contagem do Gestor */}
-       <AnimatePresence>
+      <AnimatePresence>
          {showCountModal && activeMaterial && (
-           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-             <motion.div 
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }} 
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-                onClick={() => setShowCountModal(false)}
-             />
-             <motion.div 
-                initial={{ scale: 0.95, y: 20 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.95, y: 20 }}
-                className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl p-6 relative overflow-hidden z-10"
-             >
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-blue-500"></div>
-                
-                <div className="mb-6 mt-2">
-                   <h3 className="text-xl font-bold text-foreground">Ajustar Estoque (Gestão)</h3>
-                   <p className="text-sm text-muted-foreground mt-1">{activeMaterial.name} ({activeMaterial.code})</p>
-                </div>
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div 
+                 initial={{ opacity: 0 }} 
+                 animate={{ opacity: 1 }} 
+                 exit={{ opacity: 0 }}
+                 className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+                 onClick={() => setShowCountModal(false)}
+              />
+              <motion.div 
+                 initial={{ scale: 0.95, y: 20 }}
+                 animate={{ scale: 1, y: 0 }}
+                 exit={{ scale: 0.95, y: 20 }}
+                 className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl p-6 relative overflow-hidden z-10 max-h-[calc(100vh-2rem)] overflow-y-auto"
+              >
+                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-blue-500"></div>
+                 
+                 <div className="mb-6 mt-2">
+                    <h3 className="text-xl font-bold text-foreground">Ajustar Estoque (Gestão)</h3>
+                    <p className="text-sm text-muted-foreground mt-1">{activeMaterial.name} ({activeMaterial.code})</p>
+                 </div>
 
-                <form onSubmit={handleCountSubmitManager} className="space-y-4">
-                  {/* Seletor de Estoque Alvo (Pulmão vs Giro) */}
+                 <form onSubmit={handleCountSubmitManager} className="space-y-4">
                   {activeMaterial.isGiro && activeMaterial.isPulmao !== false ? (
                      <div className="bg-secondary/40 p-1.5 rounded-xl border border-border/60 flex gap-2">
                         <button
@@ -1610,7 +1584,7 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
                         min="0"
                         value={countQuantity}
                         onChange={e => setCountQuantity(e.target.value ? parseInt(e.target.value) : '')}
-                        className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 text-lg font-bold focus:ring-2 focus:ring-amber-500/50 outline-none text-foreground"
+                        className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 text-lg font-bold focus:ring-2 focus:ring-amber-500/50 outline-none text-foreground h-[46px]"
                         required
                      />
                   </div>
@@ -1620,7 +1594,7 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
                      <select
                         value={countStatus}
                         onChange={e => setCountStatus(e.target.value as Material['status'])}
-                        className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-amber-500/50 outline-none text-foreground"
+                        className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-amber-500/50 outline-none text-foreground cursor-pointer h-[44px]"
                      >
                         <option value="COMPLETED">Finalizado/Reposto</option>
                         <option value="COUNTED_RECENTLY">Recém Contado</option>
@@ -1638,32 +1612,32 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
                      <textarea 
                         value={countNotes}
                         onChange={e => setCountNotes(e.target.value)}
-                        className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-amber-500/50 outline-none text-foreground resize-none"
+                        className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-amber-500/50 outline-none text-foreground resize-none text-sm"
                         rows={3}
-                        placeholder="Ex: Ajuste de divergência após contagem física rápida..."
+                        placeholder="Ex: Ajuste de divergência após contagem..."
                      />
                   </div>
 
-                  <div className="flex gap-3 pt-2">
+                  <div className="flex gap-3 pt-2 w-full">
                      <button 
                         type="button"
                         onClick={() => setShowCountModal(false)}
-                        className="flex-1 px-4 py-3 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors"
+                        className="flex-1 px-4 py-3 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm h-[44px]"
                      >
                         Cancelar
                      </button>
                      <button 
                         type="submit"
-                        className="flex-1 px-4 py-3 bg-amber-600 text-white font-medium rounded-xl hover:bg-amber-700 transition-colors shadow-lg shadow-amber-500/25"
+                        className="flex-1 px-4 py-3 bg-amber-600 text-white font-medium rounded-xl hover:bg-amber-700 transition-colors shadow-lg shadow-amber-500/25 text-sm h-[44px]"
                      >
                         Salvar Ajuste
                      </button>
                   </div>
-                </form>
-             </motion.div>
-           </div>
+                 </form>
+              </motion.div>
+            </div>
          )}
-       </AnimatePresence>
+      </AnimatePresence>
 
       <ReportPreviewModal 
         isOpen={isReportOpen} 
@@ -1696,8 +1670,6 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
   const [countStatus, setCountStatus] = useState<Material['status']>('AWAITING_CONFIRMATION');
   
   const [showScanner, setShowScanner] = useState(false);
-  
-  const [reportText, setReportText] = useState<string>('');
   const [isReportOpen, setIsReportOpen] = useState<boolean>(false);
 
   const [dashboardStockTab, setDashboardStockTab] = useState<'pulmao' | 'giro'>('pulmao');
@@ -1735,7 +1707,6 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
         return false;
       }
       
-      // Filtrar pelo estoque selecionado (Pulmão vs Giro)
       if (dashboardStockTab === 'giro' && !m.isGiro) {
         return false;
       }
@@ -1816,18 +1787,17 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-500">
-      {/* Setor de Giro KPI Widget */}
-      <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-sm overflow-hidden relative animate-none">
+    <div className="space-y-6 max-w-7xl mx-auto px-2 sm:px-4 pb-12">
+      <div className="bg-card/50 backdrop-blur-md p-5 sm:p-6 rounded-2xl border border-border shadow-sm overflow-hidden relative">
         <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none" />
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-start gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 w-full">
+          <div className="flex items-start gap-4 min-w-0 flex-1">
             <div className="p-3 bg-amber-500/10 text-amber-500 dark:text-amber-400 rounded-xl shrink-0">
-               <span className="text-xl font-bold">⚡</span>
+               <span className="text-xl font-bold block leading-none">⚡</span>
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
                <h4 className="font-bold text-foreground text-base">Giro do Dia (Uso Rápido)</h4>
-               <p className="text-sm text-muted-foreground mt-0.5">
+               <p className="text-sm text-muted-foreground mt-0.5 max-w-2xl leading-relaxed">
                   Materiais de alto movimento e consumo diário constante que devem ser auditados todos os dias.
                </p>
                <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-3 text-xs font-semibold">
@@ -1844,7 +1814,7 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
             </div>
           </div>
           
-          <div className="w-full md:w-64 flex flex-col gap-1.5 shrink-0">
+          <div className="w-full md:w-64 flex flex-col gap-1.5 shrink-0 min-w-0">
              <div className="flex justify-between items-center text-xs">
                 <span className="font-semibold text-muted-foreground">Conclusão das Contagens</span>
                 <span className="font-bold text-amber-500">{giroStats.percentage}%</span>
@@ -1859,16 +1829,14 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
         </div>
       </div>
       
-      <div className="grid grid-cols-1 xl:grid-cols-3 lg:grid-cols-12 gap-6">
-         {/* Seção de Contagem (Esquerda) */}
-         <div className="xl:col-span-2 lg:col-span-8 space-y-6">
-            <div className="bg-card/50 backdrop-blur-md p-6 rounded-2xl border border-border shadow-sm flex flex-col gap-4 justify-between">
-               {/* Seletor de Estoque do Dashboard (Pulmão vs Giro) */}
-               <div className="flex border-b border-border/60 pb-1 mb-1 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+         <div className="lg:col-span-2 space-y-6 w-full min-w-0">
+            <div className="bg-card/50 backdrop-blur-md p-4 sm:p-6 rounded-2xl border border-border shadow-sm flex flex-col gap-4 justify-between w-full">
+               <div className="flex border-b border-border/60 pb-1 mb-1 gap-4 overflow-x-auto">
                   <button
                      onClick={() => setDashboardStockTab('pulmao')}
                      className={cn(
-                        "pb-2 text-sm font-semibold relative transition-all flex items-center gap-1.5",
+                        "pb-2 text-sm font-semibold relative transition-all flex items-center gap-1.5 whitespace-nowrap",
                         dashboardStockTab === 'pulmao'
                            ? "text-blue-500 font-bold border-b-2 border-blue-500"
                            : "text-muted-foreground hover:text-foreground"
@@ -1879,7 +1847,7 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
                   <button
                      onClick={() => setDashboardStockTab('giro')}
                      className={cn(
-                        "pb-2 text-sm font-semibold relative transition-all flex items-center gap-1.5",
+                        "pb-2 text-sm font-semibold relative transition-all flex items-center gap-1.5 whitespace-nowrap",
                         dashboardStockTab === 'giro'
                            ? "text-amber-500 font-bold border-b-2 border-amber-500"
                            : "text-muted-foreground hover:text-foreground"
@@ -1889,96 +1857,95 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
                   </button>
                </div>
 
-               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <div>
-                     <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 w-full">
+                  <div className="min-w-0 flex-1">
+                     <h2 className="text-lg sm:text-xl font-bold text-foreground flex items-center gap-2">
                         {dashboardStockTab === 'giro' ? (
                            <><span className="text-amber-500">⚡</span> Produtos de Giro do Dia</>
                         ) : (
-                           <><Package className="w-6 h-6 text-blue-500" /> Produtos para Contagem</>
+                           <><Package className="w-5 h-5 text-blue-500" /> Produtos para Contagem</>
                         )}
                      </h2>
-                     <p className="text-sm text-muted-foreground mt-1">Busque o produto, utilize os filtros rápidos ou escaneie para contar.</p>
+                     <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Busque o produto, utilize os filtros rápidos ou escaneie para contar.</p>
                   </div>
-                  <div className="flex bg-secondary/50 p-1 rounded-xl flex-wrap gap-1">
-                     <button onClick={() => setFilterMode('PENDING')} className={cn("px-3 py-1.5 text-sm font-medium rounded-lg transition-colors", filterMode === 'PENDING' ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>Pendentes</button>
-                     <button onClick={() => setFilterMode('AWAITING_CONFIRMATION')} className={cn("px-3 py-1.5 text-sm font-medium rounded-lg transition-colors", filterMode === 'AWAITING_CONFIRMATION' ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>Aguardando</button>
-                     <button onClick={() => setFilterMode('ALL')} className={cn("px-3 py-1.5 text-sm font-medium rounded-lg transition-colors", filterMode === 'ALL' ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>Todos</button>
+                  <div className="flex bg-secondary/50 p-1 rounded-xl gap-1 shrink-0 overflow-x-auto w-full sm:w-auto">
+                     <button onClick={() => setFilterMode('PENDING')} className={cn("flex-1 sm:flex-none px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap", filterMode === 'PENDING' ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>Pendentes</button>
+                     <button onClick={() => setFilterMode('AWAITING_CONFIRMATION')} className={cn("flex-1 sm:flex-none px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap", filterMode === 'AWAITING_CONFIRMATION' ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>Aguardando</button>
+                     <button onClick={() => setFilterMode('ALL')} className={cn("flex-1 sm:flex-none px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap", filterMode === 'ALL' ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>Todos</button>
                   </div>
                </div>
                
                <div className="relative w-full flex gap-2">
-                 <div className="relative flex-1">
-                   <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                   <input 
-                     type="text" 
-                     placeholder="Buscar por nome, código ou setor..." 
-                     className="w-full pl-12 pr-4 py-3 bg-background border border-border rounded-xl text-base focus:ring-2 focus:ring-blue-500/50 outline-none transition-all placeholder:text-muted-foreground/50 text-foreground"
-                     value={search}
-                     onChange={e => setSearch(e.target.value)}
-                   />
-                 </div>
-                 <button 
-                    onClick={() => setShowScanner(true)}
-                    className="px-4 bg-blue-600 text-white hover:bg-blue-700 rounded-xl transition-colors flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/25 gap-2 font-medium"
-                    title="Ler Código de Barras"
-                 >
-                    <Camera className="w-5 h-5" /> <span>Escanear</span>
-                 </button>
+                  <div className="relative flex-1 min-w-0">
+                    <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input 
+                      type="text" 
+                      placeholder="Buscar por nome, código ou setor..." 
+                      className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-xl text-sm focus:ring-2 focus:ring-blue-500/50 outline-none transition-all placeholder:text-muted-foreground/50 text-foreground h-[40px]"
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                    />
+                  </div>
+                  <button 
+                     onClick={() => setShowScanner(true)}
+                     className="px-4 bg-blue-600 text-white hover:bg-blue-700 rounded-xl transition-colors flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/25 gap-1.5 text-xs font-semibold h-[40px]"
+                     title="Ler Código de Barras"
+                  >
+                     <Camera className="w-4 h-4" /> <span className="hidden sm:inline">Escanear</span>
+                  </button>
                </div>
             </div>
 
-            <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm overflow-hidden">
+            <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm overflow-hidden w-full">
                {filteredMaterials.length === 0 ? (
-                  <div className="p-12 text-center flex flex-col items-center justify-center text-muted-foreground">
-                     <Package className="w-12 h-12 mb-4 opacity-20" />
-                     <p className="text-lg font-medium">Nenhum produto encontrado</p>
-                     <p className="text-sm mt-1">Tente ajustar seus filtros ou termos de busca.</p>
+                  <div className="p-12 text-center flex flex-col items-center justify-center text-muted-foreground w-full">
+                     <Package className="w-10 h-10 mb-3 opacity-20 shrink-0" />
+                     <p className="text-base font-bold text-foreground">Nenhum produto localizado</p>
+                     <p className="text-xs mt-0.5">Tente ajustar seus filtros ou termos de busca.</p>
                   </div>
                ) : (
                   <>
                   <div className="hidden md:block w-full overflow-x-auto">
-                      <table className="w-full text-left border-collapse table-fixed min-w-[750px]">
+                      <table className="w-full text-left border-collapse table-fixed min-w-[700px]">
                         <thead>
                           <tr className="bg-secondary/50 border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
-                            <th className="px-6 py-4 font-medium w-[40%]">Produto</th>
+                            <th className="px-6 py-4 font-medium w-[45%]">Produto</th>
                             <th className="px-6 py-4 font-medium w-[25%]">Setor</th>
-                            <th className="px-6 py-4 font-medium w-[15%]">Estoque Sist.</th>
-                            <th className="px-6 py-4 font-medium text-right w-[20%]">Ação</th>
+                            <th className="px-6 py-4 font-medium w-[15%]">Estoque</th>
+                            <th className="px-6 py-4 font-medium text-right w-[15%]">Ação</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
                           {visibleMaterials.map(mat => (
                             <tr key={mat.id} className="hover:bg-secondary/30 transition-colors">
-                              <td className="px-6 py-4">
-                                <div className="font-medium text-foreground flex items-center gap-2 flex-wrap break-words">
-                                  <span>{mat.name}</span>
+                              <td className="px-6 py-4 min-w-0">
+                                <div className="font-semibold text-foreground flex items-center gap-2 max-w-full">
+                                  <span className="truncate block flex-1">{mat.name}</span>
                                   {mat.repostedAt && (new Date().getTime() - new Date(mat.repostedAt).getTime() < 24 * 60 * 60 * 1000) && (
                                     <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.15)] animate-pulse shrink-0">Novo</span>
                                   )}
                                 </div>
-                                <div className="text-xs text-muted-foreground font-mono mt-0.5 break-all">{mat.code}</div>
+                                <div className="text-xs text-muted-foreground font-mono mt-0.5 block truncate">{mat.code}</div>
                               </td>
-                              <td className="px-6 py-4 text-sm break-words">{mat.sector}</td>
-                              <td className="px-6 py-4">
-                                <div className="font-medium mb-1">
+                              <td className="px-6 py-4 text-sm min-w-0 truncate">{mat.sector}</td>
+                              <td className="px-6 py-4 min-w-0">
+                                <div className="font-bold mb-1 truncate">
                                   {dashboardStockTab === 'giro' ? (
-                                    <span className="text-amber-500 font-semibold">⚡ {mat.quantityGiro || 0} {formatUnit(mat.unit)}</span>
+                                    <span className="text-amber-500 font-bold">⚡ {mat.quantityGiro || 0} {formatUnit(mat.unit)}</span>
                                   ) : (
-                                    <span className="text-blue-500 font-semibold">📦 {mat.quantity} {formatUnit(mat.unit)}</span>
+                                    <span className="text-blue-500 font-bold">📦 {mat.quantity} {formatUnit(mat.unit)}</span>
                                   )}
                                 </div>
                                 <StatusBadge status={mat.status} />
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-right flex justify-end gap-2">
+                              <td className="px-6 py-4 whitespace-nowrap text-right flex justify-end gap-1.5">
                                 <button 
                                   type="button"
                                   onClick={() => setImageModalMaterial(mat)}
-                                  className="text-amber-500 hover:text-amber-400 p-2 rounded-lg hover:bg-amber-500/10 transition-colors inline-flex items-center gap-1.5"
-                                  title="Visualizar Foto Ilustrativa"
+                                  className="text-amber-500 hover:text-amber-400 p-1.5 rounded-lg hover:bg-amber-500/10 transition-colors shrink-0"
+                                  title="Visualizar Foto"
                                 >
                                   <Eye className="w-4 h-4" />
-                                  <span className="sr-only sm:not-sr-only text-xs">Ver</span>
                                 </button>
                                 <button 
                                   type="button"
@@ -1991,198 +1958,190 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
                                     setShowCountModal(true);
                                   }}
                                   className={cn(
-                                    "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-1.5",
-                                    dashboardStockTab === 'giro'
-                                      ? "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"
-                                      : "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20"
+                                    "px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors inline-flex items-center gap-1.5 shrink-0",
+                                    dashboardStockTab === 'giro' ? "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20" : "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20"
                                   )}
                                 >
-                                  <Edit3 className="w-4 h-4" /> Contar
+                                  <Edit3 className="w-3.5 h-3.5" /> Contar
                                 </button>
                               </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
-                    </div>
+                   </div>
 
-                    {/* Mobile/Tablet view: Cards */}
-                    <div className="md:hidden divide-y divide-border">
-                      {visibleMaterials.map(mat => (
-                        <div key={mat.id} className="p-4 space-y-3">
-                          <div className="flex justify-between items-start gap-2">
+                   <div className="md:hidden block divide-y divide-border w-full">
+                     {visibleMaterials.map(mat => (
+                        <div key={mat.id} className="p-4 space-y-3 w-full min-w-0">
+                          <div className="flex justify-between items-start gap-3 w-full min-w-0">
                             <div className="min-w-0 flex-1">
-                              <div className="font-bold text-foreground text-sm flex items-center gap-1.5 flex-wrap min-w-0 break-words">
-                                <span>{mat.name}</span>
+                              <div className="font-bold text-foreground text-sm flex items-center gap-1.5 max-w-full">
+                                <span className="truncate block flex-1">{mat.name}</span>
                                 {mat.repostedAt && (new Date().getTime() - new Date(mat.repostedAt).getTime() < 24 * 60 * 60 * 1000) && (
-                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 shrink-0">Novo</span>
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-500 shrink-0">Novo</span>
                                 )}
                               </div>
-                              <span className="text-xs text-muted-foreground font-mono mt-0.5 block break-all">{mat.code}</span>
+                              <span className="text-xs text-muted-foreground font-mono mt-0.5 block truncate">{mat.code}</span>
                             </div>
                             <button 
                                type="button"
                                onClick={() => setImageModalMaterial(mat)}
-                               className="text-amber-500 hover:text-amber-400 p-2 rounded-lg hover:bg-amber-500/10 transition-colors shrink-0"
-                               title="Visualizar Foto Ilustrativa"
+                               className="text-amber-500 hover:text-amber-400 p-1.5 rounded-lg hover:bg-amber-500/10 transition-colors shrink-0"
                             >
                                <Eye className="w-5 h-5" />
                             </button>
                           </div>
 
-                          <div className="flex justify-between items-start text-xs text-muted-foreground gap-4">
-                            <div className="min-w-0 flex-1 break-words">
+                          <div className="flex justify-between items-center text-xs text-muted-foreground gap-4 w-full min-w-0">
+                            <div className="min-w-0 flex-1 truncate block">
                               <span className="font-medium text-foreground">Setor:</span> {mat.sector}
                             </div>
-                            <div className="text-right shrink-0">
-                              <div className="font-semibold text-foreground text-sm">
+                            <div className="text-right shrink-0 min-w-0">
+                              <div className="font-bold text-foreground text-sm truncate block">
                                 {dashboardStockTab === 'giro' ? (
-                                  <span className="text-amber-500 font-semibold">⚡ {mat.quantityGiro || 0} {formatUnit(mat.unit)}</span>
+                                  <span className="text-amber-500 font-bold">⚡ {mat.quantityGiro || 0} {formatUnit(mat.unit)}</span>
                                 ) : (
-                                  <span className="text-blue-500 font-semibold">📦 {mat.quantity} {formatUnit(mat.unit)}</span>
+                                  <span className="text-blue-500 font-bold">📦 {mat.quantity} {formatUnit(mat.unit)}</span>
                                 )}
                               </div>
                               <div className="mt-1"><StatusBadge status={mat.status} /></div>
                             </div>
                           </div>
 
-                          <button 
+                          <button
                             type="button"
                             onClick={() => {
-                              setActiveMaterial(mat);
-                              setCountTargetStock(dashboardStockTab);
-                              setCountQuantity(dashboardStockTab === 'giro' ? (mat.quantityGiro || 0) : mat.quantity);
-                              setCountNotes('');
-                              setCountStatus('AWAITING_CONFIRMATION');
-                              setShowCountModal(true);
+                               setActiveMaterial(mat);
+                               setCountTargetStock(dashboardStockTab);
+                               setCountQuantity(dashboardStockTab === 'giro' ? (mat.quantityGiro || 0) : mat.quantity);
+                               setCountNotes('');
+                               setCountStatus('AWAITING_CONFIRMATION');
+                               setShowCountModal(true);
                             }}
                             className={cn(
-                              "w-full py-2.5 px-4 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-1.5 shadow-md",
-                              dashboardStockTab === 'giro'
-                                ? "bg-amber-600 hover:bg-amber-700 text-white shadow-amber-500/10"
-                                : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/10"
+                               "w-full py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 h-[38px] shadow-sm",
+                               dashboardStockTab === 'giro' ? "bg-amber-600 hover:bg-amber-700 text-white" : "bg-blue-600 hover:bg-blue-700 text-white"
                             )}
                           >
-                            <Edit3 className="w-4 h-4" /> Registrar Contagem
+                             <Edit3 className="w-4 h-4" /> Registrar Contagem
                           </button>
                         </div>
-                      ))}
-                    </div>
-                    {filteredMaterials.length > visibleCount && (
-                       <div className="p-4 border-t border-border bg-secondary/10 text-center">
-                          <button
-                             type="button"
-                             onClick={() => setVisibleCount(prev => prev + 25)}
-                             className="px-4 py-2.5 text-sm font-semibold text-blue-500 hover:text-blue-600 hover:bg-blue-500/5 rounded-xl border border-blue-500/10 transition-colors inline-flex items-center gap-1.5"
-                          >
-                             Carregar mais ({filteredMaterials.length - visibleCount} restantes)
-                          </button>
-                       </div>
-                    )}
+                     ))}
+                   </div>
+                   {filteredMaterials.length > visibleCount && (
+                      <div className="p-4 border-t border-border bg-secondary/10 text-center w-full">
+                         <button
+                            type="button"
+                            onClick={() => setVisibleCount(prev => prev + 25)}
+                            className="px-4 py-2.5 text-sm font-semibold text-blue-500 hover:text-blue-600 hover:bg-blue-500/5 rounded-xl border border-blue-500/10 transition-colors inline-flex items-center gap-1.5 shadow-sm"
+                         >
+                            Carregar mais ({filteredMaterials.length - visibleCount} restantes)
+                         </button>
+                      </div>
+                   )}
                   </>
                )}
             </div>
          </div>
 
-         {/* Histórico Recente e Pedidos (Direita) */}
-         <div className="xl:col-span-1 lg:col-span-4 flex flex-col gap-6">
-            
-            {/* Pedidos de Compra (Read Only for Attendant) */}
-            <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm flex flex-col h-[250px]">
-               <div className="px-6 py-5 border-b border-border bg-card/80">
-                  <h3 className="font-semibold text-foreground flex items-center gap-2">
-                     <ShoppingCart className="w-4 h-4 text-blue-500" /> Pedidos de Compra
+         {/* Painel Lateral Direito */}
+         <div className="xl:col-span-1 lg:col-span-4 flex flex-col gap-6 w-full min-w-0">
+            <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm flex flex-col h-[250px] w-full">
+               <div className="px-5 py-4 border-b border-border bg-card/80">
+                  <h3 className="font-bold text-foreground flex items-center gap-2 text-sm">
+                     <ShoppingCart className="w-4 h-4 text-blue-500 shrink-0" /> Pedidos de Compra Ativos
                   </h3>
-                  <p className="text-xs text-muted-foreground mt-1">Solicitados pelo gestor.</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Acompanhamento solicitado pelo gestor.</p>
                </div>
-               <div className="divide-y divide-border overflow-y-auto flex-1 p-2 space-y-2">
+               <div className="divide-y divide-border overflow-y-auto flex-1 p-2 space-y-2 custom-scrollbar">
                   {materials.filter(m => m.status === 'PURCHASE_REQUESTED').length > 0 ? materials.filter(m => m.status === 'PURCHASE_REQUESTED').map(mat => (
-                     <div key={mat.id} className="p-3 bg-secondary/20 border border-border rounded-xl">
-                        <div className="flex justify-between items-start gap-4 mb-1">
-                           <p className="font-medium text-sm text-foreground min-w-0 flex-1 break-words">{mat.name}</p>
-                           <div className="flex flex-col items-end gap-1 shrink-0"><span className="text-xs bg-blue-500/10 text-blue-500 border border-blue-500/20 px-2 py-0.5 rounded-full whitespace-nowrap font-bold">Solicitado: {mat.requestedQuantity || 0} {formatUnit(mat.unit)}</span><span className="text-[10px] text-muted-foreground whitespace-nowrap">Estoque: {mat.quantity} {formatUnit(mat.unit)}</span></div>
+                     <div key={mat.id} className="p-3 bg-secondary/20 border border-border rounded-xl text-xs">
+                        <div className="flex justify-between items-start gap-3 mb-1 w-full min-w-0">
+                           <p className="font-bold text-foreground min-w-0 flex-1 break-words leading-tight">{mat.name}</p>
+                           <div className="flex flex-col items-end gap-1 shrink-0 font-mono">
+                              <span className="text-[10px] bg-blue-500/10 text-blue-500 border border-blue-500/20 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">Pedidas: {mat.requestedQuantity || 0} {formatUnit(mat.unit)}</span>
+                              <span className="text-[9px] text-muted-foreground whitespace-nowrap">Estoque: {mat.quantity}</span>
+                           </div>
                         </div>
-                        <p className="text-xs text-muted-foreground break-words">{mat.notes || 'Sem observações'}</p>
+                        <p className="text-[11px] text-muted-foreground break-words leading-normal italic">"{mat.notes || 'Sem observações'}"</p>
                      </div>
                   )) : (
-                     <div className="p-6 text-center text-muted-foreground text-sm flex flex-col items-center">
-                        <Package className="w-6 h-6 opacity-20 mb-2" />
-                        Nenhum pedido no momento.
+                     <div className="p-8 text-center text-muted-foreground text-xs flex flex-col items-center justify-center h-full">
+                        <Package className="w-6 h-6 opacity-20 mb-1.5 shrink-0" />
+                        <span>Nenhum pedido de compra listado.</span>
                      </div>
                   )}
                </div>
             </div>
 
-            {/* Histórico de Contagens */}
-            <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm flex flex-col h-[280px]">
-               <div className="px-6 py-5 border-b border-border bg-card/80">
-                  <h3 className="font-semibold text-foreground flex items-center gap-2">
-                     <History className="w-4 h-4 text-emerald-500" /> Últimas Contagens
+            <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm flex flex-col h-[250px] w-full">
+               <div className="px-5 py-4 border-b border-border bg-card/80">
+                  <h3 className="font-bold text-foreground flex items-center gap-2 text-sm">
+                     <History className="w-4 h-4 text-emerald-500 shrink-0" /> Minhas Últimas Contagens
                   </h3>
                </div>
-               <div className="divide-y divide-border overflow-y-auto flex-1 p-2 space-y-2">
-                  {logs.filter(log => !(log.previousQuantity === log.newQuantity && (log.notes?.includes('[Pedido') || log.notes?.includes('[Aguardando')))).length > 0 ? 
-                     logs.filter(log => !(log.previousQuantity === log.newQuantity && (log.notes?.includes('[Pedido') || log.notes?.includes('[Aguardando')))).map(log => (
-                     <div key={log.id} className="p-4 bg-background border border-border rounded-xl hover:shadow-md transition-all">
-                        <div className="flex justify-between items-start gap-4 mb-2">
+               <div className="divide-y divide-border overflow-y-auto flex-1 p-2 space-y-2 custom-scrollbar">
+                  {logs.filter(log => log.userId === user?.id && !(log.previousQuantity === log.newQuantity && (log.notes?.includes('[Pedido') || log.notes?.includes('[Aguardando')))).length > 0 ? 
+                     logs.filter(log => log.userId === user?.id && !(log.previousQuantity === log.newQuantity && (log.notes?.includes('[Pedido') || log.notes?.includes('[Aguardando')))).map(log => (
+                     <div key={log.id} className="p-3 bg-background border border-border rounded-xl text-xs flex flex-col gap-2">
+                        <div className="flex justify-between items-start gap-4 mb-0.5 w-full min-w-0">
                            <div className="min-w-0 flex-1">
-                             <p className="font-bold text-sm text-foreground break-words">{log.materialName}</p>
-                             <p className="text-xs text-muted-foreground font-mono break-all">{log.materialCode}</p>
+                              <p className="font-bold text-foreground truncate block text-xs">{log.materialName}</p>
+                              <p className="text-[10px] text-muted-foreground font-mono truncate block mt-0.5">{log.materialCode}</p>
                            </div>
-                           <div className="text-right shrink-0">
-                              <div className="text-xs font-medium text-foreground bg-secondary px-2 py-1 rounded-md inline-block">
-                                 {new Date(log.timestamp).toLocaleDateString()} às {new Date(log.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                              </div>
-                           </div>
+                           <span className="text-[10px] font-medium text-foreground bg-secondary px-2 py-0.5 rounded-md shrink-0 font-mono">
+                              {new Date(log.timestamp).toLocaleDateString()}
+                           </span>
                         </div>
                         
-                        <div className="flex items-center justify-between text-sm bg-secondary/30 p-2 rounded-lg mb-3">
+                        <div className="flex items-center justify-between text-xs bg-secondary/30 p-1.5 rounded-lg w-full min-w-0">
                            {(() => {
                               const mat = materials.find(m => m.id === log.materialId);
                               const unit = formatUnit(mat?.unit);
                               return (
-                                 <div className="flex items-center gap-2">
-                                    <span className="text-muted-foreground line-through opacity-70">{log.previousQuantity} {unit}</span>
-                                    <span className="text-foreground font-medium">→</span>
+                                 <div className="flex items-center gap-1.5 font-mono">
+                                    <span className="text-muted-foreground line-through opacity-60">{log.previousQuantity}</span>
+                                    <span>→</span>
                                     <span className="text-emerald-500 font-bold">{log.newQuantity} {unit}</span>
                                  </div>
                               );
                            })()}
-                           <div className="text-xs flex items-center gap-1.5 text-muted-foreground">
-                              <div className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center text-[10px] font-bold">
-                                 {log.userName?.charAt(0) || '?'}
-                              </div>
-                              <span className="truncate max-w-[100px]">{log.userName || 'Desconhecido'}</span>
-                           </div>
+                           <span className={cn(
+                              "text-[9px] font-bold px-1.5 py-0.5 rounded border shrink-0",
+                              log.countType === 'GIRO' ? "bg-amber-500/10 text-amber-500 border-amber-500/20" : "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                           )}>
+                              {log.countType === 'GIRO' ? 'Giro' : 'Pulmão'}
+                           </span>
                         </div>
                         
                         {log.notes && (
-                           <p className="text-xs text-muted-foreground bg-blue-500/5 p-2 rounded-lg border border-blue-500/10 italic">
+                           <p className="text-[11px] text-muted-foreground bg-blue-500/5 p-1.5 rounded-lg border border-blue-500/10 italic truncate block w-full">
                               "{log.notes}"
                            </p>
                         )}
                      </div>
                   )) : (
-                     <div className="p-8 text-center text-muted-foreground text-sm">Nenhuma contagem recente.</div>
+                     <div className="p-8 text-center text-muted-foreground text-xs flex flex-col items-center justify-center h-full">
+                        <History className="w-6 h-6 opacity-20 mb-1.5 shrink-0" />
+                        <span>Nenhuma contagem realizada hoje.</span>
+                     </div>
                   )}
                </div>
             </div>
             
-            {/* Meu Relatório */}
-            <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm flex flex-col">
-               <div className="px-6 py-5 border-b border-border bg-card/80">
-                  <h3 className="font-semibold text-foreground flex items-center gap-2">
-                     <Share2 className="w-4 h-4 text-emerald-500" /> Meu Relatório de Hoje
+            <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm flex flex-col w-full">
+               <div className="px-5 py-4 border-b border-border bg-card/80">
+                  <h3 className="font-bold text-foreground flex items-center gap-2 text-sm">
+                     <Share2 className="w-4 h-4 text-emerald-500 shrink-0" /> Meu Relatório de Hoje
                   </h3>
                </div>
-               <div className="p-4 flex flex-col gap-2">
+               <div className="p-4 w-full">
                   <button 
-                     onClick={() => {
-                        setIsReportOpen(true);
-                     }}
-                     className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-all shadow-sm w-full"
+                     onClick={() => setIsReportOpen(true)}
+                     className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-sm w-full h-[40px]"
                   >
-                     <Share2 className="w-5 h-5" />
+                     <Share2 className="w-4 h-4" />
                      Visualizar e Copiar Relatório
                   </button>
                </div>
@@ -2190,7 +2149,6 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
          </div>
       </div>
 
-      {/* Modal de Contagem */}
       <AnimatePresence>
         {showCountModal && activeMaterial && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -2205,117 +2163,121 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
                initial={{ scale: 0.95, y: 20 }}
                animate={{ scale: 1, y: 0 }}
                exit={{ scale: 0.95, y: 20 }}
-               className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl p-6 relative overflow-hidden z-10"
+               className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl p-6 relative overflow-hidden z-10 max-h-[calc(100vh-2rem)] overflow-y-auto"
             >
                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-emerald-500"></div>
                
-               <div className="mb-6 mt-2">
-                  <h3 className="text-xl font-bold text-foreground">Registrar Contagem</h3>
-                  <p className="text-sm text-muted-foreground mt-1">{activeMaterial.name} ({activeMaterial.code})</p>
+               <div className="mb-5 mt-2 flex justify-between items-start gap-4">
+                  <div className="min-w-0 flex-1">
+                     <h3 className="text-xl font-bold text-foreground truncate">Registrar Contagem</h3>
+                     <p className="text-sm text-muted-foreground mt-0.5 truncate">{activeMaterial.name} ({activeMaterial.code})</p>
+                  </div>
+                  <button type="button" onClick={() => setShowCountModal(false)} className="p-1 text-muted-foreground hover:bg-secondary rounded-lg shrink-0 transition-colors">
+                     <X className="w-5 h-5" />
+                  </button>
                </div>
 
                <form onSubmit={handleCountSubmit} className="space-y-4">
-                 {/* Seletor de Estoque Alvo (Pulmão vs Giro) */}
-                 {activeMaterial.isGiro && activeMaterial.isPulmao !== false ? (
-                    <div className="bg-secondary/40 p-1.5 rounded-xl border border-border/60 flex gap-2">
-                       <button
-                          type="button"
-                          onClick={() => {
-                             setCountTargetStock('pulmao');
-                             setCountQuantity(activeMaterial.quantity || 0);
-                          }}
-                          className={cn(
-                             "flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
-                             countTargetStock === 'pulmao'
-                                ? "bg-blue-500/10 text-blue-500 border border-blue-500/25 shadow-sm"
-                                : "text-muted-foreground hover:text-foreground"
-                          )}
-                       >
-                          📦 Estoque Pulmão
-                       </button>
-                       <button
-                          type="button"
-                          onClick={() => {
-                             setCountTargetStock('giro');
-                             setCountQuantity(activeMaterial.quantityGiro || 0);
-                          }}
-                          className={cn(
-                             "flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
-                             countTargetStock === 'giro'
-                                ? "bg-amber-500/10 text-amber-500 border border-amber-500/25 shadow-sm"
-                                : "text-muted-foreground hover:text-foreground"
-                          )}
-                       >
-                          ⚡ Giro do Dia
-                       </button>
-                    </div>
-                 ) : (
-                    <div className="text-xs text-muted-foreground flex items-center gap-1.5 font-medium px-1">
-                       <span>Estoque Alvo:</span>
-                       {countTargetStock === 'giro' ? (
-                          <span className="text-amber-500 font-semibold flex items-center gap-1">⚡ Giro do Dia</span>
-                       ) : (
-                          <span className="text-blue-500 font-semibold flex items-center gap-1">📦 Estoque Pulmão</span>
-                       )}
-                    </div>
-                 )}
+                  {activeMaterial.isGiro && activeMaterial.isPulmao !== false ? (
+                     <div className="bg-secondary/40 p-1.5 rounded-xl border border-border/60 flex gap-2">
+                        <button
+                           type="button"
+                           onClick={() => {
+                              setCountTargetStock('pulmao');
+                              setCountQuantity(activeMaterial.quantity || 0);
+                           }}
+                           className={cn(
+                              "flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
+                              countTargetStock === 'pulmao'
+                                 ? "bg-blue-500/10 text-blue-500 border border-blue-500/25 shadow-sm"
+                                 : "text-muted-foreground hover:text-foreground"
+                           )}
+                        >
+                           📦 Estoque Pulmão
+                        </button>
+                        <button
+                           type="button"
+                           onClick={() => {
+                              setCountTargetStock('giro');
+                              setCountQuantity(activeMaterial.quantityGiro || 0);
+                           }}
+                           className={cn(
+                              "flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
+                              countTargetStock === 'giro'
+                                 ? "bg-amber-500/10 text-amber-500 border border-amber-500/25 shadow-sm"
+                                 : "text-muted-foreground hover:text-foreground"
+                           )}
+                        >
+                           ⚡ Giro do Dia
+                        </button>
+                     </div>
+                  ) : (
+                     <div className="text-xs text-muted-foreground flex items-center gap-1.5 font-medium px-1">
+                        <span>Estoque Alvo:</span>
+                        {countTargetStock === 'giro' ? (
+                           <span className="text-amber-500 font-semibold flex items-center gap-1">⚡ Giro do Dia</span>
+                        ) : (
+                           <span className="text-blue-500 font-semibold flex items-center gap-1">📦 Estoque Pulmão</span>
+                        )}
+                     </div>
+                  )}
 
-                 <div>
-                    <label className="block text-sm font-medium text-muted-foreground mb-1.5">Estoque Físico ({formatUnit(activeMaterial?.unit)})</label>
-                    <input 
-                       type="number" 
-                       min="0"
-                       value={countQuantity}
-                       onChange={e => setCountQuantity(e.target.value ? parseInt(e.target.value) : '')}
-                       className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 text-lg font-bold focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
-                       required
-                    />
-                 </div>
-                 
-                 <div>
-                    <label className="block text-sm font-medium text-muted-foreground mb-1.5">Status/Tag</label>
-                    <select
-                       value={countStatus}
-                       onChange={e => setCountStatus(e.target.value as Material['status'])}
-                       className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
-                    >
-                       <option value="COUNTED_RECENTLY">Recém Contado</option>
-                       <option value="PENDING">Contagem Pendente</option>
-                       <option value="AWAITING_CONFIRMATION">Aguardando Conferência</option>
-                       <option value="PURCHASE_REQUESTED">Solicitando Compra</option>
-                       <option value="COMPLETED">Finalizado/Reposto</option>
-                       {countTargetStock === 'pulmao' && (
-                          <option value="REALOCATED_TO_GIRO">Realocado para estoque de giro</option>
-                       )}
-                    </select>
-                 </div>
-                 
-                 <div>
-                    <label className="block text-sm font-medium text-muted-foreground mb-1.5">Observações (Opcional)</label>
-                    <textarea 
-                       value={countNotes}
-                       onChange={e => setCountNotes(e.target.value)}
-                       className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground resize-none"
-                       rows={3}
-                       placeholder="Ex: 2 unidades avariadas..."
-                    />
-                 </div>
+                  <div>
+                     <label className="block text-sm font-medium text-muted-foreground mb-1.5">Estoque Físico ({formatUnit(activeMaterial?.unit)})</label>
+                     <input 
+                        type="number" 
+                        min="0"
+                        value={countQuantity}
+                        onChange={e => setCountQuantity(e.target.value ? parseInt(e.target.value) : '')}
+                        className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 text-lg font-bold focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground h-[46px]"
+                        required
+                     />
+                  </div>
+                  
+                  <div>
+                     <label className="block text-sm font-medium text-muted-foreground mb-1.5">Status/Tag</label>
+                     <select
+                        value={countStatus}
+                        onChange={e => setCountStatus(e.target.value as Material['status'])}
+                        className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground h-[44px] cursor-pointer"
+                     >
+                        <option value="AWAITING_CONFIRMATION">Aguardando Conferência</option>
+                        <option value="COUNTED_RECENTLY">Recém Contado</option>
+                        <option value="PENDING">Contagem Pendente</option>
+                        <option value="PURCHASE_REQUESTED">Solicitando Compra</option>
+                        <option value="COMPLETED">Finalizado/Reposto</option>
+                        {countTargetStock === 'pulmao' && (
+                           <option value="REALOCATED_TO_GIRO">Realocado para estoque de giro</option>
+                        )}
+                     </select>
+                  </div>
+                  
+                  <div>
+                     <label className="block text-sm font-medium text-muted-foreground mb-1.5">Observações (Opcional)</label>
+                     <textarea 
+                        value={countNotes}
+                        onChange={e => setCountNotes(e.target.value)}
+                        className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground resize-none text-sm"
+                        rows={3}
+                        placeholder="Ex: Embalagem danificada..."
+                     />
+                  </div>
 
-                 <div className="flex gap-3 pt-4">
-                    <button 
-                       type="button" 
-                       onClick={() => setShowCountModal(false)}
-                       className="flex-1 px-4 py-3 text-muted-foreground font-medium rounded-xl hover:bg-secondary transition-colors"
-                    >
-                       Cancelar
-                    </button>
-                    <button 
-                       type="submit" 
-                       className="flex-1 px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25"
-                    >
-                       Confirmar
-                    </button>
-                 </div>
+                  <div className="flex gap-3 pt-2 w-full">
+                     <button 
+                        type="button" 
+                        onClick={() => setShowCountModal(false)}
+                        className="flex-1 px-4 py-3 text-muted-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm h-[44px]"
+                     >
+                        Cancelar
+                     </button>
+                     <button 
+                        type="submit" 
+                        className="flex-1 px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25 text-sm h-[44px]"
+                     >
+                        Confirmar
+                     </button>
+                  </div>
                </form>
             </motion.div>
           </div>
@@ -2348,6 +2310,7 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
   );
 }
 
+// COMPONENTE DE SELEÇÃO INALTERADO DE FLUXO DE RENDERS
 export default function Dashboard() {
   const { token, isManager, user } = useAuth();
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -2377,7 +2340,6 @@ export default function Dashboard() {
   useEffect(() => {
     fetchData(false);
     
-    // Polling ativo a cada 10 segundos para atualização em tempo real
     const interval = setInterval(() => {
       fetchData(true);
     }, 10000);
