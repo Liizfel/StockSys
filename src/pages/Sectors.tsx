@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { apiFetch } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Sector, Material, User, Supplier } from '../types';
-import { FolderTree, Plus, Trash2, Edit3, Package, Users, ChevronDown, ChevronUp, UserPlus, AlertTriangle, Truck, Upload, Eye, Camera } from 'lucide-react';
+import { FolderTree, Plus, Trash2, Edit3, Package, Users, ChevronDown, ChevronUp, UserPlus, AlertTriangle, Truck, Upload, Eye, Camera, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatUnit } from '../lib/utils';
 import { ProductImageModal } from '../components/ProductImageModal';
@@ -21,6 +21,18 @@ export default function Sectors() {
   const isSavingRef = useRef(false);
   
   const [expandedSector, setExpandedSector] = useState<string | null>(null);
+  
+  const [sectorProductSearches, setSectorProductSearches] = useState<Record<string, string>>({});
+  
+  const [removeUserModal, setRemoveUserModal] = useState<{
+    isOpen: boolean;
+    user: User | null;
+    sector: Sector | null;
+  }>({
+    isOpen: false,
+    user: null,
+    sector: null
+  });
 
   // Estados para Fornecedores
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -475,8 +487,18 @@ export default function Sectors() {
     }
   };
 
-  const handleRemoveUserFromSector = async (user: User) => {
-    if (!confirm(`Remover ${user.name} deste setor?`)) return;
+  const handleRemoveUserFromSector = (user: User, sector: Sector) => {
+    setRemoveUserModal({
+      isOpen: true,
+      user,
+      sector
+    });
+  };
+
+  const executeRemoveUserFromSector = async () => {
+    const { user } = removeUserModal;
+    if (!user) return;
+    setRemoveUserModal({ isOpen: false, user: null, sector: null });
     try {
        await apiFetch(`/api/users/${user.id}`, {
           method: 'PUT',
@@ -549,7 +571,7 @@ export default function Sectors() {
 
         <div className="space-y-4">
           {sectors.map(sector => {
-            const sectorMaterials = materials.filter(m => m.sectorId === sector.id);
+            const allSectorMaterials = materials.filter(m => m.sectorId === sector.id || (m.additionalSectors || '').split(',').filter(Boolean).includes(sector.id));
             const sectorUsers = users.filter(u => u.sectorId === sector.id);
             const isExpanded = expandedSector === sector.id;
 
@@ -584,7 +606,7 @@ export default function Sectors() {
                       )}
                       
                       <div className="flex gap-3 text-xs font-medium text-muted-foreground hidden md:flex">
-                         <span className="flex items-center gap-1.5 bg-secondary/50 px-2 py-1 rounded-md"><Package className="w-3.5 h-3.5" /> {sectorMaterials.length} Produtos</span>
+                         <span className="flex items-center gap-1.5 bg-secondary/50 px-2 py-1 rounded-md"><Package className="w-3.5 h-3.5" /> {allSectorMaterials.length} Produtos</span>
                          <span className="flex items-center gap-1.5 bg-secondary/50 px-2 py-1 rounded-md"><Users className="w-3.5 h-3.5" /> {sectorUsers.length} Usuários</span>
                       </div>
                    </div>
@@ -652,9 +674,29 @@ export default function Sectors() {
                                   + Novo Produto
                                 </button>
                               </div>
-                              {sectorMaterials.length > 0 ? (
+                              {/* Barra de Busca de Produtos do Setor */}
+                              <div className="relative mb-4">
+                                <input 
+                                  type="text"
+                                  placeholder="Buscar por código, nome ou localização (estante, prateleira, palete)..."
+                                  value={sectorProductSearches[sector.id] || ''}
+                                  onChange={e => setSectorProductSearches(prev => ({ ...prev, [sector.id]: e.target.value }))}
+                                  className="w-full pl-9 pr-12 py-2.5 bg-secondary/30 border border-border rounded-xl text-xs focus:ring-2 focus:ring-blue-500/50 outline-none transition-all placeholder:text-muted-foreground/50 text-foreground"
+                                />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                {sectorProductSearches[sector.id] && (
+                                  <button
+                                    onClick={() => setSectorProductSearches(prev => ({ ...prev, [sector.id]: '' }))}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground font-semibold"
+                                  >
+                                    Limpar
+                                  </button>
+                                )}
+                              </div>
+
+                              {filteredSectorMaterials.length > 0 ? (
                                  <ul className="space-y-2">
-                                    {sectorMaterials.map(mat => (
+                                    {filteredSectorMaterials.map(mat => (
                                        <li 
                                           key={mat.id} 
                                           onClick={() => isManager && handleOpenEditProduct(mat)}
@@ -662,7 +704,14 @@ export default function Sectors() {
                                        >
                                           <div className="flex-1 min-w-0 pr-4">
                                              <div className="font-medium text-foreground truncate">{mat.name}</div>
-                                             <div className="text-xs text-muted-foreground font-mono">{mat.code}</div>
+                                             <div className="text-xs text-muted-foreground font-mono flex items-center gap-2 flex-wrap mt-0.5">
+                                            <span className="font-semibold">{mat.code}</span>
+                                            {(mat.estante || mat.prateleira || mat.palete || mat.area) && (
+                                              <span className="text-[10px] bg-secondary/80 px-1.5 py-0.5 rounded text-muted-foreground font-sans">
+                                                Loc: {[mat.area, mat.estante, mat.prateleira, mat.palete].filter(Boolean).join(' › ')}
+                                              </span>
+                                            )}
+                                          </div>
                                           </div>
                                           <div className="flex items-center gap-4 shrink-0">
                                              <span className="font-semibold text-foreground bg-secondary px-2 py-1 rounded-md">{mat.quantity} {formatUnit(mat.unit)}</span>
@@ -696,7 +745,9 @@ export default function Sectors() {
                                  </ul>
                               ) : (
                                  <div className="bg-background border border-dashed border-border rounded-xl p-4 text-center">
-                                    <p className="text-sm text-muted-foreground">Nenhum produto vinculado.</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {sectorProductSearches[sector.id] ? 'Nenhum produto atende aos filtros de busca.' : 'Nenhum produto vinculado.'}
+                                    </p>
                                  </div>
                               )}
                            </div>
@@ -726,7 +777,7 @@ export default function Sectors() {
                                              <div className="text-xs text-muted-foreground truncate">{usr.email}</div>
                                           </div>
                                           <button 
-                                             onClick={() => handleRemoveUserFromSector(usr)}
+                                             onClick={() => handleRemoveUserFromSector(usr, sector)}
                                              className="text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                                              title="Remover do Setor"
                                           >
@@ -1988,6 +2039,62 @@ export default function Sectors() {
                     className="flex-1 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-xl transition-colors shadow-lg shadow-amber-500/20 text-sm"
                  >
                     Sim, Vincular Setor
+                 </button>
+               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal de Confirmação de Remoção de Usuário do Setor */}
+      <AnimatePresence>
+        {removeUserModal && removeUserModal.isOpen && removeUserModal.user && removeUserModal.sector && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div 
+               initial={{ opacity: 0 }} 
+               animate={{ opacity: 1 }} 
+               exit={{ opacity: 0 }}
+               className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+               onClick={() => setRemoveUserModal({ isOpen: false, user: null, sector: null })}
+            />
+            <motion.div 
+               initial={{ scale: 0.95, y: 20 }}
+               animate={{ scale: 1, y: 0 }}
+               exit={{ scale: 0.95, y: 20 }}
+               className="bg-card border border-rose-500/30 rounded-2xl w-full max-w-md shadow-2xl p-6 relative overflow-hidden z-10 font-sans"
+            >
+               <div className="absolute top-0 left-0 w-full h-1 bg-rose-500"></div>
+               
+               <div className="flex items-start gap-4 mt-2">
+                 <div className="p-3 bg-rose-500/10 rounded-xl text-rose-500 shrink-0">
+                   <AlertTriangle className="w-6 h-6" />
+                 </div>
+                 <div className="flex-1 min-w-0">
+                   <h3 className="text-lg font-bold text-foreground">Remover Colaborador do Setor</h3>
+                   <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                     Tem certeza de que deseja remover <span className="font-semibold text-foreground">"{removeUserModal.user.name}"</span> do setor <span className="font-semibold text-foreground">"{removeUserModal.sector.name}"</span>?
+                   </p>
+                   <p className="text-xs text-muted-foreground mt-3 leading-relaxed bg-secondary/50 border border-border rounded-lg p-2.5 flex items-center gap-2">
+                     <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                     Esta ação irá desvincular o colaborador do setor atual, mas não apagará o cadastro dele do sistema.
+                   </p>
+                 </div>
+               </div>
+
+               <div className="mt-6 flex gap-3">
+                 <button 
+                    type="button" 
+                    onClick={() => setRemoveUserModal({ isOpen: false, user: null, sector: null })}
+                    className="flex-1 px-4 py-2.5 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm"
+                 >
+                    Cancelar
+                 </button>
+                 <button 
+                    type="button" 
+                    onClick={executeRemoveUserFromSector}
+                    className="flex-1 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-medium rounded-xl transition-colors shadow-lg shadow-rose-500/20 text-sm"
+                 >
+                    Remover do Setor
                  </button>
                </div>
             </motion.div>
