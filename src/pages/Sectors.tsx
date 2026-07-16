@@ -20,13 +20,9 @@ export default function Sectors() {
   const [editingSector, setEditingSector] = useState<Sector | null>(null);
   const ignoreBlurRef = useRef(false);
   const isSavingRef = useRef(false);
+  
   const [expandedSector, setExpandedSector] = useState<string | null>(null);
 
-  // Estados dos Modais e Formulários
-  const [showModal, setShowModal] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'ATTENDANT', sectorId: '', additionalSectors: '' });
-  
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [showSupplierModal, setShowSupplierModal] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
@@ -57,38 +53,117 @@ export default function Sectors() {
   const [scanTarget, setScanTarget] = useState<'newProduct' | 'editProduct' | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; type: 'sector' | 'product'; id: string; name: string; }>({ isOpen: false, type: 'sector', id: '', name: '' });
 
-  // (Funções fetchData, handleAddSector, etc., mantidas iguais)
-  // ... (código existente de lógica de API mantido) ...
+  const fetchData = async () => {
+    try {
+      const [secData, matData, usrData, supData] = await Promise.all([
+        apiFetch('/api/sectors', {}, token),
+        apiFetch('/api/materials', {}, token),
+        apiFetch('/api/users', {}, token),
+        apiFetch('/api/suppliers', {}, token)
+      ]);
+      setSectors(secData);
+      setMaterials(matData);
+      setUsers(usrData);
+      setSuppliers(supData);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Ajuste nos Botões do Modal para Responsividade
-  const renderModalButtons = (onCancel: () => void, confirmLabel: string) => (
-    <div className="flex flex-col sm:flex-row gap-3 pt-6 w-full">
-      <button 
-        type="button" 
-        onClick={onCancel}
-        className="w-full sm:flex-1 px-4 py-3 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm h-[48px]"
-      >
-        Cancelar
-      </button>
-      <button 
-        type="submit" 
-        className="w-full sm:flex-1 px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25 text-sm h-[48px]"
-      >
-        {confirmLabel}
-      </button>
-    </div>
-  );
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(() => fetchData(), 10000);
+    window.addEventListener('products-changed', fetchData);
+    return () => { clearInterval(interval); window.removeEventListener('products-changed', fetchData); };
+  }, [token]);
+
+  const handleAddSector = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await apiFetch('/api/sectors', { method: 'POST', body: JSON.stringify({ name: newSectorName }) }, token);
+      setNewSectorName('');
+      fetchData();
+    } catch (err) { alert('Erro ao criar setor'); }
+  };
+
+  const handleEditSector = async (sector: Sector, newName: string) => {
+    if (!newName.trim() || newName === sector.name) { setEditingSector(null); return; }
+    try {
+      await apiFetch(`/api/sectors/${sector.id}`, { method: 'PUT', body: JSON.stringify({ name: newName }) }, token);
+      setEditingSector(null);
+      fetchData();
+    } catch (err) { alert('Erro ao editar setor'); }
+  };
+
+  const handleAddProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!targetSectorForProduct) return;
+    try {
+      await apiFetch('/api/materials', { method: 'POST', body: JSON.stringify({ ...newProduct, sectorId: targetSectorForProduct.id }) }, token);
+      setShowProductModal(false);
+      fetchData();
+    } catch (err) { alert('Erro ao criar produto'); }
+  };
+
+  const executeDelete = async () => {
+    try {
+      await apiFetch(deleteModal.type === 'sector' ? `/api/sectors/${deleteModal.id}` : `/api/materials/${deleteModal.id}`, { method: 'DELETE' }, token);
+      setDeleteModal({ isOpen: false, type: 'sector', id: '', name: '' });
+      fetchData();
+    } catch (err) { alert('Erro ao excluir'); }
+  };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 pb-12 animate-in fade-in duration-500">
-      {/* O resto do JSX continua aqui, mas substituindo os botões de rodapé por renderModalButtons() */}
-      {/* Exemplo de uso no Modal: */}
-      {/* <form onSubmit={handleSubmit}> */}
-      {/* ... campos ... */}
-      {/* {renderModalButtons(() => setShowModal(false), editingUser ? 'Salvar Alterações' : 'Cadastrar')} */}
-      {/* </form> */}
+    <div className="w-full max-w-7xl mx-auto px-4 py-6 space-y-6">
+      {/* HEADER RESPONSIVO */}
+      <div className="bg-card backdrop-blur-md p-6 rounded-2xl border border-border shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground flex items-center gap-3">
+               <FolderTree className="w-8 h-8 text-blue-500" /> Gerenciamento de Setores
+            </h2>
+          </div>
+          <button onClick={openNewModal} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-medium w-full sm:w-auto">
+             Novo Setor
+          </button>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          {/* Coluna Principal */}
+          <div className="xl:col-span-2 space-y-6">
+             {sectors.map(sector => (
+                <div key={sector.id} className="bg-card border border-border rounded-2xl p-4 sm:p-6 w-full">
+                   {/* Layout flex para o cabeçalho do setor */}
+                   <div className="flex items-center justify-between">
+                      <h3 className="font-bold text-lg truncate">{sector.name}</h3>
+                      <button onClick={() => toggleExpand(sector.id)} className="p-2">
+                        {expandedSector === sector.id ? <ChevronUp /> : <ChevronDown />}
+                      </button>
+                   </div>
+                   {/* Conteúdo expandido com overflow-x-auto para tabelas */}
+                   <AnimatePresence>
+                     {expandedSector === sector.id && (
+                        <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} className="overflow-x-auto">
+                           {/* ... Conteúdo do Setor ... */}
+                        </motion.div>
+                     )}
+                   </AnimatePresence>
+                </div>
+             ))}
+          </div>
+          
+          {/* Coluna Fornecedores (Side) */}
+          <div className="w-full">
+            <div className="bg-card border border-border p-6 rounded-2xl">
+               <h3 className="font-bold text-lg mb-4">Fornecedores</h3>
+               {/* Listagem compacta */}
+            </div>
+          </div>
+      </div>
       
-      {/* Certifique-se de envolver os Modais com max-h-[90vh] e overflow-y-auto */}
+      {/* Scan e Modais... */}
+      {showScanner && <BarcodeScanner onResult={handleScanResult} onClose={() => setShowScanner(false)} />}
     </div>
   );
 }
