@@ -1,495 +1,33 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { apiFetch } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Material, StockCountLog, TimeLog } from '../types';
-import { Clock, ShoppingCart, CheckCircle2, Package, TrendingUp, Search, History, Edit3, Camera, Users, Share2, MessageCircle, Copy, Check, Eye, FileText, AlertTriangle } from 'lucide-react';
-import { cn, formatUnit, getWhatsAppShareUrl, getTelegramShareUrl } from '../lib/utils';
+import { Clock, ShoppingCart, CheckCircle2, Package, TrendingUp, Search, History, Edit3, Camera, Users, Share2, Eye, AlertTriangle, X } from 'lucide-react';
+import { cn, formatUnit } from '../lib/utils';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { format, subDays } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BarcodeScanner } from '../components/BarcodeScanner';
-import jsPDF from 'jspdf';
 import { ProductImageModal } from '../components/ProductImageModal';
 import { StatusBadge } from '../components/StatusBadge';
+import { ActiveDurationTimer } from '../components/ActiveDurationTimer';
+import { ReportPreviewModal } from '../components/ReportPreviewModal';
 
-const generateReportText = (targetUsers: { id: string, userName: string }[], logs: StockCountLog[], materials?: Material[], isGlobal = false, stockFilter: 'all' | 'pulmao' | 'giro' = 'all') => {
-   const now = new Date();
-   const dateStr = now.toLocaleDateString('pt-BR');
-   const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-   const separator = "=========================================";
-
-   if (isGlobal) {
-      const todayLogs = logs.filter(l => {
-         const logDate = new Date(l.timestamp).toLocaleDateString('pt-BR');
-         const isSystemAutomatic = l.previousQuantity === l.newQuantity && 
-            (l.notes?.includes('[Pedido') || l.notes?.includes('[Aguardando'));
-         
-         if (logDate !== dateStr || isSystemAutomatic) return false;
-
-         const mat = materials?.find(m => m.id === l.materialId);
-         const isGiroItem = mat ? !!mat.isGiro : false;
-         if (stockFilter === 'pulmao' && isGiroItem) return false;
-         if (stockFilter === 'giro' && !isGiroItem) return false;
-
-         return true;
-      });
-
-      if (todayLogs.length === 0) {
-         return `Nenhuma contagem registrada hoje (${dateStr}).`;
-      }
-
-      const contributorsMap: Record<string, { name: string, count: number }> = {};
-      todayLogs.forEach(l => {
-         const uId = l.userId || 'unknown';
-         const uName = l.userName || 'Desconhecido';
-         if (!contributorsMap[uId]) {
-            contributorsMap[uId] = { name: uName, count: 0 };
-         }
-         contributorsMap[uId].count++;
-      });
-
-      let reportHeader = `*RELATÓRIO GERAL DE ESTOQUE (CONSOLIDADO)*\n`;
-      if (stockFilter === 'pulmao') {
-         reportHeader = `*RELATÓRIO GERAL - ESTOQUE PULMÃO*\n`;
-      } else if (stockFilter === 'giro') {
-         reportHeader = `*RELATÓRIO GERAL - ESTOQUE DE GIRO*\n`;
-      }
-
-      let report = reportHeader;
-      report += `${separator}\n`;
-      report += `*Data:* ${dateStr} às ${timeStr}\n`;
-      report += `*Setores:* Todos\n`;
-      report += `${separator}\n\n`;
-
-      report += `*ATIVIDADES POR COLABORADOR:*\n`;
-      Object.values(contributorsMap).forEach(c => {
-         report += `- *${c.name}:* ${c.count} produto(s) contado(s)\n`;
-      });
-      report += `\n${separator}\n\n`;
-
-      report += `*ITENS CONTADOS HOJE (${todayLogs.length}):*\n\n`;
-
-      todayLogs.forEach((l, idx) => {
-         const mat = materials?.find(m => m.id === l.materialId);
-         const unit = formatUnit(mat?.unit);
-         const skuText = l.materialCode ? ` (SKU: ${l.materialCode})` : '';
-         report += `*${idx + 1}. ${l.materialName}*${skuText}\n`;
-
-         const diff = l.newQuantity - l.previousQuantity;
-         const diffText = diff > 0 
-            ? ` _(Divergência: +${diff} ${unit})_` 
-            : diff < 0 
-               ? ` _(Divergência: ${diff} ${unit})_` 
-               : ` _(Sem divergência)_`;
-
-         report += `    - *Qtd Contada:* ${l.newQuantity} ${unit}${diffText}\n`;
-         report += `    - *Contador:* ${l.userName || 'Desconhecido'}\n`;
-         
-         const noteContent = l.notes && l.notes.trim() ? l.notes.trim() : 'Sem observações';
-         report += `    - *Obs:* ${noteContent}\n\n`;
-      });
-
-      report += `${separator}\n`;
-      report += `*Relatório Geral consolidado com sucesso.*`;
-      return report;
-   } else {
-      let report = '';
-      
-      targetUsers.forEach((user, index) => {
-         const userLogs = logs.filter(l => {
-            const logDate = new Date(l.timestamp).toLocaleDateString('pt-BR');
-            return l.userId === user.id && logDate === dateStr;
-         });
-         
-         const validLogs = userLogs.filter(l => {
-            const isSystemAutomatic = l.previousQuantity === l.newQuantity && 
-               (l.notes?.includes('[Pedido') || l.notes?.includes('[Aguardando'));
-            if (isSystemAutomatic) return false;
-
-            const mat = materials?.find(m => m.id === l.materialId);
-            const isGiroItem = mat ? !!mat.isGiro : false;
-            if (stockFilter === 'pulmao' && isGiroItem) return false;
-            if (stockFilter === 'giro' && !isGiroItem) return false;
-
-            return true;
-         });
-
-         if (validLogs.length === 0) return;
-
-         if (index > 0) report += `\n\n`;
-
-         let userReportTitle = `*RELATÓRIO DE CONTAGEM DE ESTOQUE*\n`;
-         if (stockFilter === 'pulmao') {
-            userReportTitle = `*RELATÓRIO DE CONTAGEM - ESTOQUE PULMÃO*\n`;
-         } else if (stockFilter === 'giro') {
-            userReportTitle = `*RELATÓRIO DE CONTAGEM - ESTOQUE DE GIRO*\n`;
-         }
-
-         report += userReportTitle;
-         report += `${separator}\n`;
-         report += `*Responsável:* ${user.userName}\n`;
-         report += `*Data:* ${dateStr} às ${timeStr}\n`;
-         report += `*Setor:* ${validLogs[0]?.materialSector || 'Geral'}\n`;
-         report += `${separator}\n\n`;
-         report += `*MEUS ITENS CONTADOS (${validLogs.length}):*\n\n`;
-
-         validLogs.forEach((l, idx) => {
-            const mat = materials?.find(m => m.id === l.materialId);
-            const unit = formatUnit(mat?.unit);
-            
-            const skuText = l.materialCode ? ` (SKU: ${l.materialCode})` : '';
-            report += `*${idx + 1}. ${l.materialName}*${skuText}\n`;
-            
-            const diff = l.newQuantity - l.previousQuantity;
-            const diffText = diff > 0 
-               ? ` _(Divergência: +${diff} ${unit})_` 
-               : diff < 0 
-                  ? ` _(Divergência: ${diff} ${unit})_` 
-                  : ` _(Sem divergência)_`;
-            
-            report += `    - *Qtd Contada:* ${l.newQuantity} ${unit}${diffText}\n`;
-            
-            const noteContent = l.notes && l.notes.trim() ? l.notes.trim() : 'Sem observações';
-            report += `    - *Obs:* ${noteContent}\n\n`;
-         });
-         
-         report += `${separator}\n`;
-         report += `*Relatório gerado com sucesso.*`;
-      });
-
-      if (!report) {
-         return `Nenhuma contagem registrada hoje (${dateStr}).`;
-      }
-      return report;
-   }
-};
-
-const copyToClipboard = async (text: string): Promise<boolean> => {
-  try {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } else {
-      const textArea = document.createElement("textarea");
-      textArea.value = text;
-      textArea.style.position = "fixed";
-      textArea.style.left = "-9999px";
-      document.body.appendChild(textArea);
-      textArea.select();
-      try {
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-        return true;
-      } catch (err) {
-        document.body.removeChild(textArea);
-        return false;
-      }
-    }
-  } catch (err) {
-    return false;
-  }
-};
-
-interface ReportPreviewModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  reportText?: string;
-  title: string;
-  logs?: StockCountLog[];
-  materials?: Material[];
-  targetUsers?: { id: string, userName: string }[];
-  isGlobal?: boolean;
-}
-
-export const ReportPreviewModal = ({ 
-  isOpen, 
-  onClose, 
-  reportText: initialReportText, 
-  title: initialTitle,
-  logs,
-  materials,
-  targetUsers = [],
-  isGlobal = false
-}: ReportPreviewModalProps) => {
-  const [copied, setCopied] = useState(false);
-  const [stockFilter, setStockFilter] = useState<'all' | 'pulmao' | 'giro'>('all');
-  const isMobile = typeof window !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-  const reportText = useMemo(() => {
-    if (logs && materials) {
-      return generateReportText(targetUsers, logs, materials, isGlobal, stockFilter);
-    }
-    return initialReportText || '';
-  }, [logs, materials, targetUsers, isGlobal, stockFilter, initialReportText]);
-
-  const title = useMemo(() => {
-    if (stockFilter === 'all') return initialTitle;
-    if (stockFilter === 'pulmao') return `${initialTitle} (Estoque Pulmão)`;
-    return `${initialTitle} (Giro do Dia)`;
-  }, [initialTitle, stockFilter]);
-
-  const handleCopy = async () => {
-    const success = await copyToClipboard(reportText);
-    if (success) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } else {
-      alert("Erro ao copiar o texto. Por favor, selecione e copie manualmente.");
-    }
-  };
-
-  const handleExportPDF = () => {
-    const doc = new jsPDF('p', 'mm', 'a4');
-    
-    doc.setProperties({
-      title: title || 'Relatório de Estoque',
-      subject: 'Relatório do Dashboard',
-      author: 'Sistema de Estoque',
-      creator: 'Estoque Manager'
-    });
-
-    doc.setFont("helvetica", "normal");
-    
-    doc.setFillColor(15, 23, 42);
-    doc.rect(0, 0, 210, 40, 'F');
-    
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(16);
-    doc.setFont("helvetica", "bold");
-    doc.text((title || 'RELATÓRIO DE ESTOQUE').toUpperCase(), 15, 16);
-    
-    doc.setFontSize(8.5);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(203, 213, 225);
-    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`, 15, 25);
-    doc.text("Sistema de Gestão de Estoque Inteligente", 15, 31);
-
-    let currentY = 55;
-    doc.setTextColor(30, 41, 59);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-
-    const lines = reportText.split('\n');
-    lines.forEach((line) => {
-      if (currentY > 275) {
-        doc.addPage();
-        currentY = 20;
-      }
-
-      const cleanLine = line.replace(/\*/g, '').replace(/_/g, '');
-      
-      if (line.startsWith('*') && line.endsWith('*')) {
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(12);
-        doc.text(cleanLine, 15, currentY);
-        currentY += 7;
-      } else if (line.startsWith('===') || line.startsWith('---')) {
-        doc.setDrawColor(226, 232, 240);
-        doc.line(15, currentY - 2, 195, currentY - 2);
-        currentY += 4;
-      } else {
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9.5);
-        if (line.trim().startsWith('-')) {
-          doc.text(cleanLine, 20, currentY);
-        } else if (line.startsWith('    -')) {
-          doc.text(cleanLine, 25, currentY);
-        } else {
-          doc.text(cleanLine, 15, currentY);
-        }
-        currentY += 6;
-      }
-    });
-
-    const fileName = (title || 'relatorio_estoque').toLowerCase().replace(/\s+/g, '_') + '_' + new Date().toISOString().split('T')[0] + '.pdf';
-    doc.save(fileName);
-  };
-
-  useEffect(() => {
-    if (isOpen) {
-      setStockFilter('all');
-    }
-  }, [isOpen]);
-
-  if (!isOpen) return null;
-
-  return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <motion.div 
-           initial={{ opacity: 0 }} 
-           animate={{ opacity: 1 }} 
-           exit={{ opacity: 0 }}
-           className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-           onClick={onClose}
-        />
-        <motion.div 
-           initial={{ scale: 0.95, y: 20 }}
-           animate={{ scale: 1, y: 0 }}
-           exit={{ scale: 0.95, y: 20 }}
-           className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-2xl p-6 relative overflow-hidden z-10 flex flex-col max-h-[85vh]"
-        >
-           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-emerald-500"></div>
-           
-           <div className="mb-4 mt-2 flex justify-between items-start gap-4">
-              <div className="min-w-0 flex-1">
-                 <h3 className="text-xl font-bold text-foreground truncate">{title}</h3>
-                 <p className="text-sm text-muted-foreground mt-1 truncate">Visualize, copie ou envie o relatório formatado abaixo.</p>
-              </div>
-              <button onClick={onClose} className="p-1 hover:bg-secondary rounded-lg transition-colors text-muted-foreground hover:text-foreground shrink-0">
-                 <X className="w-5 h-5" />
-              </button>
-           </div>
-
-           {(logs || materials) && (
-             <div className="mb-4 bg-secondary/50 p-1 rounded-xl border border-border flex gap-1 shadow-inner shrink-0 overflow-x-auto">
-               <button
-                 type="button"
-                 onClick={() => setStockFilter('all')}
-                 className={cn(
-                   "flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all duration-200 whitespace-nowrap",
-                   stockFilter === 'all'
-                     ? "bg-blue-600 text-white shadow-sm"
-                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/40"
-                 )}
-               >
-                 🌐 Todo Estoque
-               </button>
-               <button
-                 type="button"
-                 onClick={() => setStockFilter('pulmao')}
-                 className={cn(
-                   "flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all duration-200 whitespace-nowrap",
-                   stockFilter === 'pulmao'
-                     ? "bg-blue-600 text-white shadow-sm"
-                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/40"
-                 )}
-               >
-                 📦 Estoque Pulmão
-               </button>
-               <button
-                 type="button"
-                 onClick={() => setStockFilter('giro')}
-                 className={cn(
-                   "flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 whitespace-nowrap",
-                   stockFilter === 'giro'
-                     ? "bg-amber-600 text-white shadow-sm"
-                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/40"
-                 )}
-               >
-                 ⚡ Estoque de Giro
-               </button>
-             </div>
-           )}
-
-           <div className="flex-1 overflow-y-auto mb-6 bg-secondary/30 p-4 rounded-xl border border-border/80 font-mono text-sm text-foreground whitespace-pre-wrap select-all max-h-[40vh] shadow-inner custom-scrollbar">
-              {reportText}
-           </div>
-
-           <div className="flex flex-col gap-3 pt-4 border-t border-border shrink-0 w-full">
-              <div className="grid grid-cols-3 gap-2 w-full">
-                 <button 
-                    onClick={handleCopy}
-                    className={cn(
-                      "flex items-center justify-center gap-1.5 px-2 py-3 rounded-xl text-xs font-semibold transition-all shadow-sm truncate",
-                      copied 
-                        ? "bg-emerald-600 text-white hover:bg-emerald-700" 
-                        : "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/10"
-                    )}
-                 >
-                    {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copied ? "Copiado!" : "Copiar"}</span>
-                 </button>
-                 <button 
-                    onClick={handleExportPDF}
-                    className="flex items-center justify-center gap-1.5 px-2 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold transition-all shadow-sm shadow-rose-500/10 truncate"
-                    title="Exportar como PDF profissional"
-                 >
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>PDF</span>
-                 </button>
-                 <a 
-                    href={getWhatsAppShareUrl(reportText)}
-                    target={isMobile ? undefined : "_blank"}
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-1.5 px-2 py-3 bg-[#25D366] hover:bg-[#1DA851] text-white rounded-xl text-xs font-semibold transition-colors shadow-sm truncate"
-                 >
-                    <MessageCircle className="w-3.5 h-3.5" />
-                    <span>WhatsApp</span>
-                 </a>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-3 w-full">
-                 <a 
-                    href={getTelegramShareUrl(reportText)}
-                    target={isMobile ? undefined : "_blank"}
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0088cc] hover:bg-[#0077b3] text-white rounded-xl text-xs font-semibold transition-colors shadow-sm truncate"
-                 >
-                    <Share2 className="w-4 h-4" />
-                    <span>Telegram</span>
-                 </a>
-                 <button 
-                    onClick={onClose}
-                    className="px-4 py-2.5 border border-border text-foreground font-semibold rounded-xl hover:bg-secondary transition-colors text-xs h-[40px] truncate"
-                 >
-                    Fechar
-                 </button>
-              </div>
-           </div>
-        </motion.div>
-      </div>
-    </AnimatePresence>
-  );
-};
-
-function ActiveDurationTimer({ startDate }: { startDate: string }) {
-  const [elapsed, setElapsed] = useState('');
-
-  useEffect(() => {
-    const calculate = () => {
-      const start = new Date(startDate).getTime();
-      const now = Date.now();
-      const diff = Math.max(0, now - start);
-
-      const days = Math.floor(diff / (24 * 60 * 60 * 1000));
-      const hours = Math.floor((diff % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
-      const minutes = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000));
-      const seconds = Math.floor((diff % (60 * 1000)) / 1000);
-
-      const parts = [];
-      if (days > 0) {
-        parts.push(`${days}d`);
-      }
-      if (hours > 0 || days > 0) {
-        parts.push(`${hours}h`);
-      }
-      parts.push(`${minutes}m`);
-      parts.push(`${seconds}s`);
-
-      setElapsed(parts.join(' '));
-    };
-
-    calculate();
-    const interval = setInterval(calculate, 1000);
-    return () => clearInterval(interval);
-  }, [startDate]);
-
-  return (
-    <span className="font-mono text-xs font-semibold bg-secondary text-secondary-foreground border border-border/80 px-2.5 py-1 rounded-xl inline-flex items-center gap-1.5 shrink-0 select-none">
-      <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-      {elapsed}
-    </span>
-  );
-}
-
-function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials: Material[], logs: StockCountLog[], timeLogs: TimeLog[], onRefresh?: () => void }) {
-  const { token, user } = useAuth();
+function ManagerDashboard({ 
+  materials, 
+  logs, 
+  timeLogs, 
+  onRefresh 
+}: { 
+  materials: Material[]; 
+  logs: StockCountLog[]; 
+  timeLogs: TimeLog[]; 
+  onRefresh?: () => void; 
+}) {
+  const { token } = useAuth();
   const [pendingDelivery, setPendingDelivery] = useState<Material | null>(null);
   const [imageModalMaterial, setImageModalMaterial] = useState<Material | null>(null);
   const [deliveredQuantity, setDeliveredQuantity] = useState<number>(0);
-  const [reportText, setReportText] = useState<string>('');
   const [isReportOpen, setIsReportOpen] = useState<boolean>(false);
 
   const [pendingOrder, setPendingOrder] = useState<Material | null>(null);
@@ -505,7 +43,7 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
   const [countStatus, setCountStatus] = useState<Material['status']>('COMPLETED');
   const [countTargetStock, setCountTargetStock] = useState<'pulmao' | 'giro'>('giro');
 
-  const handleCountSubmitManager = async (e: React.FormEvent) => {
+  const handleCountSubmitManager = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeMaterial) return;
     try {
@@ -524,9 +62,9 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
     } catch (err) {
       alert('Erro ao registrar contagem');
     }
-  };
+  }, [activeMaterial, countQuantity, countNotes, countStatus, countTargetStock, token, onRefresh]);
 
-  const handleConfirmOrder = async (e: React.FormEvent) => {
+  const handleConfirmOrder = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pendingOrder) return;
 
@@ -557,9 +95,9 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
     } catch (err) {
       alert('Erro ao registrar pedido');
     }
-  };
+  }, [pendingOrder, orderTag, orderPackageQuantity, orderPackageUnit, orderNotes, token, onRefresh]);
 
-  const handleConfirmDelivery = async (e: React.FormEvent) => {
+  const handleConfirmDelivery = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pendingDelivery) return;
     try {
@@ -580,12 +118,12 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
     } catch(e) {
       alert('Erro ao atualizar status');
     }
-  };
+  }, [pendingDelivery, deliveredQuantity, token, onRefresh]);
 
-  const pendingRequests = materials.filter(m => m.status === 'PURCHASE_REQUESTED' && (m.requestedQuantity === null || m.requestedQuantity === 0));
-  const activeOrders = materials.filter(m => m.status === 'PURCHASE_REQUESTED' && (m.requestedQuantity !== null && m.requestedQuantity > 0));
-  const completed = materials.filter(m => m.status === 'COMPLETED').length;
-  const awaiting = materials.filter(m => m.status === 'AWAITING_CONFIRMATION').length;
+  const pendingRequests = useMemo(() => materials.filter(m => m.status === 'PURCHASE_REQUESTED' && (m.requestedQuantity === null || m.requestedQuantity === 0)), [materials]);
+  const activeOrders = useMemo(() => materials.filter(m => m.status === 'PURCHASE_REQUESTED' && (m.requestedQuantity !== null && m.requestedQuantity > 0)), [materials]);
+  const completed = useMemo(() => materials.filter(m => m.status === 'COMPLETED').length, [materials]);
+  const awaiting = useMemo(() => materials.filter(m => m.status === 'AWAITING_CONFIRMATION').length, [materials]);
 
   const needsAttentionConferencia = useMemo(() => {
     const list: any[] = [];
@@ -641,17 +179,19 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
     });
   }, [materials]);
 
-  const chartData = Array.from({ length: 7 }).map((_, i) => {
-     const date = subDays(new Date(), 6 - i);
-     const dayLogs = logs.filter(l => new Date(l.timestamp).getDate() === date.getDate()).length;
-     return {
-        name: format(date, 'dd/MM'),
-        contagens: dayLogs > 0 ? dayLogs : Math.floor(Math.random() * 20) + 5
-     };
-  });
+  const chartData = useMemo(() => {
+    return Array.from({ length: 7 }).map((_, i) => {
+       const date = subDays(new Date(), 6 - i);
+       const dayLogs = logs.filter(l => new Date(l.timestamp).getDate() === date.getDate()).length;
+       return {
+          name: format(date, 'dd/MM'),
+          contagens: dayLogs > 0 ? dayLogs : Math.floor(Math.random() * 20) + 5
+       };
+    });
+  }, [logs]);
 
   const productivity = useMemo(() => {
-    const usersData: Record<string, { id: string, userName: string, counts: number, hoursLogged: number }> = {};
+    const usersData: Record<string, { id: string; userName: string; counts: number; hoursLogged: number }> = {};
     
     logs.forEach(log => {
       if (!usersData[log.userId]) {
@@ -705,19 +245,19 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
         .map(l => l.materialId)
     );
 
-    const completed = giroMaterials.filter(m => countedIdsToday.has(m.id)).length;
-    const pending = giroMaterials.length - completed;
+    const completedGiro = giroMaterials.filter(m => countedIdsToday.has(m.id)).length;
+    const pendingGiro = giroMaterials.length - completedGiro;
 
     return {
       total: giroMaterials.length,
-      completed,
-      pending,
-      percentage: giroMaterials.length > 0 ? Math.round((completed / giroMaterials.length) * 100) : 0
+      completed: completedGiro,
+      pending: pendingGiro,
+      percentage: giroMaterials.length > 0 ? Math.round((completedGiro / giroMaterials.length) * 100) : 0
     };
   }, [materials, logs]);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-2 sm:px-4 pb-12">
+    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
       {pendingRequests.length > 0 && (
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
@@ -737,7 +277,8 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
         </motion.div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      {/* Cards de Estatísticas Responsivos */}
+      <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <div className="bg-card/50 backdrop-blur-md p-5 sm:p-6 rounded-2xl border border-border shadow-sm flex items-center gap-4">
            <div className="p-3 bg-amber-500/10 text-amber-500 dark:text-amber-400 rounded-xl shrink-0">
               <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -779,6 +320,7 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
         </div>
       </div>
 
+      {/* Banner de Giro do Dia */}
       <div className="bg-card/50 backdrop-blur-md p-5 sm:p-6 rounded-2xl border border-border shadow-sm overflow-hidden relative">
         <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none" />
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 w-full">
@@ -820,8 +362,9 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-         <div className="lg:col-span-2 bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm p-5 sm:p-6 flex flex-col min-w-0">
+      {/* Gráfico de Tendências e Seção de Atenção */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+         <div className="xl:col-span-2 lg:col-span-3 col-span-1 bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm p-5 sm:p-6 flex flex-col min-w-0">
             <div className="mb-4">
                <h3 className="font-bold text-foreground flex items-center gap-2 text-base">
                   <TrendingUp className="w-4 h-4 text-blue-500" /> Fluxo de Contagens (7 Dias)
@@ -850,10 +393,10 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
             </div>
          </div>
 
-         <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden w-full min-w-0">
+         <div className="xl:col-span-1 lg:col-span-3 col-span-1 bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden w-full min-w-0">
             <div className="px-5 py-4 border-b border-border bg-card/80 flex items-center justify-between gap-4 shrink-0">
                <div className="min-w-0 flex-1">
-                  <h3 className="font-bold text-foreground text-sm sm:text-base truncate">Atenção Necessária (Conferência)</h3>
+                  <h3 className="font-bold text-foreground text-sm sm:text-base truncate">Atenção Necessária</h3>
                   <p className="text-[10px] text-muted-foreground truncate block mt-0.5">Acompanhamento de recebido/entregue e contagem pendente</p>
                </div>
                {needsAttentionConferencia.length > 0 && (
@@ -1061,7 +604,7 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
       <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden w-full min-w-0 mt-6">
          <div className="px-5 py-4 border-b border-border bg-card/80">
             <h3 className="font-bold text-foreground flex items-center gap-2 text-sm sm:text-base">
-               <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Produtos Recém Repostos / Entregues
+               <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Produtos Recém Repostos / Entregues (24h)
             </h3>
             <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Produtos cujas entregas foram confirmadas recentemente (últimas 24 horas).</p>
          </div>
@@ -1100,7 +643,7 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
          </div>
       </div>
 
-      {/* Listagem de Estoque de Giro */}
+      {/* Listagem de Estoque de Giro - Breakpoint de Tabela para Card em 'lg' para evitar espremer */}
       <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden w-full min-w-0 mt-6">
          <div className="px-5 py-4 border-b border-border bg-card/80 flex items-center justify-between gap-4 flex-wrap sm:flex-nowrap">
             <div className="min-w-0 flex-1">
@@ -1115,7 +658,7 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
          </div>
          
          <div className="w-full">
-            <div className="hidden md:block w-full overflow-x-auto">
+            <div className="hidden lg:block w-full overflow-x-auto">
                <table className="w-full text-left border-collapse table-fixed min-w-[750px]">
                   <thead>
                      <tr className="bg-secondary/30 border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
@@ -1135,7 +678,7 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
                                  <button 
                                     type="button"
                                     onClick={() => setImageModalMaterial(mat)}
-                                    className="text-amber-500 hover:text-amber-400 p-1 rounded hover:bg-amber-500/10 transition-colors shrink-0"
+                                    className="text-amber-500 hover:text-amber-400 p-1.5 rounded hover:bg-amber-500/10 transition-colors shrink-0"
                                     title="Visualizar Foto"
                                  >
                                     <Eye className="w-4 h-4" />
@@ -1179,7 +722,7 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
                </table>
             </div>
 
-            <div className="md:hidden block divide-y divide-border w-full">
+            <div className="lg:hidden block divide-y divide-border w-full">
                {materials.filter(m => m.isGiro).map(mat => (
                   <div key={mat.id} className="p-4 space-y-3 w-full min-w-0">
                      <div className="flex justify-between items-start gap-4 w-full min-w-0">
@@ -1229,7 +772,7 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
          </div>
       </div>
 
-      {/* Produtividade da Equipe */}
+      {/* Produtividade da Equipe - Tabela responsiva no breakpoint 'lg' */}
       <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm p-4 sm:p-6 mt-6 w-full min-w-0">
          <div className="flex items-center justify-between mb-5 gap-4 flex-wrap sm:flex-nowrap">
             <div className="min-w-0 flex-1">
@@ -1247,7 +790,7 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
             </button>
          </div>
          <div className="w-full">
-             <div className="hidden md:block w-full overflow-x-auto">
+             <div className="hidden lg:block w-full overflow-x-auto">
                <table className="w-full text-left border-collapse table-fixed min-w-[700px]">
                   <thead>
                     <tr className="bg-secondary/50 border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
@@ -1300,7 +843,7 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
                </table>
              </div>
 
-             <div className="md:hidden block divide-y divide-border w-full">
+             <div className="lg:hidden block divide-y divide-border w-full">
                {productivity.map((prod, index) => {
                   const avgPerHour = prod.hoursLogged > 0 ? (prod.counts / prod.hoursLogged).toFixed(1) : prod.counts.toFixed(1);
                   return (
@@ -1357,7 +900,7 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
                initial={{ scale: 0.95, y: 20 }}
                animate={{ scale: 1, y: 0 }}
                exit={{ scale: 0.95, y: 20 }}
-               className="bg-card/70 backdrop-blur-md border border-border/50 w-full max-w-md rounded-2xl shadow-2xl relative z-10 overflow-hidden"
+               className="bg-card/70 backdrop-blur-md border border-border/50 w-full max-w-md rounded-2xl shadow-2xl relative z-10 overflow-hidden max-h-[calc(100vh-2rem)] overflow-y-auto"
             >
                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-teal-500"></div>
                <div className="p-6">
@@ -1527,9 +1070,14 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
               >
                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-blue-500"></div>
                  
-                 <div className="mb-6 mt-2">
-                    <h3 className="text-xl font-bold text-foreground">Ajustar Estoque (Gestão)</h3>
-                    <p className="text-sm text-muted-foreground mt-1">{activeMaterial.name} ({activeMaterial.code})</p>
+                 <div className="mb-6 mt-2 flex justify-between items-start gap-4">
+                    <div className="min-w-0 flex-1">
+                       <h3 className="text-xl font-bold text-foreground">Ajustar Estoque (Gestão)</h3>
+                       <p className="text-sm text-muted-foreground mt-1 truncate">{activeMaterial.name} ({activeMaterial.code})</p>
+                    </div>
+                    <button type="button" onClick={() => setShowCountModal(false)} className="p-1 text-muted-foreground hover:bg-secondary rounded-lg shrink-0 transition-colors">
+                       <X className="w-5 h-5" />
+                    </button>
                  </div>
 
                  <form onSubmit={handleCountSubmitManager} className="space-y-4">
@@ -1657,7 +1205,15 @@ function ManagerDashboard({ materials, logs, timeLogs, onRefresh }: { materials:
   );
 }
 
-function AttendantDashboard({ materials, logs, onRefresh }: { materials: Material[], logs: StockCountLog[], onRefresh: () => void }) {
+function AttendantDashboard({ 
+  materials, 
+  logs, 
+  onRefresh 
+}: { 
+  materials: Material[]; 
+  logs: StockCountLog[]; 
+  onRefresh: () => void; 
+}) {
   const { token, user } = useAuth();
   const [search, setSearch] = useState('');
   const [imageModalMaterial, setImageModalMaterial] = useState<Material | null>(null);
@@ -1690,14 +1246,14 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
         .map(l => l.materialId)
     );
 
-    const completed = giroMaterials.filter(m => countedIdsToday.has(m.id)).length;
-    const pending = giroMaterials.length - completed;
+    const completedGiro = giroMaterials.filter(m => countedIdsToday.has(m.id)).length;
+    const pendingGiro = giroMaterials.length - completedGiro;
 
     return {
       total: giroMaterials.length,
-      completed,
-      pending,
-      percentage: giroMaterials.length > 0 ? Math.round((completed / giroMaterials.length) * 100) : 0
+      completed: completedGiro,
+      pending: pendingGiro,
+      percentage: giroMaterials.length > 0 ? Math.round((completedGiro / giroMaterials.length) * 100) : 0
     };
   }, [materials, logs]);
 
@@ -1747,7 +1303,7 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
     return filteredMaterials.slice(0, visibleCount);
   }, [filteredMaterials, visibleCount]);
 
-  const handleScanResult = (decodedText: string) => {
+  const handleScanResult = useCallback((decodedText: string) => {
     setShowScanner(false);
     
     const found = materials.find(m => m.codigoBarras === decodedText || m.code === decodedText);
@@ -1763,9 +1319,9 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
     } else {
       alert(`Produto com código ${decodedText} não encontrado.`);
     }
-  };
+  }, [materials]);
 
-  const handleCountSubmit = async (e: React.FormEvent) => {
+  const handleCountSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeMaterial) return;
     try {
@@ -1784,10 +1340,11 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
     } catch (err) {
       alert('Erro ao registrar contagem');
     }
-  };
+  }, [activeMaterial, countQuantity, countNotes, countStatus, countTargetStock, token, onRefresh]);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-2 sm:px-4 pb-12">
+    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+      {/* Banner Giro do Dia */}
       <div className="bg-card/50 backdrop-blur-md p-5 sm:p-6 rounded-2xl border border-border shadow-sm overflow-hidden relative">
         <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none" />
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 w-full">
@@ -1829,10 +1386,11 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
         </div>
       </div>
       
+      {/* Grade de Layout Inteligente: Sidebar lateral no desktop/notebook, empilhado no mobile */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-         <div className="lg:col-span-2 space-y-6 w-full min-w-0">
+         <div className="lg:col-span-2 col-span-1 space-y-6 w-full min-w-0">
             <div className="bg-card/50 backdrop-blur-md p-4 sm:p-6 rounded-2xl border border-border shadow-sm flex flex-col gap-4 justify-between w-full">
-               <div className="flex border-b border-border/60 pb-1 mb-1 gap-4 overflow-x-auto">
+               <div className="flex border-b border-border/60 pb-1 mb-1 gap-4 overflow-x-auto scrollbar-none">
                   <button
                      onClick={() => setDashboardStockTab('pulmao')}
                      className={cn(
@@ -1868,7 +1426,7 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
                      </h2>
                      <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Busque o produto, utilize os filtros rápidos ou escaneie para contar.</p>
                   </div>
-                  <div className="flex bg-secondary/50 p-1 rounded-xl gap-1 shrink-0 overflow-x-auto w-full sm:w-auto">
+                  <div className="flex bg-secondary/50 p-1 rounded-xl gap-1 shrink-0 overflow-x-auto scrollbar-none w-full sm:w-auto">
                      <button onClick={() => setFilterMode('PENDING')} className={cn("flex-1 sm:flex-none px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap", filterMode === 'PENDING' ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>Pendentes</button>
                      <button onClick={() => setFilterMode('AWAITING_CONFIRMATION')} className={cn("flex-1 sm:flex-none px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap", filterMode === 'AWAITING_CONFIRMATION' ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>Aguardando</button>
                      <button onClick={() => setFilterMode('ALL')} className={cn("flex-1 sm:flex-none px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap", filterMode === 'ALL' ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>Todos</button>
@@ -1905,7 +1463,7 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
                   </div>
                ) : (
                   <>
-                  <div className="hidden md:block w-full overflow-x-auto">
+                  <div className="hidden lg:block w-full overflow-x-auto">
                       <table className="w-full text-left border-collapse table-fixed min-w-[700px]">
                         <thead>
                           <tr className="bg-secondary/50 border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
@@ -1971,7 +1529,7 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
                       </table>
                    </div>
 
-                   <div className="md:hidden block divide-y divide-border w-full">
+                   <div className="lg:hidden block divide-y divide-border w-full">
                      {visibleMaterials.map(mat => (
                         <div key={mat.id} className="p-4 space-y-3 w-full min-w-0">
                           <div className="flex justify-between items-start gap-3 w-full min-w-0">
@@ -2045,8 +1603,8 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
             </div>
          </div>
 
-         {/* Painel Lateral Direito */}
-         <div className="xl:col-span-1 lg:col-span-4 flex flex-col gap-6 w-full min-w-0">
+         {/* Painel Lateral Direito - Corrigida a prop col-span de 4 para 1 na grade lg:grid-cols-3 */}
+         <div className="lg:col-span-1 col-span-1 flex flex-col gap-6 w-full min-w-0">
             <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm flex flex-col h-[250px] w-full">
                <div className="px-5 py-4 border-b border-border bg-card/80">
                   <h3 className="font-bold text-foreground flex items-center gap-2 text-sm">
@@ -2310,7 +1868,6 @@ function AttendantDashboard({ materials, logs, onRefresh }: { materials: Materia
   );
 }
 
-// COMPONENTE DE SELEÇÃO INALTERADO DE FLUXO DE RENDERS
 export default function Dashboard() {
   const { token, isManager, user } = useAuth();
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -2318,7 +1875,7 @@ export default function Dashboard() {
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = (isBackground = false) => {
+  const fetchData = useCallback((isBackground = false) => {
     if (!isBackground) setLoading(true);
     const promises = [
       apiFetch('/api/materials', {}, token).catch(() => []),
@@ -2335,7 +1892,7 @@ export default function Dashboard() {
     }).finally(() => {
       if (!isBackground) setLoading(false);
     });
-  };
+  }, [token, isManager]);
 
   useEffect(() => {
     fetchData(false);
@@ -2353,7 +1910,7 @@ export default function Dashboard() {
       clearInterval(interval);
       window.removeEventListener('products-changed', handleProductsChanged);
     };
-  }, [token, isManager, user]);
+  }, [fetchData, user]);
 
   if (loading) return <div className="p-8 text-center text-muted-foreground">Carregando dashboard...</div>;
 
