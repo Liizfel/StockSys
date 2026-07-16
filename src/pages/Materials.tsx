@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Material, Sector, Supplier } from '../types';
@@ -13,6 +13,7 @@ import { StockCountLog } from '../types';
 import { BarcodeScanner } from '../components/BarcodeScanner';
 import { ProductImageModal } from '../components/ProductImageModal';
 
+// Gerador de dados de mini gráfico para efeito de hover
 const generateMiniChartData = (baseQty: number) => {
    return Array.from({ length: 5 }).map((_, i) => ({
       val: Math.max(0, baseQty + (Math.random() * 20 - 10) * (i - 2))
@@ -28,17 +29,192 @@ const TABLE_COLUMNS = [
   { id: 'actions', label: 'Ações' }
 ];
 
+interface MaterialRowProps {
+  mat: Material;
+  visibleCols: string[];
+  activeTab: 'visao_geral' | 'pulmao' | 'giro';
+  isManager: boolean;
+  sectors: Sector[];
+  suppliers: Supplier[];
+  onOpenHistory: (mat: Material) => void;
+  onOpenImage: (mat: Material) => void;
+  onOpenCount: (mat: Material) => void;
+  onOpenEdit: (mat: Material) => void;
+  onOpenDetail: (mat: Material) => void;
+}
+
+const MaterialRow = React.memo(({
+  mat,
+  visibleCols,
+  activeTab,
+  isManager,
+  sectors,
+  suppliers,
+  onOpenHistory,
+  onOpenImage,
+  onOpenCount,
+  onOpenEdit,
+  onOpenDetail
+}: MaterialRowProps) => {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <motion.tr 
+      layout
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="hover:bg-secondary/30 cursor-pointer transition-colors relative group"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={(e) => {
+        const target = e.target as HTMLElement;
+        if (target.closest('button') || target.closest('a')) return;
+        onOpenDetail(mat);
+      }}
+    >
+      {visibleCols.includes('code') && (
+        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-muted-foreground min-w-0">
+           <span className="block truncate">{mat.code}</span>
+           {mat.codigoBarras && <span className="text-xs opacity-50 block truncate">{mat.codigoBarras}</span>}
+        </td>
+      )}
+      {visibleCols.includes('material') && (
+        <td className="px-6 py-4 whitespace-nowrap relative min-w-0">
+          <div className="text-sm font-medium text-foreground flex items-center gap-2 max-w-full">
+            <span className="truncate block flex-1">{mat.name}</span>
+            {mat.repostedAt && (new Date().getTime() - new Date(mat.repostedAt).getTime() < 24 * 60 * 60 * 1000) && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 animate-pulse shrink-0">Novo</span>
+            )}
+          </div>
+          {mat.notes && <div className="text-xs text-muted-foreground mt-1 max-w-full truncate">{mat.notes}</div>}
+        </td>
+      )}
+      {visibleCols.includes('sector') && (
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground truncate">{mat.sector}</td>
+      )}
+      {visibleCols.includes('stock') && (
+        <td className="px-6 py-4 whitespace-nowrap relative min-w-0">
+          <div className="flex items-center gap-2 max-w-full">
+             {activeTab === 'giro' ? (
+                <span className="text-sm font-bold text-amber-500 flex items-center gap-1 truncate">⚡ {mat.quantityGiro || 0} {formatUnit(mat.unit)}</span>
+             ) : activeTab === 'pulmao' ? (
+                <span className="text-sm font-bold text-blue-500 flex items-center gap-1 truncate">📦 {mat.quantity || 0} {formatUnit(mat.unit)}</span>
+             ) : (
+                <div className="flex flex-col gap-0.5 min-w-0 max-w-full">
+                   {mat.isPulmao !== false && (
+                      <span className="text-xs font-semibold text-foreground flex items-center gap-1 truncate">
+                         <span className="text-blue-500" title="Estoque Pulmão">📦</span> {mat.quantity || 0} {formatUnit(mat.unit)}
+                      </span>
+                   )}
+                   {mat.isGiro && (
+                      <span className="text-xs font-semibold text-foreground flex items-center gap-1 truncate">
+                         <span className="text-amber-500" title="Giro do Dia">⚡</span> {mat.quantityGiro || 0} {formatUnit(mat.unit)}
+                      </span>
+                   )}
+                </div>
+             )}
+             {isHovered && (
+                <motion.div 
+                   initial={{ opacity: 0, scale: 0.8, x: -10 }}
+                   animate={{ opacity: 1, scale: 1, x: 0 }}
+                   className="absolute left-16 top-1/2 -translate-y-1/2 h-8 w-20 bg-background/80 rounded border border-border px-1 pointer-events-none z-20"
+                >
+                   <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={generateMiniChartData(activeTab === 'giro' ? (mat.quantityGiro || 0) : activeTab === 'pulmao' ? mat.quantity : (mat.quantity || 0) + (mat.quantityGiro || 0))}>
+                         <Line type="monotone" dataKey="val" stroke="#6366f1" strokeWidth={2} dot={false} isAnimationActive={false} />
+                      </LineChart>
+                   </ResponsiveContainer>
+                </motion.div>
+             )}
+          </div>
+        </td>
+      )}
+      {visibleCols.includes('status') && (
+        <td className="px-6 py-4 whitespace-nowrap min-w-0">
+          {activeTab === 'giro' ? (
+            <StatusBadge status={mat.statusGiro || 'PENDING'} />
+          ) : activeTab === 'pulmao' ? (
+            <StatusBadge status={mat.status} />
+          ) : (
+            <div className="flex flex-col gap-1 max-w-full">
+              {mat.isPulmao !== false && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground shrink-0">📦</span>
+                  <StatusBadge status={mat.status} />
+                </div>
+              )}
+              {mat.isGiro && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground shrink-0">⚡</span>
+                  <StatusBadge status={mat.statusGiro || 'PENDING'} />
+                </div>
+              )}
+            </div>
+          )}
+        </td>
+      )}
+      {visibleCols.includes('actions') && (
+        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+          <div className="flex justify-end gap-1">
+             <button 
+               onClick={() => onOpenHistory(mat)}
+               className="text-emerald-500 hover:text-emerald-400 p-1.5 rounded-lg hover:bg-emerald-500/10 transition-colors"
+               title="Ver Histórico de Contagens"
+             >
+               <History className="w-4.5 h-4.5" />
+             </button>
+             <button 
+               onClick={() => onOpenImage(mat)}
+               className="text-amber-500 hover:text-amber-400 p-1.5 rounded-lg hover:bg-amber-500/10 transition-colors"
+               title="Visualizar Foto Ilustrativa"
+             >
+               <Eye className="w-4.5 h-4.5" />
+             </button>
+             <button 
+               onClick={() => onOpenCount(mat)}
+               className="text-blue-500 hover:text-blue-400 p-1.5 rounded-lg hover:bg-blue-500/10 transition-colors"
+               title="Contar Estoque"
+             >
+               <ClipboardCheck className="w-4.5 h-4.5" />
+             </button>
+             {isManager && (
+               <button 
+                 onClick={() => onOpenEdit(mat)}
+                 className="text-indigo-500 hover:text-indigo-400 p-1.5 rounded-lg hover:bg-indigo-500/10 transition-colors"
+                 title="Editar Produto"
+               >
+                 <Edit3 className="w-4.5 h-4.5" />
+               </button>
+             )}
+          </div>
+        </td>
+      )}
+    </motion.tr>
+  );
+});
+
+MaterialRow.displayName = 'MaterialRow';
+
 export default function Materials() {
   const { token, isManager, user } = useAuth();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filterSector, setFilterSector] = useState('');
   const [loading, setLoading] = useState(true);
-  const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'visao_geral' | 'pulmao' | 'giro'>('visao_geral');
 
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 150);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  // Preferências de colunas
   const [showColumnsModal, setShowColumnsModal] = useState(false);
   const [visibleCols, setVisibleCols] = useState<string[]>([]);
   
@@ -63,6 +239,7 @@ export default function Materials() {
      }
   };
 
+  // Estados do Modal de Contagem e Detalhes
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
   const [countQuantity, setCountQuantity] = useState<number | string>('');
   const [countNotes, setCountNotes] = useState('');
@@ -115,6 +292,7 @@ export default function Materials() {
   const [showScanner, setShowScanner] = useState(false);
   const [scanTarget, setScanTarget] = useState<'search' | 'editMaterial' | null>(null);
 
+  // Estado do Modal de Confirmação de Quantidades (Pulmão/Giro)
   const [showConfirmQuantitiesModal, setShowConfirmQuantitiesModal] = useState(false);
   const [quantitiesModalData, setQuantitiesModalData] = useState({
     productName: '',
@@ -173,11 +351,13 @@ export default function Materials() {
     setShowConfirmQuantitiesModal(true);
   };
 
+  // Estado do Modal de Cadastro de Fornecedor
   const [showAddSupplierModal, setShowAddSupplierModal] = useState(false);
   const [supplierModalTarget, setSupplierModalTarget] = useState<'new' | 'edit' | null>(null);
   const [newSupplierName, setNewSupplierName] = useState('');
   const [newSupplierDeliveryDays, setNewSupplierDeliveryDays] = useState(0);
 
+  // Estado do Modal de Edição de Material
   const [showEditMaterialModal, setShowEditMaterialModal] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [editMaterialForm, setEditMaterialForm] = useState({
@@ -241,7 +421,7 @@ export default function Materials() {
     setSectorWarningModal(null);
   };
 
-  const handleOpenEditMaterial = (material: Material) => {
+  const handleOpenEditMaterial = useCallback((material: Material) => {
     setEditingMaterial(material);
     setEditMaterialForm({
       id: material.id,
@@ -267,7 +447,7 @@ export default function Materials() {
       quantityGiro: material.quantityGiro !== undefined && material.quantityGiro !== null ? material.quantityGiro : 0
     });
     setShowEditMaterialModal(true);
-  };
+  }, []);
 
   const handleEditMaterialSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -318,7 +498,8 @@ export default function Materials() {
     }
   };
 
-  const [selectedHistoryMaterial, setSelectedHistoryMaterial] = useState<Material | null>(null);
+  // Estado do Modal de Histórico de Contagens
+  const [historyMaterial, setHistoryMaterial] = useState<Material | null>(null);
   const [historyLogs, setHistoryLogs] = useState<StockCountLog[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyDateFilter, setHistoryDateFilter] = useState('');
@@ -336,12 +517,12 @@ export default function Materials() {
     }
   };
 
-  const handleOpenHistory = (material: Material) => {
-    setSelectedHistoryMaterial(material);
+  const handleOpenHistory = useCallback((material: Material) => {
+    setHistoryMaterial(material);
     setHistoryDateFilter('');
     setHistoryUserFilter('');
     fetchHistory(material.id);
-  };
+  }, [token]);
 
   const fetchData = async () => {
     try {
@@ -466,37 +647,40 @@ export default function Materials() {
     }
   };
 
-  const filteredMaterials = materials.filter(m => {
-    if (!isManager && user) {
-      const userSectors = [user.sectorId, ...(user.additionalSectors || '').split(',')].filter(Boolean);
-      if (userSectors.length > 0) {
-        const matSectors = [m.sectorId, ...(m.additionalSectors || '').split(',')].filter(Boolean);
-        const hasOverlap = matSectors.some(id => userSectors.includes(id));
-        if (!hasOverlap) {
-          return false;
+  const filteredMaterials = useMemo(() => {
+    return materials.filter(m => {
+      if (!isManager && user) {
+        const userSectors = [user.sectorId, ...(user.additionalSectors || '').split(',')].filter(Boolean);
+        if (userSectors.length > 0) {
+          const matSectors = [m.sectorId, ...(m.additionalSectors || '').split(',')].filter(Boolean);
+          const hasOverlap = matSectors.some(id => userSectors.includes(id));
+          if (!hasOverlap) {
+            return false;
+          }
         }
       }
-    }
-    const matchesSearch = m.name.toLowerCase().includes(search.toLowerCase()) || m.code.toLowerCase().includes(search.toLowerCase()) || (m.codigoBarras && m.codigoBarras.includes(search));
-    const matchesSector = filterSector ? (m.sectorId === filterSector || (m.additionalSectors || '').split(',').includes(filterSector)) : true;
-    let matchesGiro = true;
-    if (activeTab === 'giro') {
-      matchesGiro = !!m.isGiro;
-    } else if (activeTab === 'pulmao') {
-      matchesGiro = m.isPulmao !== false;
-    }
-    return matchesSearch && matchesSector && matchesGiro;
-  }).sort((a, b) => {
-    const now = new Date().getTime();
-    const aRecent = a.repostedAt ? (now - new Date(a.repostedAt).getTime() < 24 * 60 * 60 * 1000) : false;
-    const bRecent = b.repostedAt ? (now - new Date(b.repostedAt).getTime() < 24 * 60 * 60 * 1000) : false;
-    if (aRecent && !bRecent) return -1;
-    if (!aRecent && bRecent) return 1;
-    if (aRecent && bRecent) {
-       return new Date(b.repostedAt!).getTime() - new Date(a.repostedAt!).getTime();
-    }
-    return 0;
-  });
+      const searchLower = debouncedSearch.toLowerCase();
+      const matchesSearch = m.name.toLowerCase().includes(searchLower) || m.code.toLowerCase().includes(searchLower) || (m.codigoBarras && m.codigoBarras.includes(debouncedSearch));
+      const matchesSector = filterSector ? (m.sectorId === filterSector || (m.additionalSectors || '').split(',').includes(filterSector)) : true;
+      let matchesGiro = true;
+      if (activeTab === 'giro') {
+        matchesGiro = !!m.isGiro;
+      } else if (activeTab === 'pulmao') {
+        matchesGiro = m.isPulmao !== false;
+      }
+      return matchesSearch && matchesSector && matchesGiro;
+    }).sort((a, b) => {
+      const now = new Date().getTime();
+      const aRecent = a.repostedAt ? (now - new Date(a.repostedAt).getTime() < 24 * 60 * 60 * 1000) : false;
+      const bRecent = b.repostedAt ? (now - new Date(b.repostedAt).getTime() < 24 * 60 * 60 * 1000) : false;
+      if (aRecent && !bRecent) return -1;
+      if (!aRecent && bRecent) return 1;
+      if (aRecent && bRecent) {
+         return new Date(b.repostedAt!).getTime() - new Date(a.repostedAt!).getTime();
+      }
+      return 0;
+    });
+  }, [materials, isManager, user, debouncedSearch, filterSector, activeTab]);
 
   const [visibleCount, setVisibleCount] = useState(30);
 
@@ -517,25 +701,27 @@ export default function Materials() {
       return;
     }
 
+    // Buscar material por código de barras ou código
     const found = materials.find(m => m.codigoBarras === decodedText || m.code === decodedText);
     
     if (found) {
       setSelectedMaterial(found);
-      const targetStock = activeTab === 'giro' ? 'giro' : activeTab === 'pulmao' ? 'pulmao' : (found.isPulmao !== false ? 'pulmao' : 'giro');
-      setCountTargetStock(targetStock);
-      setCountQuantity(targetStock === 'giro' ? (found.quantityGiro || 0) : found.quantity);
+      setCountQuantity(found.quantity);
       setCountNotes('');
-      setCountStatus(targetStock === 'giro' ? (found.statusGiro || 'PENDING') : found.status);
+      setCountStatus(found.status);
     } else {
+      // Abre o modal informando que o produto não está cadastrado
       setUnregisteredProductModal({
         isOpen: true,
         code: decodedText
       });
+      // Preenche os dados no formulário de novo produto
       setNewMaterial(prev => ({
         ...prev,
         code: decodedText,
         codigoBarras: decodedText
       }));
+      // Abre o modal padrão de criação de produto
       setShowNewModal(true);
     }
     setScanTarget(null);
@@ -544,14 +730,14 @@ export default function Materials() {
   if (loading) return <div className="p-8 text-muted-foreground">Carregando materiais...</div>;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-2 sm:px-4">
+    <div className="space-y-6">
       {/* Tab Switcher - Setor de Estoques */}
-      <div className="flex flex-wrap gap-1 bg-card/60 backdrop-blur-md p-1 rounded-xl border border-border shadow-sm w-max max-w-full">
+      <div className="inline-flex bg-card/60 backdrop-blur-md p-1 rounded-xl border border-border shadow-sm">
         <button
           type="button"
           onClick={() => setActiveTab('visao_geral')}
           className={cn(
-            "px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2 whitespace-nowrap",
+            "px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2",
             activeTab === 'visao_geral'
               ? "bg-secondary text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
@@ -563,7 +749,7 @@ export default function Materials() {
           type="button"
           onClick={() => setActiveTab('pulmao')}
           className={cn(
-            "px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2 whitespace-nowrap",
+            "px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2",
             activeTab === 'pulmao'
               ? "bg-blue-500/10 text-blue-500 dark:bg-blue-500/20 dark:text-blue-400 shadow-sm border border-blue-500/20"
               : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
@@ -575,7 +761,7 @@ export default function Materials() {
           type="button"
           onClick={() => setActiveTab('giro')}
           className={cn(
-            "px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2 whitespace-nowrap",
+            "px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2",
             activeTab === 'giro'
               ? "bg-amber-500/10 text-amber-500 dark:bg-amber-500/20 dark:text-amber-400 shadow-sm border border-amber-500/20"
               : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
@@ -585,16 +771,15 @@ export default function Materials() {
         </button>
       </div>
 
-      {/* DISPOSIÇÃO FLUIDA CORRIGIDA PARA FILTROS E PESQUISA */}
-      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-end gap-4 bg-card/50 backdrop-blur-md p-4 rounded-2xl border border-border shadow-sm relative z-10 w-full">
-        <div className="flex-1 flex flex-col sm:flex-row gap-4 w-full items-stretch sm:items-end min-w-0">
-          <div className="relative flex-1 sm:max-w-md flex gap-2 min-w-0">
-            <div className="relative flex-1 min-w-0">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-card/50 backdrop-blur-md p-4 rounded-2xl border border-border shadow-sm relative z-10">
+        <div className="flex-1 flex flex-col sm:flex-row gap-4 w-full">
+          <div className="relative flex-1 sm:max-w-md flex gap-2">
+            <div className="relative flex-1">
                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                <input 
                  type="text" 
                  placeholder="Buscar por nome ou código..." 
-                 className="w-full pl-9 pr-4 py-2 bg-secondary/50 border border-border rounded-xl text-sm focus:ring-2 focus:ring-blue-500/50 outline-none transition-all placeholder:text-muted-foreground/50 text-foreground h-[40px]"
+                 className="w-full pl-9 pr-4 py-2 bg-secondary/50 border border-border rounded-xl text-sm focus:ring-2 focus:ring-blue-500/50 outline-none transition-all placeholder:text-muted-foreground/50 text-foreground"
                  value={search}
                  onChange={e => setSearch(e.target.value)}
                />
@@ -604,35 +789,33 @@ export default function Materials() {
                   setScanTarget('search');
                   setShowScanner(true);
                }}
-               className="w-[40px] h-[40px] bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 border border-blue-500/20 rounded-xl transition-colors flex items-center justify-center shrink-0"
+               className="p-2 bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 border border-blue-500/20 rounded-xl transition-colors flex items-center justify-center shrink-0"
                title="Ler Código de Barras"
             >
                <Camera className="w-5 h-5" />
             </button>
           </div>
-          <div className="w-full sm:w-[220px] shrink-0">
-            <select 
-              className="border border-border bg-secondary/50 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground w-full cursor-pointer h-[40px] truncate"
-              value={filterSector}
-              onChange={e => setFilterSector(e.target.value)}
-            >
-              <option value="">Todos os Setores</option>
-              {sectors.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </div>
+          <select 
+            className="border border-border bg-secondary/50 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground w-full sm:w-auto"
+            value={filterSector}
+            onChange={e => setFilterSector(e.target.value)}
+          >
+            <option value="">Todos os Setores</option>
+            {sectors.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
         </div>
         {isManager && (
-          <div className="flex gap-2 w-full lg:w-auto justify-end shrink-0">
+          <div className="flex gap-2 w-full lg:w-auto justify-end">
             <button 
               onClick={() => setShowColumnsModal(true)}
-              className="bg-secondary text-foreground hover:bg-secondary/80 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all border border-border h-[40px]"
+              className="bg-secondary text-foreground hover:bg-secondary/80 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all border border-border shrink-0"
               title="Personalizar Colunas"
             >
               <Settings2 className="w-4 h-4" /> Colunas
             </button>
             <button 
               onClick={() => setShowNewModal(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all shadow-lg shadow-blue-500/25 h-[40px]"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all shadow-lg shadow-blue-500/25 shrink-0"
             >
               <Plus className="w-4 h-4" /> Novo Material
             </button>
@@ -640,17 +823,17 @@ export default function Materials() {
         )}
       </div>
 
-      <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm overflow-hidden relative z-10 w-full">
+      <div className="bg-card/50 backdrop-blur-md rounded-2xl border border-border shadow-sm overflow-hidden relative z-10">
         {/* Desktop view: table */}
         <div className="overflow-x-auto hidden md:block">
-          <table className="min-w-full divide-y divide-border min-w-[850px] table-fixed">
+          <table className="table-fixed w-full min-w-[850px] divide-y divide-border">
             <colgroup>
               {visibleCols.includes('code') && <col className="w-[15%]" />}
-              {visibleCols.includes('material') && <col className="w-[35%]" />}
+              {visibleCols.includes('material') && <col className="w-[30%]" />}
               {visibleCols.includes('sector') && <col className="w-[15%]" />}
               {visibleCols.includes('stock') && <col className="w-[15%]" />}
-              {visibleCols.includes('status') && <col className="w-[12%]" />}
-              {visibleCols.includes('actions') && <col className="w-[13%]" />}
+              {visibleCols.includes('status') && <col className="w-[15%]" />}
+              {visibleCols.includes('actions') && <col className="w-[10%]" />}
             </colgroup>
             <thead className="bg-secondary/50">
               <tr>
@@ -658,151 +841,34 @@ export default function Materials() {
                 {visibleCols.includes('material') && <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Material</th>}
                 {visibleCols.includes('sector') && <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Setor</th>}
                 {visibleCols.includes('stock') && <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Estoque</th>}
-                {visibleCols.includes('status') && <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>}
+                {visibleCols.includes('status') && <th className="px-6 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status (Kanban)</th>}
                 {visibleCols.includes('actions') && <th className="px-6 py-4 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ações</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-border relative">
               <AnimatePresence>
                 {visibleMaterials.map(mat => (
-                  <motion.tr 
-                    layout
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    key={mat.id} 
-                    className="hover:bg-secondary/30 cursor-pointer transition-colors relative group"
-                    onMouseEnter={() => setHoveredRow(mat.id)}
-                    onMouseLeave={() => setHoveredRow(null)}
-                    onClick={(e) => {
-                      const target = e.target as HTMLElement;
-                      if (target.closest('button') || target.closest('a')) return;
-                      setDetailMaterial(mat);
+                  <MaterialRow 
+                    key={mat.id}
+                    mat={mat}
+                    visibleCols={visibleCols}
+                    activeTab={activeTab}
+                    isManager={isManager}
+                    sectors={sectors}
+                    suppliers={suppliers}
+                    onOpenHistory={handleOpenHistory}
+                    onOpenImage={setImageModalMaterial}
+                    onOpenCount={(m) => {
+                      setSelectedMaterial(m);
+                      const targetStock = activeTab === 'giro' ? 'giro' : activeTab === 'pulmao' ? 'pulmao' : (m.isPulmao !== false ? 'pulmao' : 'giro');
+                      setCountTargetStock(targetStock);
+                      setCountQuantity(targetStock === 'giro' ? (m.quantityGiro || 0) : m.quantity);
+                      setCountNotes(m.notes || '');
+                      setCountStatus(m.status);
                     }}
-                  >
-                    {visibleCols.includes('code') && (
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-muted-foreground min-w-0">
-                         <span className="block truncate">{mat.code}</span>
-                         {mat.codigoBarras && <span className="text-xs opacity-50 block truncate">{mat.codigoBarras}</span>}
-                      </td>
-                    )}
-                    {visibleCols.includes('material') && (
-                      <td className="px-6 py-4 whitespace-nowrap relative min-w-0">
-                        <div className="text-sm font-medium text-foreground flex items-center gap-2 max-w-full">
-                          <span className="truncate block flex-1">{mat.name}</span>
-                          {mat.repostedAt && (new Date().getTime() - new Date(mat.repostedAt).getTime() < 24 * 60 * 60 * 1000) && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 animate-pulse shrink-0">Novo</span>
-                          )}
-                        </div>
-                        {mat.notes && <div className="text-xs text-muted-foreground mt-1 max-w-full truncate">{mat.notes}</div>}
-                      </td>
-                    )}
-                    {visibleCols.includes('sector') && <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground truncate">{mat.sector}</td>}
-                    {visibleCols.includes('stock') && (
-                      <td className="px-6 py-4 whitespace-nowrap relative min-w-0">
-                        <div className="flex items-center gap-2 max-w-full">
-                           {activeTab === 'giro' ? (
-                              <span className="text-sm font-bold text-amber-500 flex items-center gap-1 truncate">⚡ {mat.quantityGiro || 0} {formatUnit(mat.unit)}</span>
-                           ) : activeTab === 'pulmao' ? (
-                              <span className="text-sm font-bold text-blue-500 flex items-center gap-1 truncate">📦 {mat.quantity || 0} {formatUnit(mat.unit)}</span>
-                           ) : (
-                              <div className="flex flex-col gap-0.5 min-w-0 max-w-full">
-                                 {mat.isPulmao !== false && (
-                                    <span className="text-xs font-semibold text-foreground flex items-center gap-1 truncate">
-                                       <span className="text-blue-500" title="Estoque Pulmão">📦</span> {mat.quantity || 0} {formatUnit(mat.unit)}
-                                    </span>
-                                 )}
-                                 {mat.isGiro && (
-                                    <span className="text-xs font-semibold text-foreground flex items-center gap-1 truncate">
-                                       <span className="text-amber-500" title="Giro do Dia">⚡</span> {mat.quantityGiro || 0} {formatUnit(mat.unit)}
-                                    </span>
-                                 )}
-                              </div>
-                           )}
-                           {hoveredRow === mat.id && (
-                              <motion.div 
-                                 initial={{ opacity: 0, scale: 0.8, x: -10 }}
-                                 animate={{ opacity: 1, scale: 1, x: 0 }}
-                                 className="absolute left-16 top-1/2 -translate-y-1/2 h-8 w-20 bg-background/80 rounded border border-border px-1 pointer-events-none z-20"
-                              >
-                                 <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={generateMiniChartData(activeTab === 'giro' ? (mat.quantityGiro || 0) : activeTab === 'pulmao' ? mat.quantity : (mat.quantity || 0) + (mat.quantityGiro || 0))}>
-                                       <Line type="monotone" dataKey="val" stroke="#6366f1" strokeWidth={2} dot={false} isAnimationActive={false} />
-                                    </LineChart>
-                                 </ResponsiveContainer>
-                              </motion.div>
-                           )}
-                        </div>
-                      </td>
-                    )}
-                    {visibleCols.includes('status') && (
-                      <td className="px-6 py-4 whitespace-nowrap min-w-0">
-                        {activeTab === 'giro' ? (
-                          <StatusBadge status={mat.statusGiro || 'PENDING'} />
-                        ) : activeTab === 'pulmao' ? (
-                          <StatusBadge status={mat.status} />
-                        ) : (
-                          <div className="flex flex-col gap-1 max-w-full">
-                            {mat.isPulmao !== false && (
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs text-muted-foreground shrink-0">📦</span>
-                                <StatusBadge status={mat.status} />
-                              </div>
-                            )}
-                            {mat.isGiro && (
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs text-muted-foreground shrink-0">⚡</span>
-                                <StatusBadge status={mat.statusGiro || 'PENDING'} />
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </td>
-                    )}
-                    {visibleCols.includes('actions') && (
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex justify-end gap-1">
-                           <button 
-                             onClick={() => handleOpenHistory(mat)}
-                             className="text-emerald-500 hover:text-emerald-400 p-1.5 rounded-lg hover:bg-emerald-500/10 transition-colors"
-                             title="Ver Histórico de Contagens"
-                           >
-                             <History className="w-4 h-4" />
-                           </button>
-                           <button 
-                             onClick={() => setImageModalMaterial(mat)}
-                             className="text-amber-500 hover:text-amber-400 p-1.5 rounded-lg hover:bg-amber-500/10 transition-colors"
-                             title="Visualizar Foto Ilustrativa"
-                           >
-                             <Eye className="w-4 h-4" />
-                           </button>
-                           <button 
-                             onClick={() => {
-                               setSelectedMaterial(mat);
-                               const targetStock = activeTab === 'giro' ? 'giro' : activeTab === 'pulmao' ? 'pulmao' : (mat.isPulmao !== false ? 'pulmao' : 'giro');
-                               setCountTargetStock(targetStock);
-                               setCountQuantity(targetStock === 'giro' ? (mat.quantityGiro || 0) : mat.quantity);
-                               setCountNotes(mat.notes || '');
-                               setCountStatus(targetStock === 'giro' ? (mat.statusGiro || 'PENDING') : mat.status);
-                             }}
-                             className="text-blue-500 hover:text-blue-400 p-1.5 rounded-lg hover:bg-blue-500/10 transition-colors"
-                             title="Contar Estoque"
-                           >
-                             <ClipboardCheck className="w-4 h-4" />
-                           </button>
-                           {isManager && (
-                             <button 
-                               onClick={() => handleOpenEditMaterial(mat)}
-                               className="text-indigo-500 hover:text-indigo-400 p-1.5 rounded-lg hover:bg-indigo-500/10 transition-colors"
-                               title="Editar Produto"
-                             >
-                               <Edit3 className="w-4 h-4" />
-                             </button>
-                           )}
-                        </div>
-                      </td>
-                    )}
-                  </motion.tr>
+                    onOpenEdit={handleOpenEditMaterial}
+                    onOpenDetail={setDetailMaterial}
+                  />
                 ))}
               </AnimatePresence>
             </tbody>
@@ -814,7 +880,7 @@ export default function Materials() {
           )}
         </div>
 
-        {/* Mobile / Tablet view: Cards list */}
+        {/* Mobile view: Cards list */}
         <div className="md:hidden block divide-y divide-border/60">
           <AnimatePresence>
             {visibleMaterials.map(mat => (
@@ -829,59 +895,52 @@ export default function Materials() {
                   if (target.closest('button') || target.closest('a')) return;
                   setDetailMaterial(mat);
                 }}
-                className="p-4 hover:bg-secondary/10 cursor-pointer transition-colors flex flex-col gap-3.5 relative"
+                className="p-5 hover:bg-secondary/10 cursor-pointer transition-colors flex flex-col gap-4 relative"
               >
-                <div className="flex justify-between items-start gap-2 w-full">
+                {/* Header (SKU / Code & Title / Badge) */}
+                <div className="flex justify-between items-start gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-semibold text-foreground flex items-center gap-1.5 flex-wrap">
-                      <span className="truncate max-w-full">{mat.name}</span>
+                    <div className="text-base font-semibold text-foreground flex items-center gap-2 flex-wrap">
+                      <span className="truncate block max-w-full">{mat.name}</span>
                       {mat.repostedAt && (new Date().getTime() - new Date(mat.repostedAt).getTime() < 24 * 60 * 60 * 1000) && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.15)] animate-pulse shrink-0">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 animate-pulse shrink-0">
                           Novo
                         </span>
                       )}
                     </div>
-                    <div className="text-xs font-mono text-muted-foreground mt-0.5 flex flex-col gap-0.5">
-                      <span className="truncate">Código: {mat.code}</span>
+                    <div className="text-xs font-mono text-muted-foreground mt-1 flex flex-col gap-0.5">
+                      <span>Código: {mat.code}</span>
                       {mat.codigoBarras && <span className="opacity-60 text-[10px] truncate">EAN: {mat.codigoBarras}</span>}
                     </div>
                   </div>
-                  <div className="shrink-0 text-right">
-                     {activeTab === 'giro' ? (
-                        <StatusBadge status={mat.statusGiro || 'PENDING'} />
-                     ) : activeTab === 'pulmao' ? (
-                        <StatusBadge status={mat.status} />
-                     ) : (
-                        <div className="flex flex-col gap-1 items-end max-w-full">
-                           {mat.isPulmao !== false && <StatusBadge status={mat.status} />}
-                           {mat.isGiro && <StatusBadge status={mat.statusGiro || 'PENDING'} />}
-                        </div>
-                     )}
+                  <div className="shrink-0 pt-0.5">
+                     <StatusBadge status={mat.status} />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 bg-secondary/30 p-3 rounded-xl border border-border/40 text-xs w-full min-w-0">
+                {/* Meta Detail Boxes */}
+                <div className="grid grid-cols-2 gap-3 bg-secondary/30 p-3.5 rounded-xl border border-border/40 text-xs">
                   <div className="min-w-0">
                     <span className="text-muted-foreground block font-medium mb-0.5">Setor</span>
-                    <span className="text-foreground font-semibold truncate block max-w-full">{mat.sector || 'Geral'}</span>
+                    <span className="text-foreground font-semibold truncate block">{mat.sector || 'Geral'}</span>
                   </div>
                   <div className="min-w-0">
                     <span className="text-muted-foreground block font-medium mb-0.5">Estoque Disponível</span>
-                    <div className="text-foreground font-bold text-sm block max-w-full">
+                    <div className="text-foreground font-bold text-sm block">
                       {activeTab === 'giro' ? (
                         <span className="text-amber-500 flex items-center gap-1 truncate">⚡ {mat.quantityGiro || 0} {formatUnit(mat.unit)}</span>
                       ) : activeTab === 'pulmao' ? (
                         <span className="text-blue-500 flex items-center gap-1 truncate">📦 {mat.quantity || 0} {formatUnit(mat.unit)}</span>
                       ) : (
-                        <div className="flex flex-col gap-1 mt-0.5 min-w-0 max-w-full">
+                        <div className="flex flex-col gap-1 mt-0.5 min-w-0">
                           {mat.isPulmao !== false && (
                             <span className="text-xs font-semibold text-foreground flex items-center gap-1 truncate">
-                              <span className="text-blue-500">📦</span> {mat.quantity || 0} {formatUnit(mat.unit)}
+                              <span className="text-blue-500 shrink-0" title="Estoque Pulmão">📦</span> {mat.quantity || 0} {formatUnit(mat.unit)}
                             </span>
                           )}
                           {mat.isGiro && (
                             <span className="text-xs font-semibold text-foreground flex items-center gap-1 truncate">
-                              <span className="text-amber-500">⚡</span> {mat.quantityGiro || 0} {formatUnit(mat.unit)}
+                              <span className="text-amber-500 shrink-0" title="Giro do Dia">⚡</span> {mat.quantityGiro || 0} {formatUnit(mat.unit)}
                             </span>
                           )}
                         </div>
@@ -890,25 +949,29 @@ export default function Materials() {
                   </div>
                 </div>
 
+                {/* Notes if any */}
                 {mat.notes && (
-                  <p className="text-xs text-muted-foreground line-clamp-2 bg-secondary/10 px-2.5 py-2 rounded-lg border border-border/20 italic max-w-full">
+                  <p className="text-xs text-muted-foreground line-clamp-2 bg-secondary/10 px-3 py-2.5 rounded-lg border border-border/20 italic">
                     {mat.notes}
                   </p>
                 )}
 
-                <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-border/40 flex-wrap w-full">
+                {/* Actions Row */}
+                <div className="grid grid-cols-2 xs:flex xs:items-center xs:justify-end gap-2 pt-3 border-t border-border/40">
                   <button 
                     onClick={() => handleOpenHistory(mat)}
-                    className="text-emerald-500 hover:text-emerald-400 p-2 rounded-lg hover:bg-emerald-500/10 transition-colors inline-flex items-center gap-1 text-xs"
+                    className="h-11 xs:h-10 text-emerald-500 hover:text-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/10 px-3 py-2 rounded-xl border border-emerald-500/10 transition-colors inline-flex items-center justify-center gap-2 text-xs font-semibold"
+                    title="Histórico"
                   >
-                    <History className="w-4 h-4" />
+                    <History className="w-4 h-4 shrink-0" />
                     <span>Histórico</span>
                   </button>
                   <button 
                     onClick={() => setImageModalMaterial(mat)}
-                    className="text-amber-500 hover:text-amber-400 p-2 rounded-lg hover:bg-amber-500/10 transition-colors inline-flex items-center gap-1 text-xs"
+                    className="h-11 xs:h-10 text-amber-500 hover:text-amber-400 bg-amber-500/5 hover:bg-amber-500/10 px-3 py-2 rounded-xl border border-amber-500/10 transition-colors inline-flex items-center justify-center gap-2 text-xs font-semibold"
+                    title="Ver Foto"
                   >
-                    <Eye className="w-4 h-4" />
+                    <Eye className="w-4 h-4 shrink-0" />
                     <span>Ver Foto</span>
                   </button>
                   <button 
@@ -918,19 +981,20 @@ export default function Materials() {
                       setCountTargetStock(targetStock);
                       setCountQuantity(targetStock === 'giro' ? (mat.quantityGiro || 0) : mat.quantity);
                       setCountNotes(mat.notes || '');
-                      setCountStatus(targetStock === 'giro' ? (mat.statusGiro || 'PENDING') : mat.status);
+                      setCountStatus(mat.status);
                     }}
-                    className="text-blue-500 hover:text-blue-400 p-2 rounded-lg hover:bg-blue-500/10 transition-colors inline-flex items-center gap-1 text-xs"
+                    className="h-11 xs:h-10 text-blue-500 hover:text-blue-400 bg-blue-500/5 hover:bg-blue-500/10 px-3 py-2 rounded-xl border border-blue-500/10 transition-colors inline-flex items-center justify-center gap-2 text-xs font-semibold col-span-2 xs:col-span-1"
                   >
-                    <ClipboardCheck className="w-4 h-4" />
+                    <ClipboardCheck className="w-4 h-4 shrink-0" />
                     <span>Contar</span>
                   </button>
                   {isManager && (
                     <button 
                       onClick={() => handleOpenEditMaterial(mat)}
-                      className="text-indigo-500 hover:text-indigo-400 p-2 rounded-lg hover:bg-indigo-500/10 transition-colors inline-flex items-center gap-1 text-xs"
+                      className="h-11 xs:h-10 text-indigo-500 hover:text-indigo-400 bg-indigo-500/5 hover:bg-indigo-500/10 px-3 py-2 rounded-xl border border-indigo-500/10 transition-colors inline-flex items-center justify-center gap-2 text-xs font-semibold col-span-2 xs:col-span-1"
+                      title="Editar"
                     >
-                      <Edit3 className="w-4 h-4" />
+                      <Edit3 className="w-4 h-4 shrink-0" />
                       <span>Editar</span>
                     </button>
                   )}
@@ -944,11 +1008,11 @@ export default function Materials() {
             </div>
           )}
           {filteredMaterials.length > visibleCount && (
-            <div className="p-4 border-t border-border bg-secondary/10 text-center w-full">
+            <div className="p-4 border-t border-border bg-secondary/10 text-center">
               <button
                 type="button"
                 onClick={() => setVisibleCount(prev => prev + 30)}
-                className="px-4 py-2.5 text-sm font-semibold text-blue-500 hover:text-blue-600 hover:bg-blue-500/5 rounded-xl border border-blue-500/10 transition-colors inline-flex items-center gap-1.5 shadow-sm"
+                className="px-4 py-2.5 text-sm font-semibold text-blue-500 hover:text-blue-600 hover:bg-blue-500/5 rounded-xl border border-blue-500/10 transition-colors inline-flex items-center gap-1.5"
               >
                 Carregar mais ({filteredMaterials.length - visibleCount} restantes)
               </button>
@@ -957,7 +1021,7 @@ export default function Materials() {
         </div>
       </div>
 
-      {/* Modal de Configuração de Colunas - ALINHADO PARA TELAS PEQUENAS/NETBOOKS */}
+      {/* Modal de Configuração de Colunas */}
       <AnimatePresence>
          {showColumnsModal && (
             <motion.div 
@@ -970,7 +1034,7 @@ export default function Materials() {
                initial={{ scale: 0.95, y: 20 }}
                animate={{ scale: 1, y: 0 }}
                exit={{ scale: 0.95, y: 20 }}
-               className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl p-6 relative overflow-hidden max-h-[calc(100vh-2rem)] overflow-y-auto"
+               className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl p-6 relative overflow-hidden"
             >
                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-emerald-500"></div>
                
@@ -1019,21 +1083,22 @@ export default function Materials() {
                initial={{ scale: 0.95, y: 20 }}
                animate={{ scale: 1, y: 0 }}
                exit={{ scale: 0.95, y: 20 }}
-               className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 relative overflow-hidden max-h-[calc(100vh-2rem)] overflow-y-auto"
+               className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 relative overflow-hidden"
             >
                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-emerald-500"></div>
                
                <div className="flex justify-between items-start mb-6 mt-2">
-                  <div className="min-w-0 flex-1 pr-2">
-                     <h3 className="text-xl font-bold text-foreground truncate">Nova Contagem</h3>
-                     <p className="text-sm text-muted-foreground mt-1 truncate">{selectedMaterial.name} ({selectedMaterial.code})</p>
+                  <div>
+                     <h3 className="text-xl font-bold text-foreground">Nova Contagem</h3>
+                     <p className="text-sm text-muted-foreground mt-1">{selectedMaterial.name} ({selectedMaterial.code})</p>
                   </div>
-                  <button onClick={() => setSelectedMaterial(null)} className="p-1.5 text-muted-foreground hover:bg-secondary rounded-lg transition-colors shrink-0">
+                  <button onClick={() => setSelectedMaterial(null)} className="p-1.5 text-muted-foreground hover:bg-secondary rounded-lg transition-colors">
                      <X className="w-5 h-5" />
                   </button>
                </div>
                
                <form onSubmit={handleCountSubmit} className="space-y-5">
+               {/* Seletor de Estoque Alvo (Pulmão vs Giro) */}
                {selectedMaterial.isGiro && selectedMaterial.isPulmao !== false ? (
                   <div className="bg-secondary/40 p-1.5 rounded-xl border border-border/60 flex gap-2">
                      <button
@@ -1041,7 +1106,6 @@ export default function Materials() {
                         onClick={() => {
                            setCountTargetStock('pulmao');
                            setCountQuantity(selectedMaterial.quantity || 0);
-                           setCountStatus(selectedMaterial.status);
                         }}
                         className={cn(
                            "flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
@@ -1057,7 +1121,6 @@ export default function Materials() {
                         onClick={() => {
                            setCountTargetStock('giro');
                            setCountQuantity(selectedMaterial.quantityGiro || 0);
-                           setCountStatus(selectedMaterial.statusGiro || 'PENDING');
                         }}
                         className={cn(
                            "flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
@@ -1082,19 +1145,19 @@ export default function Materials() {
 
                <div>
                   <label className="block text-sm font-medium text-muted-foreground mb-1.5">Quantidade Encontrada Fisicamente ({formatUnit(selectedMaterial.unit)})</label>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full">
+                  <div className="flex items-center gap-4">
                      <input 
-                       type="number" 
-                       min="0"
-                       value={countQuantity}
-                       onChange={e => setCountQuantity(e.target.value ? parseInt(e.target.value) : '')}
-                       className="w-full sm:w-32 bg-secondary/50 border border-border rounded-xl px-4 py-3 text-lg font-bold focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground h-[48px]"
-                       required
+                     type="number" 
+                     min="0"
+                     value={countQuantity}
+                     onChange={e => setCountQuantity(e.target.value ? parseInt(e.target.value) : '')}
+                     className="w-32 bg-secondary/50 border border-border rounded-xl px-4 py-3 text-lg font-bold focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
+                     required
                      />
-                     <div className="text-sm text-muted-foreground flex flex-col min-w-0 flex-1">
-                        <span className="truncate">Anterior: <strong className="text-foreground">{(countTargetStock === 'giro' ? (selectedMaterial.quantityGiro || 0) : selectedMaterial.quantity)} {formatUnit(selectedMaterial.unit)}</strong></span>
+                     <div className="text-sm text-muted-foreground flex flex-col">
+                        <span>Anterior: <strong className="text-foreground">{(countTargetStock === 'giro' ? (selectedMaterial.quantityGiro || 0) : selectedMaterial.quantity)} {formatUnit(selectedMaterial.unit)}</strong></span>
                         <span className={cn(
-                           "font-medium mt-0.5 truncate",
+                           "font-medium mt-0.5",
                            Number(countQuantity) > (countTargetStock === 'giro' ? (selectedMaterial.quantityGiro || 0) : selectedMaterial.quantity) ? "text-emerald-500" : 
                            Number(countQuantity) < (countTargetStock === 'giro' ? (selectedMaterial.quantityGiro || 0) : selectedMaterial.quantity) ? "text-red-500" : "text-muted-foreground"
                         )}>
@@ -1109,7 +1172,7 @@ export default function Materials() {
                   <select 
                      value={countStatus}
                      onChange={e => setCountStatus(e.target.value as Material['status'])}
-                     className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer h-[46px]"
+                     className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
                   >
                      <option value="PENDING">Pendente / Contagem Pendente</option>
                      <option value="COUNTED_RECENTLY">Recém Contado</option>
@@ -1127,23 +1190,23 @@ export default function Materials() {
                   <textarea 
                      value={countNotes}
                      onChange={e => setCountNotes(e.target.value)}
-                     className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none resize-none text-foreground text-sm"
+                     className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none resize-none text-foreground"
                      rows={3}
                      placeholder="Ex: Embalagem danificada, vencimento próximo..."
                   />
                </div>
 
-               <div className="flex gap-3 pt-2 w-full">
+               <div className="flex gap-3 pt-2">
                   <button 
                      type="button" 
                      onClick={() => setSelectedMaterial(null)}
-                     className="flex-1 px-4 py-3 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors text-sm"
+                     className="flex-1 px-4 py-3 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors"
                   >
                      Cancelar
                   </button>
                   <button 
                      type="submit" 
-                     className="flex-1 px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25 text-sm"
+                     className="flex-1 px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25"
                   >
                      Salvar Contagem
                   </button>
@@ -1169,16 +1232,16 @@ export default function Materials() {
                   initial={{ scale: 0.95, y: 20 }}
                   animate={{ scale: 1, y: 0 }}
                   exit={{ scale: 0.95, y: 20 }}
-                  className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 relative z-10 overflow-hidden max-h-[95vh] overflow-y-auto"
+                  className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 relative z-10 overflow-hidden"
                >
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-amber-500"></div>
                   
                   <div className="flex justify-between items-start mb-4 mt-2">
-                     <div className="min-w-0 flex-1 pr-2">
-                        <h3 className="text-lg font-bold text-foreground truncate">Definir Quantidades de Estoque</h3>
-                        <p className="text-xs text-muted-foreground mt-0.5 truncate">{quantitiesModalData.productName}</p>
+                     <div>
+                        <h3 className="text-lg font-bold text-foreground">Definir Quantidades de Estoque</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">{quantitiesModalData.productName}</p>
                      </div>
-                     <button onClick={() => setShowConfirmQuantitiesModal(false)} className="p-1 text-muted-foreground hover:bg-secondary rounded-lg transition-colors shrink-0">
+                     <button onClick={() => setShowConfirmQuantitiesModal(false)} className="p-1 text-muted-foreground hover:bg-secondary rounded-lg transition-colors">
                         <X className="w-5 h-5" />
                      </button>
                   </div>
@@ -1188,6 +1251,7 @@ export default function Materials() {
                   </p>
 
                   <div className="space-y-4">
+                     {/* Seção Estoque Pulmão */}
                      <div className={cn(
                         "p-3 rounded-xl border transition-all",
                         quantitiesModalData.isPulmao 
@@ -1213,12 +1277,13 @@ export default function Materials() {
                                  min="0"
                                  value={quantitiesModalData.quantityPulmao}
                                  onChange={e => setQuantitiesModalData(prev => ({ ...prev, quantityPulmao: e.target.value ? parseInt(e.target.value) : '' }))}
-                                 className="w-full bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground h-[40px]"
+                                 className="w-full bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground"
                               />
                            </div>
                         )}
                      </div>
 
+                     {/* Seção Giro do Dia */}
                      <div className={cn(
                         "p-3 rounded-xl border transition-all",
                         quantitiesModalData.isGiro 
@@ -1244,7 +1309,7 @@ export default function Materials() {
                                  min="0"
                                  value={quantitiesModalData.quantityGiro}
                                  onChange={e => setQuantitiesModalData(prev => ({ ...prev, quantityGiro: e.target.value ? parseInt(e.target.value) : '' }))}
-                                 className="w-full bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500/50 outline-none text-foreground h-[40px]"
+                                 className="w-full bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500/50 outline-none text-foreground"
                               />
                            </div>
                         )}
@@ -1299,7 +1364,7 @@ export default function Materials() {
                initial={{ scale: 0.95, y: 20 }}
                animate={{ scale: 1, y: 0 }}
                exit={{ scale: 0.95, y: 20 }}
-               className="bg-card border border-border rounded-2xl w-full max-w-2xl shadow-2xl p-6 relative z-10 max-h-[calc(100vh-2rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent"
+               className="bg-card border border-border rounded-2xl w-full max-w-2xl shadow-2xl p-6 relative z-10 max-h-[calc(100vh-4rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent"
             >
                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-blue-500"></div>
                
@@ -1314,7 +1379,8 @@ export default function Materials() {
                </div>
                
                <form onSubmit={handleCreateMaterial} className="space-y-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                     {/* Coluna Esquerda */}
                      <div className="space-y-4">
                         <div>
                            <label className="block text-sm font-medium text-muted-foreground mb-1.5 font-sans">Código Único (SKU)</label>
@@ -1322,7 +1388,7 @@ export default function Materials() {
                               type="text" 
                               value={newMaterial.code}
                               onChange={e => setNewMaterial({...newMaterial, code: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-mono text-sm h-[40px]"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-mono text-sm"
                               placeholder="Ex: MAT-001"
                               required
                            />
@@ -1334,7 +1400,7 @@ export default function Materials() {
                               type="text" 
                               value={newMaterial.name}
                               onChange={e => setNewMaterial({...newMaterial, name: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm h-[40px]"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
                               placeholder="Ex: Parafuso..."
                               required
                            />
@@ -1347,7 +1413,7 @@ export default function Materials() {
                                  type="text" 
                                  value={newMaterial.codigoBarras || ''}
                                  onChange={e => setNewMaterial({...newMaterial, codigoBarras: e.target.value})}
-                                 className="w-full bg-secondary/50 border border-border rounded-xl pl-4 pr-12 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm font-mono h-[40px]"
+                                 className="w-full bg-secondary/50 border border-border rounded-xl pl-4 pr-12 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm font-mono"
                                  placeholder="Ex: 7891234567890"
                               />
                               <button
@@ -1369,7 +1435,7 @@ export default function Materials() {
                            <select 
                               value={newMaterial.sectorId}
                               onChange={e => setNewMaterial({...newMaterial, sectorId: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer text-sm h-[40px]"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer text-sm"
                               required
                            >
                               <option value="">Selecione um setor...</option>
@@ -1380,6 +1446,7 @@ export default function Materials() {
                         </div>
                      </div>
 
+                     {/* Coluna Direita */}
                      <div className="space-y-4">
                         <div>
                            <label className="block text-sm font-medium text-muted-foreground mb-1.5 font-sans">Origem</label>
@@ -1387,7 +1454,7 @@ export default function Materials() {
                               type="text" 
                               value={newMaterial.origin || ''}
                               onChange={e => setNewMaterial({...newMaterial, origin: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm h-[40px]"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
                               placeholder="Ex: Nacional / Importado"
                            />
                         </div>
@@ -1409,7 +1476,7 @@ export default function Materials() {
                            <select 
                               value={newMaterial.supplierId || ''}
                               onChange={e => setNewMaterial({...newMaterial, supplierId: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer text-sm h-[40px]"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer text-sm"
                            >
                               <option value="">Nenhum fornecedor</option>
                               {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -1424,21 +1491,21 @@ export default function Materials() {
                               placeholder="Ex: 5"
                               value={newMaterial.supplierDeliveryDays}
                               onChange={e => setNewMaterial({...newMaterial, supplierDeliveryDays: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm h-[40px]"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
                            />
                         </div>
 
                         <div>
-                           <label className="block text-sm font-medium text-muted-foreground mb-1.5">Imagem do Produto (URL ou upload local)</label>
+                           <label className="block text-sm font-medium text-muted-foreground mb-1.5 font-sans">Imagem do Produto (URL ou upload local)</label>
                            <div className="flex gap-2">
                               <input 
                                  type="text" 
                                  value={newMaterial.imageUrl || ''}
                                  onChange={e => setNewMaterial({...newMaterial, imageUrl: e.target.value})}
-                                 className="flex-1 bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm h-[40px]"
+                                 className="flex-1 bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
                                  placeholder="Ex: https://imagens.com/produto.jpg"
                               />
-                              <label className="bg-secondary hover:bg-secondary/80 border border-border text-foreground p-2.5 rounded-xl cursor-pointer flex items-center justify-center shrink-0 h-[40px] w-[40px]" title="Upload de Imagem Local">
+                              <label className="bg-secondary hover:bg-secondary/80 border border-border text-foreground p-2.5 rounded-xl cursor-pointer flex items-center justify-center shrink-0" title="Upload de Imagem Local">
                                  <Upload className="w-5 h-5 text-muted-foreground" />
                                  <input 
                                     type="file" 
@@ -1473,13 +1540,14 @@ export default function Materials() {
                      </div>
                   </div>
 
+                  {/* Detalhes de Quantidade na base */}
                   <div className="grid grid-cols-3 gap-4 border-t border-border/50 pt-4">
                      <div>
                         <label className="block text-sm font-medium text-muted-foreground mb-1.5 font-sans">Unidade</label>
                         <select 
                            value={newMaterial.unit}
                            onChange={e => setNewMaterial({...newMaterial, unit: e.target.value})}
-                           className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer text-sm h-[40px]"
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer text-sm"
                         >
                            <option value="unidade">un</option>
                            <option value="pacote">pct</option>
@@ -1496,7 +1564,7 @@ export default function Materials() {
                            min="0"
                            value={newMaterial.quantity}
                            onChange={e => setNewMaterial({...newMaterial, quantity: e.target.value ? parseInt(e.target.value) : ''})}
-                           className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-bold text-sm h-[40px]"
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-bold text-sm"
                            required
                         />
                      </div>
@@ -1507,12 +1575,13 @@ export default function Materials() {
                            min="0"
                            value={newMaterial.estoqueMinimo}
                            onChange={e => setNewMaterial({...newMaterial, estoqueMinimo: e.target.value ? parseInt(e.target.value) : ''})}
-                           className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-bold text-sm h-[40px]"
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-bold text-sm"
                            required
                         />
                      </div>
                   </div>
 
+                  {/* Localização Física (Opcional) */}
                   <div className="border-t border-border/50 pt-4 space-y-4">
                      <h4 className="text-sm font-semibold text-foreground">Localização Física (Opcional)</h4>
                      <div className="grid grid-cols-2 gap-4">
@@ -1522,7 +1591,7 @@ export default function Materials() {
                               type="text" 
                               value={newMaterial.area}
                               onChange={e => setNewMaterial({...newMaterial, area: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm h-[40px]"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
                               placeholder="Ex: Área A"
                            />
                         </div>
@@ -1531,8 +1600,8 @@ export default function Materials() {
                            <input 
                               type="text" 
                               value={newMaterial.estante}
-                              onChange={e => setNewMaterial({...newMaterial, text: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm h-[40px]"
+                              onChange={e => setNewMaterial({...newMaterial, estante: e.target.value})}
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
                               placeholder="Ex: Estante 3"
                            />
                         </div>
@@ -1542,7 +1611,7 @@ export default function Materials() {
                               type="text" 
                               value={newMaterial.prateleira}
                               onChange={e => setNewMaterial({...newMaterial, prateleira: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm h-[40px]"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
                               placeholder="Ex: Prateleira B"
                            />
                         </div>
@@ -1552,7 +1621,7 @@ export default function Materials() {
                               type="text" 
                               value={newMaterial.palete}
                               onChange={e => setNewMaterial({...newMaterial, palete: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm h-[40px]"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
                               placeholder="Ex: Palete 12"
                            />
                         </div>
@@ -1571,7 +1640,7 @@ export default function Materials() {
                                  min="0"
                                  value={newMaterial.paleteQty}
                                  onChange={e => setNewMaterial({...newMaterial, paleteQty: e.target.value ? parseInt(e.target.value) : ''})}
-                                 className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm font-bold h-[40px]"
+                                 className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm font-bold"
                                  placeholder="Ex: 50"
                               />
                            </motion.div>
@@ -1579,6 +1648,7 @@ export default function Materials() {
                      </AnimatePresence>
                   </div>
 
+                  {/* Vínculo de Setores Adicionais */}
                   <div className="border-t border-border/50 pt-4 space-y-2">
                      <label className="block text-sm font-semibold text-foreground">Vincular a Outros Setores (Opcional)</label>
                      <p className="text-xs text-muted-foreground mb-2">Selecione setores adicionais nos quais este material também estará visível.</p>
@@ -1608,10 +1678,12 @@ export default function Materials() {
                      </div>
                   </div>
 
+                  {/* Configuração de Estoques */}
                   <div className="border-t border-border/50 pt-4 space-y-3">
                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Configuração de Destino de Estoque</span>
                      
                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {/* Estoque Pulmão */}
                         <label className="flex items-start gap-3 p-3 bg-secondary/20 hover:bg-secondary/30 rounded-xl border border-border/50 cursor-pointer transition-all">
                            <input
                               type="checkbox"
@@ -1629,6 +1701,7 @@ export default function Materials() {
                            </div>
                         </label>
 
+                        {/* Estoque de Giro */}
                         <label className="flex items-start gap-3 p-3 bg-secondary/20 hover:bg-secondary/30 rounded-xl border border-border/50 cursor-pointer transition-all">
                            <input
                               type="checkbox"
@@ -1647,6 +1720,7 @@ export default function Materials() {
                         </label>
                      </div>
 
+                     {/* Resumo de quantidades */}
                      <div className="bg-secondary/30 p-3 rounded-xl border border-border/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-sm">
                         <div className="space-y-1">
                            {(newMaterial.isPulmao !== undefined ? newMaterial.isPulmao : true) && (
@@ -1717,7 +1791,7 @@ export default function Materials() {
 
       {/* History Modal */}
       <AnimatePresence>
-         {selectedHistoryMaterial && (
+         {historyMaterial && (
             <motion.div 
                initial={{ opacity: 0 }}
                animate={{ opacity: 1 }}
@@ -1733,11 +1807,11 @@ export default function Materials() {
                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-blue-500"></div>
                
                <div className="flex justify-between items-start mb-6 mt-2 shrink-0">
-                  <div className="min-w-0 flex-1 pr-2">
-                     <h3 className="text-xl font-bold text-foreground truncate">Histórico de Contagens</h3>
-                     <p className="text-sm text-muted-foreground mt-1 truncate">{selectedHistoryMaterial.name} ({selectedHistoryMaterial.code})</p>
+                  <div>
+                     <h3 className="text-xl font-bold text-foreground">Histórico de Contagens</h3>
+                     <p className="text-sm text-muted-foreground mt-1">{historyMaterial.name} ({historyMaterial.code})</p>
                   </div>
-                  <button onClick={() => setSelectedHistoryMaterial(null)} className="p-1.5 text-muted-foreground hover:bg-secondary rounded-lg transition-colors shrink-0">
+                  <button onClick={() => setHistoryMaterial(null)} className="p-1.5 text-muted-foreground hover:bg-secondary rounded-lg transition-colors">
                      <X className="w-5 h-5" />
                   </button>
                </div>
@@ -1749,7 +1823,7 @@ export default function Materials() {
                         type="date" 
                         value={historyDateFilter}
                         onChange={e => setHistoryDateFilter(e.target.value)}
-                        className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground h-[40px]"
+                        className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground"
                      />
                   </div>
                   <div className="flex-1">
@@ -1759,7 +1833,7 @@ export default function Materials() {
                         placeholder="Nome do usuário..."
                         value={historyUserFilter}
                         onChange={e => setHistoryUserFilter(e.target.value)}
-                        className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground h-[40px]"
+                        className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500/50 outline-none text-foreground"
                      />
                   </div>
                </div>
@@ -1796,18 +1870,10 @@ export default function Materials() {
                            
                            <div className="flex items-center justify-between text-sm bg-secondary/30 p-2 rounded-lg">
                               <div className="flex items-center gap-2">
-                                 <span className="text-muted-foreground line-through opacity-70">{log.previousQuantity} {formatUnit(selectedHistoryMaterial.unit)}</span>
+                                 <span className="text-muted-foreground line-through opacity-70">{log.previousQuantity} {formatUnit(historyMaterial.unit)}</span>
                                  <span className="text-foreground font-medium">→</span>
-                                 <span className="text-emerald-500 font-bold">{log.newQuantity} {formatUnit(selectedHistoryMaterial.unit)}</span>
+                                 <span className="text-emerald-500 font-bold">{log.newQuantity} {formatUnit(historyMaterial.unit)}</span>
                               </div>
-                              <span className={cn(
-                                 "text-[10px] font-bold px-2 py-0.5 rounded-md border",
-                                 log.countType === 'GIRO' 
-                                    ? "bg-amber-500/10 text-amber-500 border-amber-500/20" 
-                                    : "bg-blue-500/10 text-blue-500 border-blue-500/20"
-                              )}>
-                                 {log.countType === 'GIRO' ? '⚡ Giro' : '📦 Pulmão'}
-                              </span>
                            </div>
                            
                            {log.notes && (
@@ -1841,7 +1907,7 @@ export default function Materials() {
                initial={{ scale: 0.95, y: 20 }}
                animate={{ scale: 1, y: 0 }}
                exit={{ scale: 0.95, y: 20 }}
-               className="bg-card border border-border rounded-2xl w-full max-w-2xl shadow-2xl p-6 relative z-10 max-h-[calc(100vh-2rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent"
+               className="bg-card border border-border rounded-2xl w-full max-w-2xl shadow-2xl p-6 relative z-10 max-h-[calc(100vh-4rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent"
             >
                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
                
@@ -1851,7 +1917,8 @@ export default function Materials() {
                </div>
 
                <form onSubmit={handleEditMaterialSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                     {/* Coluna Esquerda */}
                      <div className="space-y-4">
                         <div>
                            <label className="block text-sm font-medium text-muted-foreground mb-1.5">Código Único (SKU)</label>
@@ -1859,7 +1926,7 @@ export default function Materials() {
                               type="text" 
                               value={editMaterialForm.code}
                               onChange={e => setEditMaterialForm({...editMaterialForm, code: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-mono text-sm h-[40px]"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-mono text-sm"
                               required
                            />
                         </div>
@@ -1870,7 +1937,7 @@ export default function Materials() {
                               type="text" 
                               value={editMaterialForm.name}
                               onChange={e => setEditMaterialForm({...editMaterialForm, name: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm h-[40px]"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
                               required
                            />
                         </div>
@@ -1882,7 +1949,7 @@ export default function Materials() {
                                  type="text" 
                                  value={editMaterialForm.codigoBarras || ''}
                                  onChange={e => setEditMaterialForm({...editMaterialForm, codigoBarras: e.target.value})}
-                                 className="w-full bg-secondary/50 border border-border rounded-xl pl-4 pr-12 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm font-mono h-[40px]"
+                                 className="w-full bg-secondary/50 border border-border rounded-xl pl-4 pr-12 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm font-mono"
                                  placeholder="Ex: 7891234567890"
                               />
                               <button
@@ -1904,7 +1971,7 @@ export default function Materials() {
                            <select 
                               value={editMaterialForm.sectorId}
                               onChange={e => setEditMaterialForm({...editMaterialForm, sectorId: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer text-sm h-[40px]"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer text-sm"
                            >
                               {sectors.map(s => (
                                  <option key={s.id} value={s.id}>{s.name}</option>
@@ -1913,6 +1980,7 @@ export default function Materials() {
                         </div>
                      </div>
 
+                     {/* Coluna Direita */}
                      <div className="space-y-4">
                         <div>
                            <label className="block text-sm font-medium text-muted-foreground mb-1.5">Origem</label>
@@ -1920,7 +1988,7 @@ export default function Materials() {
                               type="text" 
                               value={editMaterialForm.origin || ''}
                               onChange={e => setEditMaterialForm({...editMaterialForm, origin: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm h-[40px]"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
                               placeholder="Ex: Nacional / Importado"
                            />
                         </div>
@@ -1942,7 +2010,7 @@ export default function Materials() {
                            <select 
                               value={editMaterialForm.supplierId || ''}
                               onChange={e => setEditMaterialForm({...editMaterialForm, supplierId: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer text-sm h-[40px]"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer text-sm"
                            >
                               <option value="">Nenhum fornecedor</option>
                               {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -1957,7 +2025,7 @@ export default function Materials() {
                               placeholder="Ex: 5"
                               value={editMaterialForm.supplierDeliveryDays}
                               onChange={e => setEditMaterialForm({...editMaterialForm, supplierDeliveryDays: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm h-[40px]"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
                            />
                         </div>
 
@@ -1968,10 +2036,10 @@ export default function Materials() {
                                  type="text" 
                                  value={editMaterialForm.imageUrl || ''}
                                  onChange={e => setEditMaterialForm({...editMaterialForm, imageUrl: e.target.value})}
-                                 className="flex-1 bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm h-[40px]"
+                                 className="flex-1 bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
                                  placeholder="Ex: https://imagens.com/produto.jpg"
                               />
-                              <label className="bg-secondary hover:bg-secondary/80 border border-border text-foreground p-2.5 rounded-xl cursor-pointer flex items-center justify-center shrink-0 h-[40px] w-[40px]" title="Upload de Imagem Local">
+                              <label className="bg-secondary hover:bg-secondary/80 border border-border text-foreground p-2.5 rounded-xl cursor-pointer flex items-center justify-center shrink-0" title="Upload de Imagem Local">
                                  <Upload className="w-5 h-5 text-muted-foreground" />
                                  <input 
                                     type="file" 
@@ -2006,13 +2074,14 @@ export default function Materials() {
                      </div>
                   </div>
 
+                  {/* Detalhes de Quantidade na base */}
                   <div className="grid grid-cols-3 gap-4 border-t border-border/50 pt-4">
                      <div>
                         <label className="block text-sm font-medium text-muted-foreground mb-1.5">Unidade</label>
                         <select 
                            value={editMaterialForm.unit}
                            onChange={e => setEditMaterialForm({...editMaterialForm, unit: e.target.value})}
-                           className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer text-sm h-[40px]"
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground cursor-pointer text-sm"
                         >
                            <option value="unidade">un</option>
                            <option value="pacote">pct</option>
@@ -2029,7 +2098,7 @@ export default function Materials() {
                            min="0"
                            value={editMaterialForm.quantity}
                            onChange={e => setEditMaterialForm({...editMaterialForm, quantity: e.target.value ? parseInt(e.target.value) : ''})}
-                           className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-bold text-sm h-[40px]"
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-bold text-sm"
                            required
                         />
                      </div>
@@ -2040,12 +2109,13 @@ export default function Materials() {
                            min="0"
                            value={editMaterialForm.estoqueMinimo}
                            onChange={e => setEditMaterialForm({...editMaterialForm, estoqueMinimo: e.target.value ? parseInt(e.target.value) : ''})}
-                           className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-bold text-sm h-[40px]"
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-bold text-sm"
                            required
                         />
                      </div>
                   </div>
 
+                  {/* Localização Física (Opcional) */}
                   <div className="border-t border-border/50 pt-4 space-y-4">
                      <h4 className="text-sm font-semibold text-foreground">Localização Física (Opcional)</h4>
                      <div className="grid grid-cols-2 gap-4">
@@ -2055,7 +2125,7 @@ export default function Materials() {
                               type="text" 
                               value={editMaterialForm.area}
                               onChange={e => setEditMaterialForm({...editMaterialForm, area: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm h-[40px]"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
                               placeholder="Ex: Área A"
                            />
                         </div>
@@ -2065,7 +2135,7 @@ export default function Materials() {
                               type="text" 
                               value={editMaterialForm.estante}
                               onChange={e => setEditMaterialForm({...editMaterialForm, estante: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm h-[40px]"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
                               placeholder="Ex: Estante 3"
                            />
                         </div>
@@ -2075,7 +2145,7 @@ export default function Materials() {
                               type="text" 
                               value={editMaterialForm.prateleira}
                               onChange={e => setEditMaterialForm({...editMaterialForm, prateleira: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm h-[40px]"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
                               placeholder="Ex: Prateleira B"
                            />
                         </div>
@@ -2085,7 +2155,7 @@ export default function Materials() {
                               type="text" 
                               value={editMaterialForm.palete}
                               onChange={e => setEditMaterialForm({...editMaterialForm, palete: e.target.value})}
-                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm h-[40px]"
+                              className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm"
                               placeholder="Ex: Palete 12"
                            />
                         </div>
@@ -2104,7 +2174,7 @@ export default function Materials() {
                                  min="0"
                                  value={editMaterialForm.paleteQty}
                                  onChange={e => setEditMaterialForm({...editMaterialForm, paleteQty: e.target.value ? parseInt(e.target.value) : ''})}
-                                 className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm font-bold h-[40px]"
+                                 className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground text-sm font-bold"
                                  placeholder="Ex: 50"
                               />
                            </motion.div>
@@ -2112,6 +2182,7 @@ export default function Materials() {
                      </AnimatePresence>
                   </div>
 
+                  {/* Vínculo de Setores Adicionais */}
                   <div className="border-t border-border/50 pt-4 space-y-2">
                      <label className="block text-sm font-semibold text-foreground">Vincular a Outros Setores (Opcional)</label>
                      <p className="text-xs text-muted-foreground mb-2">Selecione setores adicionais nos quais este material também estará visível.</p>
@@ -2141,10 +2212,12 @@ export default function Materials() {
                      </div>
                   </div>
 
+                  {/* Configuração de Estoques */}
                   <div className="border-t border-border/50 pt-4 space-y-3">
                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Configuração de Destino de Estoque</span>
                      
                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {/* Estoque Pulmão */}
                         <label className="flex items-start gap-3 p-3 bg-secondary/20 hover:bg-secondary/30 rounded-xl border border-border/50 cursor-pointer transition-all">
                            <input
                               type="checkbox"
@@ -2162,6 +2235,7 @@ export default function Materials() {
                            </div>
                         </label>
 
+                        {/* Estoque de Giro */}
                         <label className="flex items-start gap-3 p-3 bg-secondary/20 hover:bg-secondary/30 rounded-xl border border-border/50 cursor-pointer transition-all">
                            <input
                               type="checkbox"
@@ -2180,6 +2254,7 @@ export default function Materials() {
                         </label>
                      </div>
 
+                     {/* Resumo de quantidades */}
                      <div className="bg-secondary/30 p-3 rounded-xl border border-border/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-sm">
                         <div className="space-y-1">
                            {(editMaterialForm.isPulmao !== undefined ? editMaterialForm.isPulmao : true) && (
@@ -2261,7 +2336,7 @@ export default function Materials() {
                   initial={{ scale: 0.95, y: 20 }}
                   animate={{ scale: 1, y: 0 }}
                   exit={{ scale: 0.95, y: 20 }}
-                  className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl p-6 relative overflow-hidden max-h-[90vh] overflow-y-auto"
+                  className="bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl p-6 relative overflow-hidden"
                >
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
                   
@@ -2313,7 +2388,7 @@ export default function Materials() {
                            value={newSupplierName}
                            onChange={e => setNewSupplierName(e.target.value)}
                            placeholder="Ex: Distribuidora XYZ"
-                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-sans h-[40px]"
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-sans"
                            required
                         />
                      </div>
@@ -2325,7 +2400,7 @@ export default function Materials() {
                            min="0"
                            value={newSupplierDeliveryDays}
                            onChange={e => setNewSupplierDeliveryDays(parseInt(e.target.value) || 0)}
-                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-bold font-sans h-[40px]"
+                           className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/50 outline-none text-foreground font-bold font-sans"
                            required
                         />
                      </div>
@@ -2339,13 +2414,13 @@ export default function Materials() {
                               setNewSupplierName('');
                               setNewSupplierDeliveryDays(0);
                            }}
-                           className="flex-1 px-4 py-3 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors font-sans text-sm"
+                           className="flex-1 px-4 py-3 border border-border text-foreground font-medium rounded-xl hover:bg-secondary transition-colors font-sans"
                         >
                            Cancelar
                         </button>
                         <button 
                            type="submit" 
-                           className="flex-1 px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25 font-sans text-sm"
+                           className="flex-1 px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25 font-sans"
                         >
                            Salvar
                         </button>
@@ -2378,7 +2453,7 @@ export default function Materials() {
                initial={{ scale: 0.95, y: 20 }}
                animate={{ scale: 1, y: 0 }}
                exit={{ scale: 0.95, y: 20 }}
-               className="bg-card border border-amber-500/30 rounded-2xl w-full max-w-md shadow-2xl p-6 relative overflow-hidden z-10 font-sans max-h-[90vh] overflow-y-auto"
+               className="bg-card border border-amber-500/30 rounded-2xl w-full max-w-md shadow-2xl p-6 relative overflow-hidden z-10 font-sans"
             >
                <div className="absolute top-0 left-0 w-full h-1 bg-amber-500"></div>
                
@@ -2433,7 +2508,7 @@ export default function Materials() {
                initial={{ scale: 0.95, y: 20 }}
                animate={{ scale: 1, y: 0 }}
                exit={{ scale: 0.95, y: 20 }}
-               className="bg-card border border-rose-500/30 rounded-2xl w-full max-w-md shadow-2xl p-6 relative overflow-hidden z-10 max-h-[90vh] overflow-y-auto"
+               className="bg-card border border-rose-500/30 rounded-2xl w-full max-w-md shadow-2xl p-6 relative overflow-hidden z-10"
             >
                <div className="absolute top-0 left-0 w-full h-1 bg-rose-500"></div>
                
@@ -2441,7 +2516,7 @@ export default function Materials() {
                  <div className="p-3 bg-rose-500/10 rounded-xl text-rose-500">
                    <AlertTriangle className="w-6 h-6" />
                  </div>
-                 <div className="flex-1 min-w-0">
+                 <div className="flex-1">
                    <h3 className="text-lg font-bold text-foreground font-sans">Código já Cadastrado</h3>
                    <p className="text-sm text-muted-foreground mt-1">
                      O código <span className="font-mono bg-rose-500/10 px-1.5 py-0.5 rounded text-rose-500 font-semibold">{duplicateModal.code}</span> já está sendo utilizado por outro produto no sistema.
@@ -2450,19 +2525,19 @@ export default function Materials() {
                </div>
 
                {duplicateModal.existingProduct && (
-                 <div className="bg-rose-500/5 border border-rose-500/10 rounded-xl p-4 mt-4 space-y-2 w-full min-w-0">
+                 <div className="bg-rose-500/5 border border-rose-500/10 rounded-xl p-4 mt-4 space-y-2">
                    <p className="text-xs font-semibold text-rose-500 uppercase tracking-wider">Produto Existente</p>
                    <div className="grid grid-cols-2 gap-y-2 text-sm">
-                     <span className="text-muted-foreground truncate">Nome:</span>
-                     <span className="font-semibold text-foreground text-right truncate">{duplicateModal.existingProduct.name}</span>
+                     <span className="text-muted-foreground">Nome:</span>
+                     <span className="font-semibold text-foreground text-right">{duplicateModal.existingProduct.name}</span>
                      
-                     <span className="text-muted-foreground truncate">Setor:</span>
-                     <span className="font-semibold text-foreground text-right truncate">
+                     <span className="text-muted-foreground">Setor:</span>
+                     <span className="font-semibold text-foreground text-right">
                        {sectors.find(s => s.id === duplicateModal.existingProduct?.sectorId)?.name || 'N/A'}
                      </span>
 
-                     <span className="text-muted-foreground truncate">Estoque Atual:</span>
-                     <span className="font-semibold text-foreground text-right truncate">
+                     <span className="text-muted-foreground">Estoque Atual:</span>
+                     <span className="font-semibold text-foreground text-right">
                        {duplicateModal.existingProduct.quantity} {duplicateModal.existingProduct.unit}
                      </span>
                    </div>
@@ -2473,7 +2548,7 @@ export default function Materials() {
                  <button 
                     type="button" 
                     onClick={() => setDuplicateModal(null)}
-                    className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-medium rounded-xl transition-colors shadow-lg shadow-rose-500/20 font-sans w-full text-sm"
+                    className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-medium rounded-xl transition-colors shadow-lg shadow-rose-500/20 font-sans w-full"
                  >
                     Entendido, vou alterar
                  </button>
@@ -2498,7 +2573,7 @@ export default function Materials() {
                initial={{ scale: 0.95, y: 20 }}
                animate={{ scale: 1, y: 0 }}
                exit={{ scale: 0.95, y: 20 }}
-               className="bg-card border border-amber-500/30 rounded-2xl w-full max-w-md shadow-2xl p-6 relative overflow-hidden z-10 max-h-[90vh] overflow-y-auto"
+               className="bg-card border border-amber-500/30 rounded-2xl w-full max-w-md shadow-2xl p-6 relative overflow-hidden z-10"
             >
                <div className="absolute top-0 left-0 w-full h-1 bg-amber-500"></div>
                
@@ -2506,7 +2581,7 @@ export default function Materials() {
                  <div className="p-3 bg-amber-500/10 rounded-xl text-amber-500">
                    <AlertTriangle className="w-6 h-6" />
                  </div>
-                 <div className="flex-1 min-w-0">
+                 <div className="flex-1">
                    <h3 className="text-lg font-bold text-foreground font-sans">Produto não Cadastrado</h3>
                    <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
                      O código <span className="font-mono bg-amber-500/10 px-1.5 py-0.5 rounded text-amber-600 font-semibold">{unregisteredProductModal.code}</span> não foi encontrado no estoque.
@@ -2521,7 +2596,7 @@ export default function Materials() {
                  <button 
                     type="button" 
                     onClick={() => setUnregisteredProductModal(null)}
-                    className="flex-1 px-5 py-3 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl transition-colors shadow-lg shadow-amber-500/20 font-sans text-sm"
+                    className="flex-1 px-5 py-3 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl transition-colors shadow-lg shadow-amber-500/20 font-sans"
                  >
                     Continuar para o Cadastro
                  </button>
@@ -2562,7 +2637,8 @@ export default function Materials() {
                      </button>
                   </div>
 
-                  <div className="overflow-y-auto flex-1 pr-1 space-y-5 my-2 scrollbar-thin">
+                  <div className="overflow-y-auto flex-1 pr-1 space-y-5 my-2">
+                     {/* Imagem do Produto */}
                      <div className="relative aspect-[16/9] w-full bg-secondary/10 border border-border rounded-xl overflow-hidden flex items-center justify-center group shrink-0">
                         {detailMaterial.imageUrl ? (
                            <>
@@ -2579,8 +2655,8 @@ export default function Materials() {
                                        setImageModalMaterial(detailMaterial);
                                        setDetailMaterial(null);
                                     }}
-                                    className="p-1.5 bg-black/60 hover:bg-black/80 rounded-lg text-white border border-white/10 transition-colors flex items-center gap-1.5 text-xs font-bold shadow-md"
-                                    title="Visualizar ampliado"
+                                    className="p-1.5 bg-black/60 hover:bg-black/80 rounded-lg text-white border border-white/10 transition-colors flex items-center gap-1.5 text-xs font-bold"
+                                    title="Visualizar ampliado / Gerenciar"
                                  >
                                     <Eye className="w-4 h-4" />
                                     Ver Foto
@@ -2588,7 +2664,7 @@ export default function Materials() {
                               </div>
                            </>
                         ) : (
-                           <div className="flex flex-col items-center justify-center p-6 text-center text-muted-foreground w-full">
+                           <div className="flex flex-col items-center justify-center p-6 text-center text-muted-foreground">
                               <ImageIcon className="w-10 h-10 opacity-30 mb-2" />
                               <span className="text-xs font-medium">Nenhuma foto cadastrada</span>
                               {isManager && (
@@ -2606,103 +2682,98 @@ export default function Materials() {
                         )}
                      </div>
 
-                     <div className="grid grid-cols-2 gap-3.5 bg-secondary/25 p-4 rounded-xl border border-border/60 text-sm">
-                        <div className="min-w-0">
+                     {/* Informações Grid */}
+                     <div className="grid grid-cols-2 gap-3.5 bg-secondary/25 p-4 rounded-xl border border-border/60">
+                        <div>
                            <span className="text-[10px] text-muted-foreground block uppercase tracking-wider font-semibold">Setor Atribuído</span>
-                           <span className="font-semibold text-foreground truncate block">{detailMaterial.sector || sectors.find(s => s.id === detailMaterial.sectorId)?.name || 'N/A'}</span>
+                           <span className="text-sm font-semibold text-foreground">
+                              {detailMaterial.sector || sectors.find(s => s.id === detailMaterial.sectorId)?.name || 'N/A'}
+                           </span>
                         </div>
-                        <div></div>
-                        <div className="min-w-0">
-                           <span className="text-[10px] text-muted-foreground block uppercase tracking-wider font-semibold flex items-center gap-1">📦 Status Pulmão</span>
+                        <div>
+                           <span className="text-[10px] text-muted-foreground block uppercase tracking-wider font-semibold">Status no Kanban</span>
                            <div className="mt-1"><StatusBadge status={detailMaterial.status} /></div>
                         </div>
-                        <div className="min-w-0">
-                           <span className="text-[10px] text-muted-foreground block uppercase tracking-wider font-semibold flex items-center gap-1">⚡ Status Giro</span>
-                           <div className="mt-1"><StatusBadge status={(detailMaterial as any).statusGiro || 'PENDING'} /></div>
-                        </div>
-                        <div className="min-w-0">
-                           <span className="text-[10px] text-muted-foreground block uppercase tracking-wider font-semibold">Estoque Pulmão</span>
-                           <span className="font-black text-foreground block truncate">
+                        <div>
+                           <span className="text-[10px] text-muted-foreground block uppercase tracking-wider font-semibold">Estoque Físico</span>
+                           <span className="text-sm font-black text-foreground">
                               {detailMaterial.quantity} {formatUnit(detailMaterial.unit)}
                            </span>
                         </div>
-                        <div className="min-w-0">
-                           <span className="text-[10px] text-muted-foreground block uppercase tracking-wider font-semibold">Estoque de Giro</span>
-                           <span className="font-black text-foreground block truncate">
-                              {(detailMaterial as any).quantityGiro || 0} {formatUnit(detailMaterial.unit)}
-                           </span>
-                        </div>
-                        <div className="min-w-0">
+                        <div>
                            <span className="text-[10px] text-muted-foreground block uppercase tracking-wider font-semibold">Estoque Mínimo</span>
-                           <span className="font-semibold text-foreground block truncate">
+                           <span className="text-sm font-semibold text-foreground">
                               {detailMaterial.estoqueMinimo} {formatUnit(detailMaterial.unit)}
                            </span>
                         </div>
-                        <div className="col-span-2 border-t border-border/40 pt-3 mt-1 grid grid-cols-2 gap-3.5 min-w-0">
-                           <div className="min-w-0">
+                        <div className="col-span-2 border-t border-border/40 pt-3 mt-1 grid grid-cols-2 gap-3.5">
+                           <div>
                               <span className="text-[10px] text-muted-foreground block uppercase tracking-wider font-semibold">Fornecedor</span>
-                              <span className="font-semibold text-foreground block truncate">
+                              <span className="text-sm font-semibold text-foreground">
                                  {suppliers.find(s => s.id === detailMaterial.supplierId)?.name || 'Não cadastrado'}
                               </span>
                            </div>
-                           <div className="min-w-0">
+                           <div>
                               <span className="text-[10px] text-muted-foreground block uppercase tracking-wider font-semibold">Prazo de Entrega</span>
-                              <span className="font-semibold text-foreground block truncate">
+                              <span className="text-sm font-semibold text-foreground">
                                  {suppliers.find(s => s.id === detailMaterial.supplierId) 
                                     ? `${suppliers.find(s => s.id === detailMaterial.supplierId)?.deliveryDays} dias úteis` 
                                     : 'N/A'}
                               </span>
                            </div>
                         </div>
-                        <div className="col-span-2 border-t border-border/40 pt-3 mt-1 grid grid-cols-2 gap-3.5 min-w-0">
-                           <div className="min-w-0">
+                        <div className="col-span-2 border-t border-border/40 pt-3 mt-1 grid grid-cols-2 gap-3.5">
+                           <div>
                               <span className="text-[10px] text-muted-foreground block uppercase tracking-wider font-semibold">Origem</span>
-                              <span className="font-semibold text-foreground block truncate">{detailMaterial.origin || 'Não informada'}</span>
+                              <span className="text-sm font-semibold text-foreground">{detailMaterial.origin || 'Não informada'}</span>
                            </div>
-                           <div className="min-w-0">
+                           <div>
                               <span className="text-[10px] text-muted-foreground block uppercase tracking-wider font-semibold">Código de Barras</span>
-                              <span className="font-mono text-foreground break-all block">{detailMaterial.codigoBarras || 'N/A'}</span>
+                              <span className="text-sm font-mono text-foreground break-all">{detailMaterial.codigoBarras || 'N/A'}</span>
                            </div>
                         </div>
                      </div>
 
+                     {/* Observações */}
+                     {/* Localização Física */}
                       {(detailMaterial.area || detailMaterial.estante || detailMaterial.prateleira || detailMaterial.palete) && (
-                         <div className="bg-secondary/15 border border-border/50 rounded-xl p-4 space-y-2.5 min-w-0">
+                         <div className="bg-secondary/15 border border-border/50 rounded-xl p-4 space-y-2.5">
                             <span className="text-[10px] text-muted-foreground block uppercase tracking-wider font-bold">Localização Física</span>
                             <div className="grid grid-cols-2 gap-2.5 text-xs font-sans">
                                {detailMaterial.area && (
-                                  <div className="min-w-0">
+                                  <div>
                                      <span className="text-muted-foreground block text-[10px] uppercase">Área:</span>
-                                     <span className="font-semibold text-foreground text-sm block truncate">{detailMaterial.area}</span>
+                                     <span className="font-semibold text-foreground text-sm">{detailMaterial.area}</span>
                                   </div>
                                )}
                                {detailMaterial.estante && (
-                                  <div className="min-w-0">
+                                  <div>
                                      <span className="text-muted-foreground block text-[10px] uppercase">Estante:</span>
-                                     <span className="font-semibold text-foreground text-sm block truncate">{detailMaterial.estante}</span>
+                                     <span className="font-semibold text-foreground text-sm">{detailMaterial.estante}</span>
                                   </div>
                                )}
                                {detailMaterial.prateleira && (
-                                  <div className="min-w-0">
+                                  <div>
                                      <span className="text-muted-foreground block text-[10px] uppercase">Prateleira:</span>
-                                     <span className="font-semibold text-foreground text-sm block truncate">{detailMaterial.prateleira}</span>
+                                     <span className="font-semibold text-foreground text-sm">{detailMaterial.prateleira}</span>
                                   </div>
                                )}
                                {detailMaterial.palete && (
-                                  <div className="min-w-0">
+                                  <div>
                                      <span className="text-muted-foreground block text-[10px] uppercase">Palete:</span>
-                                     <span className="font-semibold text-foreground text-sm block truncate">
+                                     <span className="font-semibold text-foreground text-sm">
                                         {detailMaterial.palete} 
                                         {detailMaterial.paleteQty !== null && detailMaterial.paleteQty !== undefined && detailMaterial.paleteQty !== '' && (
                                            <span className="text-muted-foreground font-normal ml-1">({detailMaterial.paleteQty} itens)</span>
                                         )}
                                      </span>
                                   </div>
-                               )}
+                                )}
                             </div>
                          </div>
                       )}
 
+                      {/* Setores Adicionais */}
                       {(() => {
                          const additionalIds = (detailMaterial.additionalSectors || '').split(',').filter(Boolean);
                          if (additionalIds.length === 0) return null;
@@ -2716,7 +2787,7 @@ export default function Materials() {
                                <span className="text-[10px] text-muted-foreground block uppercase tracking-wider font-bold font-sans">Outros Setores Vinculados</span>
                                <div className="flex flex-wrap gap-1.5 mt-1">
                                   {mappedNames.map((name, idx) => (
-                                     <span key={idx} className="bg-blue-500/10 border border-blue-500/20 text-blue-500 text-[11px] font-semibold px-2.5 py-1 rounded-full font-sans whitespace-nowrap">
+                                     <span key={idx} className="bg-blue-500/10 border border-blue-500/20 text-blue-500 text-[11px] font-semibold px-2.5 py-1 rounded-full font-sans">
                                         {name}
                                      </span>
                                   ))}
@@ -2726,26 +2797,25 @@ export default function Materials() {
                       })()}
 
                       {detailMaterial.notes && (
-                        <div className="bg-blue-500/5 border border-blue-500/10 rounded-xl p-3 max-w-full">
+                        <div className="bg-blue-500/5 border border-blue-500/10 rounded-xl p-3">
                            <span className="text-[10px] text-blue-500 block uppercase tracking-wider font-bold mb-1">Observações</span>
                            <p className="text-xs text-foreground italic break-words">"{detailMaterial.notes}"</p>
                         </div>
-                      )}
+                     )}
 
-                      <div className="space-y-2.5 pt-1 w-full">
+                     {/* Ações Rápidas */}
+                     <div className="space-y-2.5 pt-1">
                         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Ações Disponíveis</span>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
+                        <div className="grid grid-cols-2 gap-2">
                            <button 
                               onClick={() => {
                                  setSelectedMaterial(detailMaterial);
-                                 const targetStock = activeTab === 'giro' ? 'giro' : activeTab === 'pulmao' ? 'pulmao' : (detailMaterial.isPulmao !== false ? 'pulmao' : 'giro');
-                                 setCountTargetStock(targetStock);
-                                 setCountQuantity(targetStock === 'giro' ? (detailMaterial.quantityGiro || 0) : detailMaterial.quantity);
+                                 setCountQuantity(detailMaterial.quantity);
                                  setCountNotes(detailMaterial.notes || '');
-                                 setCountStatus(targetStock === 'giro' ? ((detailMaterial as any).statusGiro || 'PENDING') : detailMaterial.status);
+                                 setCountStatus(detailMaterial.status);
                                  setDetailMaterial(null);
                               }}
-                              className="flex items-center gap-2 justify-center py-2.5 px-3 rounded-xl border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 text-blue-500 transition-colors font-bold text-xs shadow-sm h-[40px]"
+                              className="flex items-center gap-2 justify-center py-2.5 px-3 rounded-xl border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 text-blue-500 transition-colors font-bold text-xs"
                            >
                               <ClipboardCheck className="w-4 h-4" />
                               Contar Estoque
@@ -2756,7 +2826,7 @@ export default function Materials() {
                                  handleOpenHistory(detailMaterial);
                                  setDetailMaterial(null);
                               }}
-                              className="flex items-center gap-2 justify-center py-2.5 px-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-500 transition-colors font-bold text-xs shadow-sm h-[40px]"
+                              className="flex items-center gap-2 justify-center py-2.5 px-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-500 transition-colors font-bold text-xs"
                            >
                               <History className="w-4 h-4" />
                               Ver Histórico
@@ -2767,7 +2837,7 @@ export default function Materials() {
                                  setImageModalMaterial(detailMaterial);
                                  setDetailMaterial(null);
                               }}
-                              className="flex items-center gap-2 justify-center py-2.5 px-3 rounded-xl border border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 text-amber-500 transition-colors font-bold text-xs shadow-sm h-[40px]"
+                              className="flex items-center gap-2 justify-center py-2.5 px-3 rounded-xl border border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 text-amber-500 transition-colors font-bold text-xs"
                            >
                               <Eye className="w-4 h-4" />
                               Ver / Tirar Foto
@@ -2779,20 +2849,20 @@ export default function Materials() {
                                     handleOpenEditMaterial(detailMaterial);
                                     setDetailMaterial(null);
                                  }}
-                                 className="flex items-center gap-2 justify-center py-2.5 px-3 rounded-xl border border-indigo-500/20 bg-indigo-500/5 hover:bg-indigo-500/10 text-indigo-500 transition-colors font-bold text-xs shadow-sm h-[40px]"
+                                 className="flex items-center gap-2 justify-center py-2.5 px-3 rounded-xl border border-indigo-500/20 bg-indigo-500/5 hover:bg-indigo-500/10 text-indigo-500 transition-colors font-bold text-xs"
                               >
                                  <Edit3 className="w-4 h-4" />
                                  Editar Cadastro
                               </button>
                            )}
                         </div>
-                      </div>
+                     </div>
                   </div>
 
-                  <div className="shrink-0 pt-3 border-t border-border mt-3 flex gap-2 w-full">
+                  <div className="shrink-0 pt-3 border-t border-border mt-3 flex gap-2">
                      <button
                         onClick={() => setDetailMaterial(null)}
-                        className="w-full py-2.5 bg-secondary hover:bg-secondary/80 text-foreground font-semibold rounded-xl transition-colors text-sm border border-border h-[40px]"
+                        className="w-full py-2.5 bg-secondary hover:bg-secondary/80 text-foreground font-semibold rounded-xl transition-colors text-sm border border-border"
                      >
                         Fechar
                      </button>
