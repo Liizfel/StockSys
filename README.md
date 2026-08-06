@@ -128,9 +128,6 @@ O arquivo de configuração `vercel.json` na raiz do projeto já define os rotea
 
 ---
 
-## 📝 Licença
-
-Este projeto está sob a licença MIT. Consulte o arquivo [LICENSE](LICENSE) para obter mais informações.
 
 ---
 *Desenvolvido com excelência, visando a melhor experiência em gestão logística e usabilidade digital.*
