@@ -127,7 +127,4 @@ O arquivo de configuração `vercel.json` na raiz do projeto já define os rotea
    - O Vercel detectará as configurações automaticamente. Clique em **Deploy** e seu site estará online em menos de 1 minuto!
 
 ---
-
-
----
 *Desenvolvido com excelência, visando a melhor experiência em gestão logística e usabilidade digital.*
