@@ -102,29 +102,4 @@ O arquivo de configuração `vercel.json` na raiz do projeto já define os rotea
   ]
 }
 ```
-
-### Passos para Fazer o Deploy:
-
-1. **Instalar a Vercel CLI** (opcional se for usar o painel web):
-   ```bash
-   npm install -g vercel
-   ```
-
-2. **Fazer Login e Iniciar o Deploy**:
-   ```bash
-   vercel
-   ```
-   Siga as instruções simples no terminal.
-
-3. **Configuração de Variáveis de Ambiente**:
-   Caso utilize um banco de dados externo ou chaves específicas no futuro, configure as variáveis diretamente no painel de configurações do seu projeto na Vercel (*Settings > Environment Variables*).
-
-4. **Configuração via GitHub (Recomendado)**:
-   - Crie um repositório no seu GitHub.
-   - Suba este código para lá.
-   - Acesse o painel do [Vercel](https://vercel.com/) e clique em **Add New > Project**.
-   - Importe o repositório do GitHub.
-   - O Vercel detectará as configurações automaticamente. Clique em **Deploy** e seu site estará online em menos de 1 minuto!
-
----
-*Desenvolvido com excelência, visando a melhor experiência em gestão logística e usabilidade digital.*
+ * Desenvolvido com excelência, visando a melhor experiência em gestão logística e usabilidade digital.*
