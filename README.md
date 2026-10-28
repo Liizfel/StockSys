@@ -87,19 +87,4 @@ Certifique-se de possuir o [Node.js](https://nodejs.org/) instalado em seu compu
 
 ---
 
-## 🌐 Deploy no Vercel
-
-O projeto está totalmente preparado para ser implantado na **Vercel** de forma rápida, aproveitando a capacidade Full-stack com serverless functions ou servindo como SPA integrada.
-
-### Configuração Pré-existente (`vercel.json`)
-O arquivo de configuração `vercel.json` na raiz do projeto já define os roteamentos e redirecionamentos necessários para que o roteamento de rotas SPA do React (`react-router-dom`) funcione perfeitamente sem retornar erros `404` ao atualizar a página:
-
-```json
-{
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index.js" },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}
-```
  * Desenvolvido com excelência, visando a melhor experiência em gestão logística e usabilidade digital.*
