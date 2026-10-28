@@ -86,5 +86,4 @@ Certifique-se de possuir o [Node.js](https://nodejs.org/) instalado em seu compu
    ```
 
 ---
-
- * Desenvolvido com excelência, visando a melhor experiência em gestão logística e usabilidade digital.*
+*Desenvolvido com excelência, visando a melhor experiência em gestão logística e usabilidade digital.*
